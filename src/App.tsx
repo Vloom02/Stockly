@@ -1,17 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { IonApp, IonRouterOutlet, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import { Route, Redirect } from 'react-router-dom';
 
-import DashboardPage from './pages/DashboardPage';
-import StockPage from './pages/StockPage';
-import ProductoPage from './pages/ProductoPage';
-import LotePage from './pages/LotePage';
-import MovimientosPage from './pages/MovimientosPage';
-import ReportesPage from './pages/ReportesPage';
-import SucursalesPage from './pages/SucursalesPage';
-import ConfigPage from './pages/ConfigPage';
-import AuthPage from './pages/AuthPage';
+// Páginas con code-splitting: cada una se descarga bajo demanda (chunk aparte),
+// así el arranque de la app es más liviano y rápido.
+const DashboardPage   = lazy(() => import('./pages/DashboardPage'));
+const StockPage       = lazy(() => import('./pages/StockPage'));
+const ProductoPage    = lazy(() => import('./pages/ProductoPage'));
+const LotePage        = lazy(() => import('./pages/LotePage'));
+const MovimientosPage = lazy(() => import('./pages/MovimientosPage'));
+const ReportesPage    = lazy(() => import('./pages/ReportesPage'));
+const SucursalesPage  = lazy(() => import('./pages/SucursalesPage'));
+const ConfigPage      = lazy(() => import('./pages/ConfigPage'));
+const AuthPage        = lazy(() => import('./pages/AuthPage'));
 import TabBar from './components/TabBar';
 import Onboarding from './components/Onboarding';
 import Logo from './components/ui/Logo';
@@ -62,14 +64,14 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
       )}
       <IonReactRouter>
         <IonRouterOutlet id="main">
-          <Route path="/dashboard" exact><DashboardPage /></Route>
-          <Route path="/stock" exact><StockPage /></Route>
-          <Route path="/producto/:id" exact><ProductoPage /></Route>
-          <Route path="/lote/:id" exact><LotePage /></Route>
-          <Route path="/movimientos" exact><MovimientosPage /></Route>
-          <Route path="/reportes" exact><ReportesPage /></Route>
-          <Route path="/sucursales" exact><SucursalesPage /></Route>
-          <Route path="/config" exact><ConfigPage onThemeToggle={onThemeToggle} isDark={isDark} /></Route>
+          <Route path="/dashboard" exact><Suspense fallback={<Cargando />}><DashboardPage /></Suspense></Route>
+          <Route path="/stock" exact><Suspense fallback={<Cargando />}><StockPage /></Suspense></Route>
+          <Route path="/producto/:id" exact><Suspense fallback={<Cargando />}><ProductoPage /></Suspense></Route>
+          <Route path="/lote/:id" exact><Suspense fallback={<Cargando />}><LotePage /></Suspense></Route>
+          <Route path="/movimientos" exact><Suspense fallback={<Cargando />}><MovimientosPage /></Suspense></Route>
+          <Route path="/reportes" exact><Suspense fallback={<Cargando />}><ReportesPage /></Suspense></Route>
+          <Route path="/sucursales" exact><Suspense fallback={<Cargando />}><SucursalesPage /></Suspense></Route>
+          <Route path="/config" exact><Suspense fallback={<Cargando />}><ConfigPage onThemeToggle={onThemeToggle} isDark={isDark} /></Suspense></Route>
           <Route path="/" exact><Redirect to="/dashboard" /></Route>
         </IonRouterOutlet>
         <TabBar />
@@ -102,7 +104,7 @@ const Router: React.FC<{ isDark: boolean; onThemeToggle: () => void }> = ({ isDa
     return (
       <IonReactRouter>
         <IonRouterOutlet>
-          <Route><AuthPage /></Route>
+          <Route><Suspense fallback={<Cargando />}><AuthPage /></Suspense></Route>
         </IonRouterOutlet>
       </IonReactRouter>
     );
