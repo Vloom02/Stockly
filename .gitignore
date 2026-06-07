@@ -1,0 +1,15 @@
+node_modules
+dist
+android
+ios
+.DS_Store
+*.log
+.vscode
+.idea
+.env
+.env.local
+.env.production
+.env.*.local
+coverage
+*.keystore
+*.jks
