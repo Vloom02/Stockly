@@ -10,6 +10,7 @@ import {
   colorNivel, etiquetaNivel, ordenNivel, textoEstado,
 } from '../context/StoreContext';
 import { ProductoConLotes, NivelAlerta, LoteConProducto } from '../types';
+import { sugerirLiquidacion } from '../lib/liquidacion';
 import Card from '../components/ui/Card';
 import { NivelBadge } from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
@@ -228,7 +229,10 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
   </Card>
 );
 
-const LoteRow: React.FC<{ lote: LoteConProducto; onClick: () => void }> = ({ lote, onClick }) => (
+const LoteRow: React.FC<{ lote: LoteConProducto; onClick: () => void }> = ({ lote, onClick }) => {
+  // Sugerencia de liquidación FEFO: vender antes de que venza con un descuento.
+  const liq = sugerirLiquidacion(lote.nivelAlerta, lote.productoPrecio);
+  return (
   <Card padding="sm" onClick={onClick}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{ width: 4, height: 48, background: colorNivel(lote.nivelAlerta), borderRadius: 2, flexShrink: 0 }} />
@@ -239,11 +243,24 @@ const LoteRow: React.FC<{ lote: LoteConProducto; onClick: () => void }> = ({ lot
         <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 6 }}>
           {lote.cantidad} unid.{lote.numeroLote ? ` · Lote ${lote.numeroLote}` : ''}{lote.proveedor ? ` · ${lote.proveedor}` : ''}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <NivelBadge nivel={lote.nivelAlerta} />
           <span style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 500 }}>
             {textoEstado(lote.fechaVencimiento)}
           </span>
+          {liq.aplicar && (
+            <span title={`Sugerencia: liquidá a ${formatearMoneda(liq.precioFinal)} (precio normal ${formatearMoneda(liq.precioOriginal)}) para venderlo antes de que venza`}
+              style={{
+                fontSize: 11, fontWeight: 700, color: 'var(--brand-600)',
+                background: 'var(--brand-50, var(--surface-2))',
+                border: '1px solid var(--brand-300)',
+                borderRadius: 'var(--radius-full)', padding: '2px 8px',
+                display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap',
+              }}>
+              💸 Liquidar {formatearMoneda(liq.precioFinal)}
+              <span style={{ opacity: 0.75, fontWeight: 600 }}>−{liq.pct}%</span>
+            </span>
+          )}
         </div>
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -254,6 +271,7 @@ const LoteRow: React.FC<{ lote: LoteConProducto; onClick: () => void }> = ({ lot
       </div>
     </div>
   </Card>
-);
+  );
+};
 
 export default StockPage;
