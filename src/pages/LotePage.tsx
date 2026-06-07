@@ -5,9 +5,10 @@ import {
   BanknotesIcon, TrashIcon, HeartIcon, CheckIcon,
 } from '@heroicons/react/24/outline';
 import {
-  useStore, formatearFecha, colorNivel,
+  useStore, formatearFecha, colorNivel, formatearMoneda,
   calcularNivelAlerta, textoEstado,
 } from '../context/StoreContext';
+import { sugerirLiquidacion } from '../lib/liquidacion';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { Field, Input, Select } from '../components/ui/Input';
@@ -45,6 +46,8 @@ const LotePage: React.FC = () => {
   const producto = productoId ? state.productos.find(p => p.id === productoId) : undefined;
   const diasAvisoEf = diasAviso ? parseInt(diasAviso, 10) : (producto?.diasAvisoDefault || 7);
   const nivel = fechaVencimiento ? calcularNivelAlerta(fechaVencimiento, diasAvisoEf) : 'ok';
+  // Sugerencia de liquidación FEFO (si el lote está próximo a vencer y hay precio).
+  const liq = producto && fechaVencimiento ? sugerirLiquidacion(nivel, producto.precio) : null;
 
   const handleGuardar = async () => {
     if (!productoId) { setToast({ show: true, msg: 'Elegí un producto' }); return; }
@@ -103,6 +106,25 @@ const LotePage: React.FC = () => {
                   {formatearFecha(fechaVencimiento)}
                 </div>
               </div>
+
+              {liq?.aplicar && (
+                <div style={{
+                  marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)',
+                  display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+                }}>
+                  <span style={{ fontSize: 18 }}>💸</span>
+                  <div style={{ fontSize: 13, lineHeight: 1.4 }}>
+                    <strong>Liquidación sugerida:</strong> vendé a{' '}
+                    <strong style={{ color: 'var(--brand-600)' }}>{formatearMoneda(liq.precioFinal)}</strong>{' '}
+                    <span style={{ color: 'var(--text-2)' }}>
+                      (−{liq.pct}%, en vez de {formatearMoneda(liq.precioOriginal)})
+                    </span>
+                    <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 2 }}>
+                      Rematalo antes de que venza para no perder el stock.
+                    </div>
+                  </div>
+                </div>
+              )}
             </Card>
           )}
 
