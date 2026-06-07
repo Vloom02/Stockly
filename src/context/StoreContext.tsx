@@ -15,6 +15,7 @@ import { sincronizar } from '../lib/sync';
 import { supabaseConfigurado } from '../lib/supabase';
 import { almacenGet, almacenSet } from '../lib/almacen';
 import { diasRestantes, calcularNivelAlerta as _calcNivel, ordenNivel, etiquetaNivel } from '../lib/vencimientos';
+import { DescuentoConfig } from '../lib/liquidacion';
 
 // ─── Settings locales ───────────────────────────────────────────────────────
 const LS_PREFIX = 'stockly:';
@@ -32,6 +33,19 @@ export const DIAS_AVISO_DEFAULT = () => parseInt(getSetting('dias-aviso-default'
 export const CATEGORIAS = () =>
   getSetting('categorias', 'Lácteos\nBebidas\nAlmacén\nLimpieza\nMedicamentos\nFiambres\nPanadería\nSnacks\nOtros')
     .split('\n').map(c => c.trim()).filter(Boolean);
+
+// Descuentos de liquidación FEFO (%) configurables por comercio.
+const descPct = (k: string, def: number) => {
+  const n = parseInt(getSetting(k, String(def)), 10);
+  return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : def;
+};
+export const DESC_CRITICO = () => descPct('desc-critico', 40);
+export const DESC_URGENTE = () => descPct('desc-urgente', 20);
+export const DESC_AVISO   = () => descPct('desc-aviso', 10);
+/** Config de descuentos actual (para pasar a sugerirLiquidacion). */
+export function descuentoConfig(): DescuentoConfig {
+  return { critico: DESC_CRITICO(), urgente: DESC_URGENTE(), aviso: DESC_AVISO() };
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 // diasRestantes/ordenNivel/etiquetaNivel viven en lib/vencimientos.ts (puro, testeable).

@@ -6,7 +6,7 @@ import {
 } from '@heroicons/react/24/outline';
 import {
   useStore, formatearFecha, colorNivel, formatearMoneda,
-  calcularNivelAlerta, textoEstado,
+  calcularNivelAlerta, textoEstado, descuentoConfig,
 } from '../context/StoreContext';
 import { sugerirLiquidacion } from '../lib/liquidacion';
 import Card from '../components/ui/Card';
@@ -47,7 +47,7 @@ const LotePage: React.FC = () => {
   const diasAvisoEf = diasAviso ? parseInt(diasAviso, 10) : (producto?.diasAvisoDefault || 7);
   const nivel = fechaVencimiento ? calcularNivelAlerta(fechaVencimiento, diasAvisoEf) : 'ok';
   // Sugerencia de liquidación FEFO (si el lote está próximo a vencer y hay precio).
-  const liq = producto && fechaVencimiento ? sugerirLiquidacion(nivel, producto.precio) : null;
+  const liq = producto && fechaVencimiento ? sugerirLiquidacion(nivel, producto.precio, descuentoConfig()) : null;
 
   const handleGuardar = async () => {
     if (!productoId) { setToast({ show: true, msg: 'Elegí un producto' }); return; }

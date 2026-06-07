@@ -6,11 +6,12 @@ import {
   MoonIcon, SunIcon, BellAlertIcon, TagIcon,
   BuildingStorefrontIcon, ArrowRightOnRectangleIcon,
   InformationCircleIcon, ChevronRightIcon, UserCircleIcon,
-  ArrowDownTrayIcon, ArrowUpTrayIcon, SwatchIcon, CloudIcon,
+  ArrowDownTrayIcon, ArrowUpTrayIcon, SwatchIcon, CloudIcon, BanknotesIcon,
 } from '@heroicons/react/24/outline';
 import {
   useStore, setSetting,
   DIAS_AVISO_DEFAULT, UMBRAL_AVISO, UMBRAL_URGENTE, UMBRAL_CRITICO, CATEGORIAS,
+  DESC_CRITICO, DESC_URGENTE, DESC_AVISO,
 } from '../context/StoreContext';
 import { COLORES_MARCA, aplicarColorMarca, guardarColorMarca, obtenerColorMarcaGuardado } from '../lib/tema';
 import { useAuth } from '../context/AuthContext';
@@ -34,6 +35,9 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
   const [uUrgente, setUUrgente] = useState(UMBRAL_URGENTE().toString());
   const [uCritico, setUCritico] = useState(UMBRAL_CRITICO().toString());
   const [categorias, setCategorias] = useState(CATEGORIAS().join('\n'));
+  const [descCritico, setDescCritico] = useState(DESC_CRITICO().toString());
+  const [descUrgente, setDescUrgente] = useState(DESC_URGENTE().toString());
+  const [descAviso, setDescAviso] = useState(DESC_AVISO().toString());
   const [toast, setToast] = useState({ show: false, msg: '' });
 
   const guardar = () => {
@@ -41,6 +45,9 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
     setSetting('umbral-aviso', uAviso || '60');
     setSetting('umbral-urgente', uUrgente || '30');
     setSetting('umbral-critico', uCritico || '7');
+    setSetting('desc-critico', descCritico || '40');
+    setSetting('desc-urgente', descUrgente || '20');
+    setSetting('desc-aviso', descAviso || '10');
     setSetting('categorias', categorias);
     setToast({ show: true, msg: 'Configuración guardada' });
   };
@@ -247,6 +254,19 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             </Field>
           </Card>
 
+          {/* Liquidación FEFO */}
+          <Card padding="md" style={{ marginBottom: 12 }}>
+            <SectionTitle icon={<BanknotesIcon width={16} height={16} />}>Liquidación FEFO</SectionTitle>
+            <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '0 0 12px' }}>
+              Descuento (%) sugerido para rematar lotes según su nivel de vencimiento. Poné 0 para desactivar uno.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+              <DescField nivel="critico" label="Crítico" value={descCritico} onChange={setDescCritico} />
+              <DescField nivel="urgente" label="Urgente" value={descUrgente} onChange={setDescUrgente} />
+              <DescField nivel="aviso" label="Aviso" value={descAviso} onChange={setDescAviso} />
+            </div>
+          </Card>
+
           {/* Categorías */}
           <Card padding="md" style={{ marginBottom: 12 }}>
             <SectionTitle icon={<TagIcon width={16} height={16} />}>Categorías</SectionTitle>
@@ -329,6 +349,17 @@ const UmbralField: React.FC<{ nivel: string; label: string; value: string; onCha
       </div>
       <Input value={value} onChange={e => onChange(e.target.value)} inputMode="numeric" />
       <p style={{ fontSize: 10, color: 'var(--text-3)', margin: '4px 0 0', textAlign: 'center' }}>días</p>
+    </div>
+  );
+const DescField: React.FC<{ nivel: string; label: string; value: string; onChange: (v: string) => void }> =
+  ({ nivel, label, value, onChange }) => (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: `var(--level-${nivel}-fg)` }} />
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{label}</span>
+      </div>
+      <Input value={value} onChange={e => onChange(e.target.value)} inputMode="numeric" />
+      <p style={{ fontSize: 10, color: 'var(--text-3)', margin: '4px 0 0', textAlign: 'center' }}>% desc.</p>
     </div>
   );
 const rowBtn: React.CSSProperties = {

@@ -7,7 +7,7 @@ import {
 } from '@heroicons/react/24/outline';
 import {
   useStore, formatearMoneda, formatearFecha,
-  colorNivel, etiquetaNivel, ordenNivel, textoEstado,
+  colorNivel, etiquetaNivel, ordenNivel, textoEstado, descuentoConfig,
 } from '../context/StoreContext';
 import { ProductoConLotes, NivelAlerta, LoteConProducto } from '../types';
 import { sugerirLiquidacion } from '../lib/liquidacion';
@@ -231,7 +231,7 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
 
 const LoteRow: React.FC<{ lote: LoteConProducto; onClick: () => void }> = ({ lote, onClick }) => {
   // Sugerencia de liquidación FEFO: vender antes de que venza con un descuento.
-  const liq = sugerirLiquidacion(lote.nivelAlerta, lote.productoPrecio);
+  const liq = sugerirLiquidacion(lote.nivelAlerta, lote.productoPrecio, descuentoConfig());
   return (
   <Card padding="sm" onClick={onClick}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
