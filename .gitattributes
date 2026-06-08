@@ -1,0 +1,9 @@
+# Normaliza saltos de línea a LF en el repo (evita el aviso "LF will be replaced by CRLF").
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.keystore binary
+*.jks binary
