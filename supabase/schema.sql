@@ -152,8 +152,12 @@ alter table movimientos enable row level security;
 -- ─── COMERCIOS ───────────────────────────────────────────────────────────
 create policy "ver comercio propio" on comercios
   for select to authenticated using (id in (select comercios_del_usuario()));
+-- Solo el DUEÑO puede actualizar el comercio (plan/trial), con WITH CHECK
+-- (evita que un empleado escale el plan).
 create policy "actualizar comercio propio" on comercios
-  for update to authenticated using (id in (select comercios_del_usuario()));
+  for update to authenticated
+  using (exists (select 1 from miembros m where m.user_id = auth.uid() and m.comercio_id = comercios.id and m.rol = 'dueno'))
+  with check (exists (select 1 from miembros m where m.user_id = auth.uid() and m.comercio_id = comercios.id and m.rol = 'dueno'));
 
 -- ─── MIEMBROS ────────────────────────────────────────────────────────────
 -- F1: NO existe policy de INSERT abierta. La membresía se crea SOLO por el
@@ -250,6 +254,8 @@ declare
   v_lote  uuid := (p->>'lote_id')::uuid;
   v_delta int  := coalesce((p->>'delta')::int, 0);
   v_nueva int;
+  v_pid_real uuid;
+  v_suc_real uuid;
 begin
   if v_mov is null or v_com is null or v_lote is null then
     raise exception 'datos de ajuste incompletos';
@@ -261,18 +267,19 @@ begin
     return jsonb_build_object('ok', true, 'duplicado', true);
   end if;
 
+  -- Deriva producto_id/sucursal_id del PROPIO lote (no confía en el cliente).
   update lotes
     set cantidad = greatest(0, cantidad + v_delta),
         retirado = greatest(0, cantidad + v_delta) <= 0
     where id = v_lote and comercio_id = v_com
-    returning cantidad into v_nueva;
+    returning cantidad, producto_id, sucursal_id into v_nueva, v_pid_real, v_suc_real;
   if v_nueva is null then
     raise exception 'lote inexistente o de otro comercio';
   end if;
 
   insert into movimientos (id, comercio_id, lote_id, producto_id, sucursal_id, tipo,
                            cantidad, cantidad_anterior, cantidad_nueva, usuario, notas, fecha)
-  values (v_mov, v_com, v_lote, (p->>'producto_id')::uuid, (p->>'sucursal_id')::uuid,
+  values (v_mov, v_com, v_lote, v_pid_real, v_suc_real,
           coalesce(p->>'tipo','ajuste'), v_delta,
           coalesce((p->>'cantidad_anterior')::int, 0), v_nueva,
           nullif(p->>'usuario',''), nullif(p->>'notas',''),
@@ -283,6 +290,27 @@ end $$;
 
 revoke execute on function ajustar_stock(jsonb) from public, anon;
 grant  execute on function ajustar_stock(jsonb) to authenticated;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- push_tokens: tokens FCM de los dispositivos, por comercio (notificaciones de
+-- vencimiento). RLS multi-tenant + un miembro no puede registrar a nombre de otro.
+-- ══════════════════════════════════════════════════════════════════════════
+create table if not exists push_tokens (
+  token       text primary key,
+  comercio_id uuid not null references comercios(id) on delete cascade,
+  user_id     uuid references auth.users(id) on delete set null,
+  plataforma  text default 'android',
+  updated_at  timestamptz not null default now()
+);
+alter table push_tokens enable row level security;
+drop policy if exists "acceso tokens propios" on push_tokens;
+create policy "acceso tokens propios" on push_tokens
+  for all to authenticated
+  using (comercio_id in (select comercios_del_usuario()))
+  with check (
+    comercio_id in (select comercios_del_usuario())
+    and (user_id is null or user_id = auth.uid())
+  );
 
 -- ══════════════════════════════════════════════════════════════════════════
 -- LISTO. Ahora activá Realtime para sincronización entre dispositivos:
