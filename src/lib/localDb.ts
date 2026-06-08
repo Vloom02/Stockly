@@ -24,6 +24,8 @@ export interface ItemOutbox {
   payload: any;            // datos a enviar
   intentos: number;
   creadoEn: number;
+  bloqueado?: boolean;     // en cuarentena: falló muchas veces o error permanente.
+  ultimoError?: string;    // último error visto (para diagnóstico/UI)
 }
 
 export function abrirDB(): Promise<IDBDatabase> {
@@ -101,18 +103,40 @@ export function encolar(item: Omit<ItemOutbox, 'id' | 'intentos' | 'creadoEn'>):
   return put('outbox', completo);
 }
 
+// Pendientes ACTIVOS (no bloqueados), en orden cronológico.
 export function obtenerPendientes(): Promise<ItemOutbox[]> {
   return getAll<ItemOutbox>('outbox').then(items =>
-    items.sort((a, b) => a.creadoEn - b.creadoEn) // orden cronológico
+    items.filter(i => !i.bloqueado).sort((a, b) => a.creadoEn - b.creadoEn)
   );
+}
+
+// Items en cuarentena (fallaron y esperan reintento manual). NUNCA se borran solos.
+export function obtenerBloqueados(): Promise<ItemOutbox[]> {
+  return getAll<ItemOutbox>('outbox').then(items => items.filter(i => i.bloqueado));
 }
 
 export function quitarDeOutbox(id: string): Promise<void> {
   return del('outbox', id);
 }
 
-export function actualizarIntentos(item: ItemOutbox): Promise<void> {
-  return put('outbox', { ...item, intentos: item.intentos + 1 });
+export function actualizarIntentos(item: ItemOutbox, error?: string): Promise<void> {
+  return put('outbox', { ...item, intentos: item.intentos + 1, ultimoError: error ?? item.ultimoError });
+}
+
+// Pone un item en cuarentena: se conserva (no se pierde el dato) pero sale de la
+// cola activa hasta que el usuario reintente.
+export function bloquearItem(item: ItemOutbox, error?: string): Promise<void> {
+  return put('outbox', { ...item, intentos: item.intentos + 1, bloqueado: true, ultimoError: error ?? item.ultimoError });
+}
+
+// Saca de cuarentena a todos los bloqueados para reintentarlos.
+export async function reintentarBloqueados(): Promise<number> {
+  const items = await getAll<ItemOutbox>('outbox');
+  let n = 0;
+  for (const it of items) {
+    if (it.bloqueado) { await put('outbox', { ...it, bloqueado: false, intentos: 0 }); n++; }
+  }
+  return n;
 }
 
 // ─── Meta ───────────────────────────────────────────────────────────────────

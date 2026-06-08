@@ -9,7 +9,7 @@ import { useAuth } from './AuthContext';
 import {
   abrirDB, put, del, encolar,
   cargarProductos, cargarLotes, cargarSucursales, cargarMovimientos,
-  obtenerPendientes,
+  obtenerPendientes, obtenerBloqueados, reintentarBloqueados,
 } from '../lib/localDb';
 import { sincronizar } from '../lib/sync';
 import { supabaseConfigurado } from '../lib/supabase';
@@ -88,6 +88,7 @@ interface State {
   sucursalActivaId: string;
   loaded: boolean;
   pendientesSync: number;
+  bloqueadosSync: number;
 }
 type Action =
   | { type: 'INIT'; productos: Producto[]; lotes: Lote[]; sucursales: Sucursal[]; movimientos: Movimiento[]; sucursalActivaId: string }
@@ -98,7 +99,8 @@ type Action =
   | { type: 'REMOVE_LOTE'; id: string }
   | { type: 'UPSERT_SUCURSAL'; sucursal: Sucursal }
   | { type: 'PREPEND_MOVIMIENTO'; movimiento: Movimiento }
-  | { type: 'SET_PENDIENTES'; n: number };
+  | { type: 'SET_PENDIENTES'; n: number }
+  | { type: 'SET_BLOQUEADOS'; n: number };
 
 function reducer(state: State, a: Action): State {
   switch (a.type) {
@@ -120,6 +122,7 @@ function reducer(state: State, a: Action): State {
     }
     case 'PREPEND_MOVIMIENTO': return { ...state, movimientos: [a.movimiento, ...state.movimientos] };
     case 'SET_PENDIENTES': return { ...state, pendientesSync: a.n };
+    case 'SET_BLOQUEADOS': return { ...state, bloqueadosSync: a.n };
     default: return state;
   }
 }
@@ -128,6 +131,7 @@ interface StoreContextValue {
   state: State;
   sincronizando: boolean;
   sincronizarAhora: () => Promise<void>;
+  reintentarFallidos: () => Promise<void>;
   estadoNube: { configurado: boolean; ultimoError: string | null; ultimaSyncOk: string | null };
   addProducto: (p: Omit<Producto, 'id' | 'fechaCreacion' | 'activo' | 'comercioId'>) => Promise<string | null>;
   updateProducto: (p: Producto) => Promise<void>;
@@ -156,7 +160,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const { comercio, miembro } = useAuth();
   const [state, dispatch] = useReducer(reducer, {
     productos: [], lotes: [], sucursales: [], movimientos: [],
-    sucursalActivaId: '', loaded: false, pendientesSync: 0,
+    sucursalActivaId: '', loaded: false, pendientesSync: 0, bloqueadosSync: 0,
   });
   const [sincronizando, setSincronizando] = useState(false);
   const sincronizandoRef = useRef(false);
@@ -176,6 +180,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const refrescarPendientes = useCallback(async () => {
     const p = await obtenerPendientes();
     dispatch({ type: 'SET_PENDIENTES', n: p.length });
+    const b = await obtenerBloqueados();
+    dispatch({ type: 'SET_BLOQUEADOS', n: b.length });
   }, []);
 
   // Recargar estado desde IndexedDB (fuente de verdad local)
@@ -279,6 +285,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setSincronizando(false);
     }
   }, [comercioId, recargarLocal, refrescarPendientes]);
+
+  // Saca de cuarentena los cambios fallidos y reintenta sincronizarlos.
+  const reintentarFallidos = useCallback(async () => {
+    await reintentarBloqueados();
+    await refrescarPendientes();
+    await sincronizarAhora();
+  }, [refrescarPendientes, sincronizarAhora]);
 
   // ─── Escritura: SIEMPRE local primero + encolar ───────────────────────────
 
@@ -591,7 +604,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   return (
     <StoreContext.Provider value={{
-      state, sincronizando, sincronizarAhora, estadoNube,
+      state, sincronizando, sincronizarAhora, reintentarFallidos, estadoNube,
       addProducto, updateProducto, deleteProducto, buscarProductoPorCodigo,
       addLote, updateLote, retirarLote, addSucursal, updateSucursal, setSucursalActiva,
       productosConLotes, lotesEnriquecidos, resumen, fefoSugeridos,

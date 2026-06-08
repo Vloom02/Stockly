@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import {
-  obtenerPendientes, quitarDeOutbox, actualizarIntentos,
+  obtenerPendientes, quitarDeOutbox, actualizarIntentos, bloquearItem,
   put, setMeta, getMeta, ItemOutbox, TablaSync,
 } from './localDb';
 
@@ -14,7 +14,9 @@ import {
  * Los movimientos son inmutables (solo insert) → nunca generan conflicto.
  */
 
-const MAX_INTENTOS = 5;
+// Tope ALTO: el transitorio (red/timeout) se reintenta muchas veces antes de ir
+// a cuarentena; el permanente (validación/RLS) va a cuarentena de inmediato.
+const MAX_INTENTOS = 50;
 
 // Mapeo camelCase (app) → snake_case (Supabase).
 // esUpdate=true en lotes OMITE cantidad/retirado: el stock se cambia por delta
@@ -102,13 +104,13 @@ export async function subirPendientes(comercioId: string): Promise<number> {
         );
         if (error) {
           ultimoError = error.message;
-          for (const it of tanda) await manejarFallo(it);
+          for (const it of tanda) await manejarFallo(it, ultimoError ?? undefined);
         } else {
           for (const it of tanda) { await quitarDeOutbox(it.id); exitosos++; }
         }
       } catch (e) {
         ultimoError = e instanceof Error ? e.message : 'Error al subir lote';
-        for (const it of tanda) await manejarFallo(it);
+        for (const it of tanda) await manejarFallo(it, ultimoError ?? undefined);
       }
     }
   }
@@ -127,11 +129,11 @@ export async function subirPendientes(comercioId: string): Promise<number> {
         Promise.resolve(supabase.rpc('ajustar_stock', { p: pRpc })),
         15000, 'ajustar_stock'
       );
-      if (error) { ultimoError = error.message; await manejarFallo(item); }
+      if (error) { ultimoError = error.message; await manejarFallo(item, ultimoError ?? undefined); }
       else { await quitarDeOutbox(item.id); exitosos++; }
     } catch (e) {
       ultimoError = e instanceof Error ? e.message : 'Error al ajustar stock';
-      await manejarFallo(item);
+      await manejarFallo(item, ultimoError ?? undefined);
     }
   }
 
@@ -140,10 +142,10 @@ export async function subirPendientes(comercioId: string): Promise<number> {
     try {
       const err = await procesarItem(item, comercioId);
       if (!err) { await quitarDeOutbox(item.id); exitosos++; }
-      else { ultimoError = err; await manejarFallo(item); }
+      else { ultimoError = err; await manejarFallo(item, ultimoError ?? undefined); }
     } catch (e) {
       ultimoError = e instanceof Error ? e.message : 'Error al borrar';
-      await manejarFallo(item);
+      await manejarFallo(item, ultimoError ?? undefined);
     }
   }
 
@@ -184,13 +186,24 @@ async function procesarItem(item: ItemOutbox, comercioId: string): Promise<strin
   return error ? error.message : null;
 }
 
-async function manejarFallo(item: ItemOutbox) {
-  if (item.intentos + 1 >= MAX_INTENTOS) {
-    // Después de muchos intentos, lo dejamos pero no bloqueamos la cola
-    console.error('Item descartado tras máximos intentos', item);
-    await quitarDeOutbox(item.id);
+// Errores que NO se resuelven reintentando (validación, RLS, constraint): van
+// directo a cuarentena. El resto (red, timeout, 5xx) se reintenta.
+function esErrorPermanente(msg?: string): boolean {
+  if (!msg) return false;
+  const m = msg.toLowerCase();
+  return ['no pertenece', 'no autorizado', 'permission denied', 'row-level security',
+          'violates', 'duplicate key', 'invalid input', 'constraint', 'inexistente']
+    .some(p => m.includes(p));
+}
+
+// NUNCA borra un item no confirmado. Si el error es permanente o se superó el
+// máximo de reintentos, lo pone en CUARENTENA (se conserva) para reintento manual.
+async function manejarFallo(item: ItemOutbox, error?: string) {
+  if (esErrorPermanente(error) || item.intentos + 1 >= MAX_INTENTOS) {
+    console.warn('Item en cuarentena (no se pierde):', item.tabla, error);
+    await bloquearItem(item, error);
   } else {
-    await actualizarIntentos(item);
+    await actualizarIntentos(item, error);
   }
 }
 

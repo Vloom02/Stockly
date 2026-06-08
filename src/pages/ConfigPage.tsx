@@ -23,7 +23,7 @@ import Logo from '../components/ui/Logo';
 interface Props { onThemeToggle: () => void; isDark: boolean; }
 
 const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
-  const { state, exportarBackup, importarBackup, estadoNube, sincronizarAhora, sincronizando } = useStore();
+  const { state, exportarBackup, importarBackup, estadoNube, sincronizarAhora, sincronizando, reintentarFallidos } = useStore();
   const { comercio, miembro, cerrarSesion } = useAuth();
   const history = useHistory();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -220,6 +220,12 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
                 <span>Cambios sin subir</span>
                 <span style={{ fontWeight: 600 }}>{state.pendientesSync}</span>
               </div>
+              {state.bloqueadosSync > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--level-vencido-fg)' }}>No sincronizados</span>
+                  <span style={{ fontWeight: 700, color: 'var(--level-vencido-fg)' }}>{state.bloqueadosSync}</span>
+                </div>
+              )}
               {estadoNube.ultimaSyncOk && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Última sync OK</span>
@@ -236,6 +242,16 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
               <span>{sincronizando ? 'Sincronizando...' : 'Sincronizar ahora'}</span>
               <span style={{ color: 'var(--brand-600)', fontSize: 13 }}>↻</span>
             </button>
+            {state.bloqueadosSync > 0 && (
+              <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: 'var(--level-vencido-bg)' }}>
+                <div style={{ fontSize: 12, color: 'var(--level-vencido-fg)', marginBottom: 8 }}>
+                  Hay {state.bloqueadosSync} cambio{state.bloqueadosSync > 1 ? 's' : ''} que no se pudo sincronizar. No se perdieron: tocá para reintentar.
+                </div>
+                <Button variant="secondary" size="md" fullWidth onClick={reintentarFallidos} disabled={sincronizando}>
+                  Reintentar no sincronizados
+                </Button>
+              </div>
+            )}
           </Card>
 
           {/* Umbrales */}
