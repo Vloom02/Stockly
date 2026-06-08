@@ -221,16 +221,35 @@ export async function bajarCambios(comercioId: string): Promise<void> {
 
   // Pull INCREMENTAL: productos/lotes/sucursales por updated_at (trigger server);
   // movimientos por creado_en (timestamp del SERVIDOR, no el reloj del cliente).
-  const [prods, lotes, sucs, movs] = await Promise.all([
+  const [prods, lotes, sucs] = await Promise.all([
     supabase.from('productos').select('*').eq('comercio_id', comercioId).gt('updated_at', desde),
     supabase.from('lotes').select('*').eq('comercio_id', comercioId).gt('updated_at', desde),
     supabase.from('sucursales').select('*').eq('comercio_id', comercioId).gt('updated_at', desde),
-    supabase.from('movimientos').select('*').eq('comercio_id', comercioId)
-      .gt('creado_en', desde).order('creado_en', { ascending: false }).limit(500),
   ]);
 
+  // Movimientos: PAGINADO ascendente por creado_en (antes el tope de 500 perdía los
+  // más viejos). gte + dedupe por id tolera que varios movimientos compartan creado_en
+  // (p.ej. los que inserta una misma venta en una sola transacción).
+  const PAGINA = 1000;
+  const movsData: any[] = [];
+  const vistos = new Set<string>();
+  let movsError: { message?: string } | null = null;
+  let cursor = desde;
+  for (let guard = 0; guard < 200; guard++) {
+    const { data, error } = await supabase.from('movimientos').select('*')
+      .eq('comercio_id', comercioId).gte('creado_en', cursor)
+      .order('creado_en', { ascending: true }).limit(PAGINA);
+    if (error) { movsError = error; break; }
+    if (!data || data.length === 0) break;
+    let nuevos = 0;
+    for (const r of data) { if (!vistos.has(r.id)) { vistos.add(r.id); movsData.push(r); nuevos++; } }
+    cursor = data[data.length - 1].creado_en;
+    if (data.length < PAGINA) break;
+    if (nuevos === 0) break; // toda la página comparte timestamp → cortar (evita loop)
+  }
+
   // Si Supabase devolvió error en alguna tabla, lo reportamos (no fallar en silencio)
-  const errSupa = prods.error || lotes.error || sucs.error || movs.error;
+  const errSupa = prods.error || lotes.error || sucs.error || movsError;
   if (errSupa) {
     throw new Error('Supabase: ' + (errSupa.message || 'error al traer datos'));
   }
@@ -245,9 +264,7 @@ export async function bajarCambios(comercioId: string): Promise<void> {
   if (sucs.data) {
     for (const r of sucs.data) await put('sucursales', mapSucursalLocal(r));
   }
-  if (movs.data) {
-    for (const r of movs.data) await put('movimientos', mapMovimientoLocal(r));
-  }
+  for (const r of movsData) await put('movimientos', mapMovimientoLocal(r));
 
   // Watermark = mayor timestamp del SERVIDOR visto, comparado por EPOCH (no como
   // string: ISO con distinto offset/decimales no ordenan lexicográficamente bien).
@@ -261,7 +278,7 @@ export async function bajarCambios(comercioId: string): Promise<void> {
   for (const r of prods.data ?? []) considerar((r as any).updated_at);
   for (const r of lotes.data ?? []) considerar((r as any).updated_at);
   for (const r of sucs.data ?? [])  considerar((r as any).updated_at);
-  for (const r of movs.data ?? [])  considerar((r as any).creado_en);
+  for (const r of movsData)         considerar((r as any).creado_en);
   if (maxIso !== desdeBase) await setMeta('ultima-sync', maxIso);
 }
 
