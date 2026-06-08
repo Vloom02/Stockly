@@ -19,6 +19,7 @@ import Onboarding from './components/Onboarding';
 import Logo from './components/ui/Logo';
 import PlanBloqueado from './components/PlanBloqueado';
 import { evaluarPlan, EstadoPlan } from './lib/plan';
+import { registrarPush } from './lib/push';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { StoreProvider, getSetting, setSetting } from './context/StoreContext';
@@ -41,10 +42,16 @@ setupIonicReact();
 // ─── App autenticada (con datos) ──────────────────────────────────────────
 const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; estadoPlan: EstadoPlan }> = ({ isDark, onThemeToggle, estadoPlan }) => {
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const { comercio } = useAuth();
 
   useEffect(() => {
     if (getSetting('onboarding-visto', '') !== 'si') setShowOnboarding(true);
   }, []);
+
+  // Registrar push (FCM) una vez que hay comercio. No-op en web.
+  useEffect(() => {
+    if (comercio?.id) registrarPush(comercio.id);
+  }, [comercio?.id]);
 
   const completar = () => { setSetting('onboarding-visto', 'si'); setShowOnboarding(false); };
 
