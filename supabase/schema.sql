@@ -87,7 +87,8 @@ create table if not exists movimientos (
   cantidad_nueva     int not null default 0,
   usuario            text,
   notas              text,
-  fecha              timestamptz not null default now()
+  fecha              timestamptz not null default now(),  -- fecha "de negocio" (la setea el cliente)
+  creado_en          timestamptz not null default now()   -- timestamp del SERVIDOR (para sync incremental)
 );
 
 -- ──────────────────────────────────────────────────────────────────────────
@@ -100,6 +101,7 @@ create index if not exists idx_lotes_producto       on lotes(producto_id);
 create index if not exists idx_lotes_venc           on lotes(fecha_vencimiento);
 create index if not exists idx_movim_comercio       on movimientos(comercio_id);
 create index if not exists idx_movim_fecha          on movimientos(fecha desc);
+create index if not exists idx_movim_creado         on movimientos(creado_en desc);
 create index if not exists idx_sucursales_comercio  on sucursales(comercio_id);
 
 -- ══════════════════════════════════════════════════════════════════════════

@@ -213,17 +213,20 @@ async function manejarFallo(item: ItemOutbox, error?: string) {
  */
 export async function bajarCambios(comercioId: string): Promise<void> {
   const ultimaSync = await getMeta('ultima-sync');
-  const desde = ultimaSync || '1970-01-01T00:00:00Z';
+  const desdeBase = ultimaSync || '1970-01-01T00:00:00Z';
+  // Overlap de 1s: re-bajamos una ventana chica para no perder filas cuyo timestamp
+  // sea EXACTAMENTE el watermark (el filtro es > estricto) ni por empates de timestamp.
+  // Los put locales son idempotentes (upsert por id), así re-bajar no duplica.
+  const desde = new Date(new Date(desdeBase).getTime() - 1000).toISOString();
 
-  // Pull INCREMENTAL: solo lo modificado desde la última sync (usa updated_at,
-  // que mantiene un trigger en Supabase). Antes bajaba TODO en cada sync.
-  // movimientos son inserts inmutables → se filtran por `fecha`.
+  // Pull INCREMENTAL: productos/lotes/sucursales por updated_at (trigger server);
+  // movimientos por creado_en (timestamp del SERVIDOR, no el reloj del cliente).
   const [prods, lotes, sucs, movs] = await Promise.all([
     supabase.from('productos').select('*').eq('comercio_id', comercioId).gt('updated_at', desde),
     supabase.from('lotes').select('*').eq('comercio_id', comercioId).gt('updated_at', desde),
     supabase.from('sucursales').select('*').eq('comercio_id', comercioId).gt('updated_at', desde),
     supabase.from('movimientos').select('*').eq('comercio_id', comercioId)
-      .gt('fecha', desde).order('fecha', { ascending: false }).limit(500),
+      .gt('creado_en', desde).order('creado_en', { ascending: false }).limit(500),
   ]);
 
   // Si Supabase devolvió error en alguna tabla, lo reportamos (no fallar en silencio)
@@ -246,15 +249,20 @@ export async function bajarCambios(comercioId: string): Promise<void> {
     for (const r of movs.data) await put('movimientos', mapMovimientoLocal(r));
   }
 
-  // Avanzar el watermark al MAYOR timestamp visto (no al reloj del cliente):
-  // evita perder filas por desfase de reloj cliente↔servidor. Solo avanza.
-  let maxTs = desde;
-  const considerar = (ts?: string | null) => { if (ts && ts > maxTs) maxTs = ts; };
+  // Watermark = mayor timestamp del SERVIDOR visto, comparado por EPOCH (no como
+  // string: ISO con distinto offset/decimales no ordenan lexicográficamente bien).
+  let maxEpoch = new Date(desdeBase).getTime();
+  let maxIso = desdeBase;
+  const considerar = (ts?: string | null) => {
+    if (!ts) return;
+    const t = new Date(ts).getTime();
+    if (Number.isFinite(t) && t > maxEpoch) { maxEpoch = t; maxIso = ts; }
+  };
   for (const r of prods.data ?? []) considerar((r as any).updated_at);
   for (const r of lotes.data ?? []) considerar((r as any).updated_at);
   for (const r of sucs.data ?? [])  considerar((r as any).updated_at);
-  for (const r of movs.data ?? [])  considerar((r as any).fecha);
-  if (maxTs !== desde) await setMeta('ultima-sync', maxTs);
+  for (const r of movs.data ?? [])  considerar((r as any).creado_en);
+  if (maxIso !== desdeBase) await setMeta('ultima-sync', maxIso);
 }
 
 // Mappers DB → local (camelCase)
