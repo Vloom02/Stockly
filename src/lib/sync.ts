@@ -16,8 +16,10 @@ import {
 
 const MAX_INTENTOS = 5;
 
-// Mapeo camelCase (app) → snake_case (Supabase)
-function aSnake(tabla: TablaSync, payload: any, comercioId: string): any {
+// Mapeo camelCase (app) → snake_case (Supabase).
+// esUpdate=true en lotes OMITE cantidad/retirado: el stock se cambia por delta
+// atómico (ajustar_stock), nunca por upsert (así no pisa lo que descontó Ventas).
+function aSnake(tabla: TablaSync, payload: any, comercioId: string, esUpdate = false): any {
   switch (tabla) {
     case 'productos':
       return {
@@ -26,14 +28,20 @@ function aSnake(tabla: TablaSync, payload: any, comercioId: string): any {
         precio: payload.precio, dias_aviso_default: payload.diasAvisoDefault,
         activo: payload.activo ?? true,
       };
-    case 'lotes':
-      return {
+    case 'lotes': {
+      const fila: any = {
         id: payload.id, comercio_id: comercioId, producto_id: payload.productoId,
-        sucursal_id: payload.sucursalId, cantidad: payload.cantidad,
+        sucursal_id: payload.sucursalId,
         fecha_vencimiento: payload.fechaVencimiento, dias_aviso: payload.diasAviso,
         fecha_ingreso: payload.fechaIngreso, proveedor: payload.proveedor ?? null,
-        numero_lote: payload.numeroLote ?? null, retirado: payload.retirado ?? false,
+        numero_lote: payload.numeroLote ?? null,
       };
+      if (!esUpdate) {
+        fila.cantidad = payload.cantidad;
+        fila.retirado = payload.retirado ?? false;
+      }
+      return fila;
+    }
     case 'sucursales':
       return {
         id: payload.id, comercio_id: comercioId, nombre: payload.nombre,
@@ -64,25 +72,33 @@ export async function subirPendientes(comercioId: string): Promise<number> {
   let exitosos = 0;
   let ultimoError: string | null = null;
 
-  // Separar: upserts (insert/update) se agrupan por tabla; deletes van aparte
-  const upserts = pendientes.filter(p => p.operacion !== 'delete');
-  const deletes = pendientes.filter(p => p.operacion === 'delete');
+  // Separar por tipo. Orden de proceso: 1) upserts (para que el lote exista),
+  // 2) ajustes de stock por delta (RPC), 3) deletes.
+  const ajustes = pendientes.filter(p => p.tabla === 'ajuste_stock');
+  const upserts = pendientes.filter(p => p.tabla !== 'ajuste_stock' && p.operacion !== 'delete');
+  const deletes = pendientes.filter(p => p.tabla !== 'ajuste_stock' && p.operacion === 'delete');
 
-  // ── Subir upserts agrupados por tabla, en lotes de 100 ──
-  const porTabla: Record<string, ItemOutbox[]> = {};
+  // ── Subir upserts en lotes de 100. Los lotes se separan insert/update porque
+  //    en update se omiten cantidad/retirado (columnas distintas en el upsert). ──
+  const grupos: Record<string, ItemOutbox[]> = {};
   for (const item of upserts) {
-    (porTabla[item.tabla] ||= []).push(item);
+    const key = item.tabla === 'lotes'
+      ? `lotes:${item.operacion === 'update' ? 'update' : 'insert'}`
+      : item.tabla;
+    (grupos[key] ||= []).push(item);
   }
 
-  for (const tabla of Object.keys(porTabla)) {
-    const items = porTabla[tabla];
+  for (const key of Object.keys(grupos)) {
+    const items = grupos[key];
+    const tabla = key.startsWith('lotes:') ? 'lotes' : key;
+    const esUpdate = key === 'lotes:update';
     for (let i = 0; i < items.length; i += TAMANO_LOTE) {
       const tanda = items.slice(i, i + TAMANO_LOTE);
-      const filas = tanda.map(it => aSnake(it.tabla as TablaSync, it.payload, comercioId));
+      const filas = tanda.map(it => aSnake(tabla as TablaSync, it.payload, comercioId, esUpdate));
       try {
         const { error } = await conTimeout(
           Promise.resolve(supabase.from(tabla).upsert(filas, { onConflict: 'id' })),
-          15000, `subir lote ${tabla}`
+          15000, `subir ${key}`
         );
         if (error) {
           ultimoError = error.message;
@@ -94,6 +110,28 @@ export async function subirPendientes(comercioId: string): Promise<number> {
         ultimoError = e instanceof Error ? e.message : 'Error al subir lote';
         for (const it of tanda) await manejarFallo(it);
       }
+    }
+  }
+
+  // ── Ajustes de stock por DELTA atómico (RPC idempotente). De a uno. ──
+  for (const item of ajustes) {
+    const mov: any = item.payload;
+    const pRpc = {
+      mov_id: mov.id, comercio_id: comercioId, lote_id: mov.loteId,
+      producto_id: mov.productoId, sucursal_id: mov.sucursalId, tipo: mov.tipo,
+      delta: mov.cantidad, cantidad_anterior: mov.cantidadAnterior,
+      usuario: mov.usuario ?? null, notas: mov.notas ?? null, fecha: mov.fecha,
+    };
+    try {
+      const { error } = await conTimeout(
+        Promise.resolve(supabase.rpc('ajustar_stock', { p: pRpc })),
+        15000, 'ajustar_stock'
+      );
+      if (error) { ultimoError = error.message; await manejarFallo(item); }
+      else { await quitarDeOutbox(item.id); exitosos++; }
+    } catch (e) {
+      ultimoError = e instanceof Error ? e.message : 'Error al ajustar stock';
+      await manejarFallo(item);
     }
   }
 
@@ -139,7 +177,7 @@ async function procesarItem(item: ItemOutbox, comercioId: string): Promise<strin
   }
 
   // insert o update → upsert (idempotente, seguro ante reintentos)
-  const fila = aSnake(tabla, payload, comercioId);
+  const fila = aSnake(tabla as TablaSync, payload, comercioId, operacion === 'update');
   const { error } = await conTimeoutItem(
     supabase.from(tabla).upsert(fila, { onConflict: 'id' })
   );

@@ -233,6 +233,58 @@ create trigger on_auth_user_created
 revoke execute on function crear_comercio_para_nuevo_usuario() from public, anon, authenticated;
 
 -- ══════════════════════════════════════════════════════════════════════════
+-- ajustar_stock(p jsonb): aplica un DELTA atómico a la cantidad de un lote y
+-- registra el movimiento (idempotente por id de movimiento, multi-tenant).
+-- Stockly usa esto para retiros/ajustes en vez de pisar `cantidad` con un upsert,
+-- así no revierte lo que descontó la app de Ventas (registrar_venta).
+-- ══════════════════════════════════════════════════════════════════════════
+create or replace function ajustar_stock(p jsonb)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_mov   uuid := (p->>'mov_id')::uuid;
+  v_com   uuid := (p->>'comercio_id')::uuid;
+  v_lote  uuid := (p->>'lote_id')::uuid;
+  v_delta int  := coalesce((p->>'delta')::int, 0);
+  v_nueva int;
+begin
+  if v_mov is null or v_com is null or v_lote is null then
+    raise exception 'datos de ajuste incompletos';
+  end if;
+  if v_com not in (select comercios_del_usuario()) then
+    raise exception 'comercio no autorizado';
+  end if;
+  if exists (select 1 from movimientos where id = v_mov) then
+    return jsonb_build_object('ok', true, 'duplicado', true);
+  end if;
+
+  update lotes
+    set cantidad = greatest(0, cantidad + v_delta),
+        retirado = greatest(0, cantidad + v_delta) <= 0
+    where id = v_lote and comercio_id = v_com
+    returning cantidad into v_nueva;
+  if v_nueva is null then
+    raise exception 'lote inexistente o de otro comercio';
+  end if;
+
+  insert into movimientos (id, comercio_id, lote_id, producto_id, sucursal_id, tipo,
+                           cantidad, cantidad_anterior, cantidad_nueva, usuario, notas, fecha)
+  values (v_mov, v_com, v_lote, (p->>'producto_id')::uuid, (p->>'sucursal_id')::uuid,
+          coalesce(p->>'tipo','ajuste'), v_delta,
+          coalesce((p->>'cantidad_anterior')::int, 0), v_nueva,
+          nullif(p->>'usuario',''), nullif(p->>'notas',''),
+          coalesce((p->>'fecha')::timestamptz, now()));
+
+  return jsonb_build_object('ok', true, 'duplicado', false, 'cantidad', v_nueva);
+end $$;
+
+revoke execute on function ajustar_stock(jsonb) from public, anon;
+grant  execute on function ajustar_stock(jsonb) to authenticated;
+
+-- ══════════════════════════════════════════════════════════════════════════
 -- LISTO. Ahora activá Realtime para sincronización entre dispositivos:
 -- Dashboard → Database → Replication → activá: productos, lotes, movimientos, sucursales
 -- ══════════════════════════════════════════════════════════════════════════

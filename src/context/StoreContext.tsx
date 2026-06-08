@@ -282,14 +282,20 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // ─── Escritura: SIEMPRE local primero + encolar ───────────────────────────
 
-  const registrarMovimiento = useCallback(async (m: Omit<Movimiento, 'id' | 'fecha' | 'usuario' | 'comercioId'>) => {
+  // comoAjuste=true → el cambio de stock se aplica por DELTA atómico (RPC ajustar_stock),
+  // no por upsert de la fila (así no pisa la cantidad que descontó la app de Ventas).
+  const registrarMovimiento = useCallback(async (m: Omit<Movimiento, 'id' | 'fecha' | 'usuario' | 'comercioId'>, comoAjuste = false) => {
     if (!comercioId) return;
     const mov: Movimiento = {
       ...m, id: crypto.randomUUID(), comercioId,
       fecha: new Date().toISOString(), usuario,
     };
     await put('movimientos', mov);
-    await encolar({ tabla: 'movimientos', operacion: 'insert', registroId: mov.id!, payload: mov });
+    if (comoAjuste && mov.loteId) {
+      await encolar({ tabla: 'ajuste_stock', operacion: 'insert', registroId: mov.id!, payload: mov });
+    } else {
+      await encolar({ tabla: 'movimientos', operacion: 'insert', registroId: mov.id!, payload: mov });
+    }
     dispatch({ type: 'PREPEND_MOVIMIENTO', movimiento: mov });
     await refrescarPendientes();
   }, [comercioId, usuario, refrescarPendientes]);
@@ -351,7 +357,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     await encolar({ tabla: 'lotes', operacion: 'update', registroId: l.id!, payload: l });
     dispatch({ type: 'UPSERT_LOTE', lote: l });
     if (diff !== 0) {
-      await registrarMovimiento({ loteId: l.id, productoId: l.productoId, sucursalId: l.sucursalId, tipo: 'ajuste', cantidad: diff, cantidadAnterior: anterior?.cantidad || 0, cantidadNueva: l.cantidad, notas: `Ajuste (${diff > 0 ? '+' : ''}${diff})` });
+      await registrarMovimiento({ loteId: l.id, productoId: l.productoId, sucursalId: l.sucursalId, tipo: 'ajuste', cantidad: diff, cantidadAnterior: anterior?.cantidad || 0, cantidadNueva: l.cantidad, notas: `Ajuste (${diff > 0 ? '+' : ''}${diff})` }, true);
     }
     await refrescarPendientes();
     sincronizarAhora();
@@ -366,11 +372,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const actualizado: Lote = { ...lote, cantidad: cantNueva, retirado };
 
     await put('lotes', actualizado);
-    await encolar({ tabla: 'lotes', operacion: 'update', registroId: id, payload: actualizado });
     haptic.medium();
     if (retirado) dispatch({ type: 'REMOVE_LOTE', id });
     else dispatch({ type: 'UPSERT_LOTE', lote: actualizado });
-    await registrarMovimiento({ loteId: id, productoId: lote.productoId, sucursalId: lote.sucursalId, tipo, cantidad: -cantARetirar, cantidadAnterior: lote.cantidad, cantidadNueva: cantNueva, notas });
+    // El retiro se sincroniza por delta atómico (ajuste_stock), no por upsert de cantidad.
+    await registrarMovimiento({ loteId: id, productoId: lote.productoId, sucursalId: lote.sucursalId, tipo, cantidad: -cantARetirar, cantidadAnterior: lote.cantidad, cantidadNueva: cantNueva, notas }, true);
     sincronizarAhora();
   }, [state.lotes, registrarMovimiento, sincronizarAhora]);
 

@@ -11,11 +11,14 @@ const DB_VER = 1;
 let db: IDBDatabase | null = null;
 
 export type TablaSync = 'productos' | 'lotes' | 'sucursales' | 'movimientos';
+// 'ajuste_stock' no es una tabla: es un cambio de stock que se aplica por DELTA
+// atómico vía la RPC ajustar_stock (no como upsert que pisa cantidad).
+export type OutboxTabla = TablaSync | 'ajuste_stock';
 export type OperacionSync = 'insert' | 'update' | 'delete';
 
 export interface ItemOutbox {
   id: string;              // uuid local de la operación
-  tabla: TablaSync;
+  tabla: OutboxTabla;
   operacion: OperacionSync;
   registroId: string;      // id del registro afectado
   payload: any;            // datos a enviar
