@@ -102,7 +102,7 @@ const LotePage: React.FC = () => {
                     {textoEstado(fechaVencimiento)}
                   </div>
                 </div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: colorNivel(nivel), letterSpacing: '-0.02em' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 800, color: colorNivel(nivel), letterSpacing: '-0.02em' }}>
                   {formatearFecha(fechaVencimiento)}
                 </div>
               </div>

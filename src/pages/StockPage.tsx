@@ -202,7 +202,7 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{ width: 4, height: 52, background: colorNivel(p.nivelPeor), borderRadius: 2, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3, letterSpacing: '-0.011em' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15, marginBottom: 3, letterSpacing: '-0.01em' }}>
           {p.producto.nombre}
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 6 }}>
@@ -216,7 +216,7 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
         </div>
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: '-0.02em' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 800, letterSpacing: '-0.02em' }}>
           {formatearMoneda(p.valorTotal)}
         </div>
         {p.proximoVencimiento && (
@@ -237,7 +237,7 @@ const LoteRow: React.FC<{ lote: LoteConProducto; onClick: () => void }> = ({ lot
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{ width: 4, height: 48, background: colorNivel(lote.nivelAlerta), borderRadius: 2, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2, letterSpacing: '-0.011em' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15, marginBottom: 2, letterSpacing: '-0.01em' }}>
           {lote.productoNombre}
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 6 }}>

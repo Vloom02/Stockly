@@ -346,13 +346,14 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
 };
 
 const SectionTitle: React.FC<{ icon: React.ReactNode; children: React.ReactNode }> = ({ icon, children }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
-    <span style={{ color: 'var(--brand-600)' }}>{icon}</span>{children}
+  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+    <span style={{ color: 'var(--brand-600)', display: 'flex' }}>{icon}</span>
+    <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14 }}>{children}</span>
   </div>
 );
 const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
   <div style={{ textAlign: 'center' }}>
-    <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em' }}>{value}</div>
+    <div style={{ fontFamily: 'var(--font-display)', fontSize: 21, fontWeight: 800, letterSpacing: '-0.02em' }}>{value}</div>
     <div style={{ fontSize: 10, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{label}</div>
   </div>
 );

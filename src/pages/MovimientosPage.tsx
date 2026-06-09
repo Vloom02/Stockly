@@ -107,11 +107,11 @@ const MovItem: React.FC<{ m: Movimiento; nombre: string }> = ({ m, nombre }) => 
             <span style={{ fontSize: 12, fontWeight: 600, color: info.color }}>{info.label}</span>
             <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{hora}</span>
           </div>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{nombre}</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 14.5, fontWeight: 600, marginBottom: 2 }}>{nombre}</div>
           {m.cantidad !== 0 && (
             <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
               {m.cantidadAnterior} → {m.cantidadNueva}{' '}
-              <span style={{ color: m.cantidad > 0 ? 'var(--brand-600)' : 'var(--danger)', fontWeight: 600 }}>
+              <span style={{ color: m.cantidad > 0 ? 'var(--brand-600)' : 'var(--level-vencido-fg)', fontWeight: 600 }}>
                 ({m.cantidad > 0 ? '+' : ''}{m.cantidad})
               </span>
             </div>

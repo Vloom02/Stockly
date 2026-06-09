@@ -15,11 +15,12 @@
   --brand-900: #332842;
 
   /* ─── Semantic ──────────────────────────────────────────────────────── */
-  --success:   #10b981;
-  --warning:   #f59e0b;
-  --danger:    #ef4444;
-  --critical:  #dc2626;
-  --info:      #3b82f6;
+  /* Semánticos suavizados (apagados, pegan con el look cálido) */
+  --success:   #5a9c7d;
+  --warning:   #c8902f;
+  --danger:    #c4584e;
+  --critical:  #b34a3f;
+  --info:      #5a7fae;
 
   /* ─── Neutrals (Slate) ──────────────────────────────────────────────── */
   --gray-50:   #f8fafc;

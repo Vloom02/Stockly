@@ -118,13 +118,13 @@ const ReportesPage: React.FC = () => {
                     <div style={{ fontSize: 11, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                       Total últimos 6 meses
                     </div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--danger)', letterSpacing: '-0.02em' }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, color: 'var(--level-vencido-fg)', letterSpacing: '-0.02em' }}>
                       {formatearMoneda(totalPerdido)}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 12, fontSize: 11 }}>
-                    <LegendDot color="var(--danger)" label="Vencido" />
-                    <LegendDot color="var(--warning)" label="Roto" />
+                    <LegendDot color="var(--level-vencido-fg)" label="Vencido" />
+                    <LegendDot color="var(--level-aviso-fg)" label="Roto" />
                   </div>
                 </div>
                 {totalPerdido === 0 ? (
@@ -138,8 +138,8 @@ const ReportesPage: React.FC = () => {
                       valor: p.valorVencido,
                       valorSecundario: p.valorRoto,
                     }))}
-                    color="var(--danger)"
-                    colorSecundario="var(--warning)"
+                    color="var(--level-vencido-fg)"
+                    colorSecundario="var(--level-aviso-fg)"
                     formatear={(n) => n > 0 ? formatearMoneda(n) : ''}
                   />
                 )}
@@ -184,12 +184,10 @@ const ReportesPage: React.FC = () => {
 };
 
 const SectionHeader: React.FC<{ icon: React.ReactNode; title: string }> = ({ icon, title }) => (
-  <div style={{
-    display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
-    fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em',
-  }}>
-    <span style={{ color: 'var(--brand-600)' }}>{icon}</span>
-    {title}
+  <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 11 }}>
+    <span style={{ color: 'var(--brand-600)', display: 'flex' }}>{icon}</span>
+    <h2 style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontWeight: 700, fontSize: 18, margin: 0, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>{title}</h2>
+    <span style={{ flex: 1, height: 0, borderTop: '1px solid var(--border)' }} />
   </div>
 );
 
