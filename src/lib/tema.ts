@@ -11,54 +11,55 @@ export interface ColorMarca {
   claros: [string, string, string, string];
 }
 
+// Paletas SUAVIZADAS (apagadas/empolvadas) para pegar con el look cálido editorial.
 export const COLORES_MARCA: ColorMarca[] = [
   {
     id: 'violeta',
     nombre: 'Violeta',
-    tonos: ['#a78bfa', '#5b21b6', '#4c1d95', '#3b0764', '#2e1065'],
-    claros: ['#f5f3ff', '#ede9fe', '#ddd6fe', '#c4b5fd'],
+    tonos: ['#b7a8d0', '#7d6aa0', '#6a5889', '#55456c', '#423651'],
+    claros: ['#f5f3f9', '#eae5f1', '#dcd4e8', '#c2b6d8'],
   },
   {
     id: 'azul',
     nombre: 'Azul',
-    tonos: ['#60a5fa', '#2563eb', '#1d4ed8', '#1e40af', '#1e3a8a'],
-    claros: ['#eff6ff', '#dbeafe', '#bfdbfe', '#93c5fd'],
+    tonos: ['#8fb3da', '#5a7fae', '#4c6c97', '#3e587b', '#324862'],
+    claros: ['#f1f5fa', '#e3ebf4', '#cfdcea', '#aec5dd'],
   },
   {
     id: 'esmeralda',
     nombre: 'Verde',
-    tonos: ['#34d399', '#10b981', '#059669', '#047857', '#065f46'],
-    claros: ['#ecfdf5', '#d1fae5', '#a7f3d0', '#6ee7b7'],
+    tonos: ['#86c2a4', '#5a9c7d', '#4d8a6d', '#3f7159', '#345c49'],
+    claros: ['#eff5f1', '#dde9e2', '#c6dccf', '#a3c7b2'],
   },
   {
     id: 'rojo',
     nombre: 'Rojo',
-    tonos: ['#f87171', '#dc2626', '#b91c1c', '#991b1b', '#7f1d1d'],
-    claros: ['#fef2f2', '#fee2e2', '#fecaca', '#fca5a5'],
+    tonos: ['#d99b91', '#bb6258', '#a4524a', '#85433d', '#6b3833'],
+    claros: ['#f8f1f0', '#f0e0de', '#e4c8c4', '#d3a59e'],
   },
   {
     id: 'naranja',
     nombre: 'Naranja',
-    tonos: ['#fb923c', '#ea580c', '#c2410c', '#9a3412', '#7c2d12'],
-    claros: ['#fff7ed', '#ffedd5', '#fed7aa', '#fdba74'],
+    tonos: ['#e0a878', '#c47a45', '#a9663b', '#8a5230', '#6f4326'],
+    claros: ['#f8f2ea', '#f0e2d2', '#e4ccb0', '#d2ac82'],
   },
   {
     id: 'rosa',
     nombre: 'Rosa',
-    tonos: ['#f472b6', '#db2777', '#be185d', '#9d174d', '#831843'],
-    claros: ['#fdf2f8', '#fce7f3', '#fbcfe8', '#f9a8d4'],
+    tonos: ['#d99cba', '#bb6a93', '#a4567f', '#864668', '#6e3a55'],
+    claros: ['#f8f1f5', '#f0e1ea', '#e4cad9', '#d3a9c2'],
   },
   {
     id: 'cian',
     nombre: 'Cian',
-    tonos: ['#22d3ee', '#0891b2', '#0e7490', '#155e75', '#164e63'],
-    claros: ['#ecfeff', '#cffafe', '#a5f3fc', '#67e8f9'],
+    tonos: ['#82bdc8', '#5290a0', '#477e8c', '#3b6772', '#31555e'],
+    claros: ['#eff5f6', '#ddebee', '#c5dde2', '#a0c8cf'],
   },
   {
     id: 'indigo',
     nombre: 'Índigo',
-    tonos: ['#818cf8', '#4f46e5', '#4338ca', '#3730a3', '#312e81'],
-    claros: ['#eef2ff', '#e0e7ff', '#c7d2fe', '#a5b4fc'],
+    tonos: ['#9aa0d4', '#6e6aaa', '#5e5b92', '#4c4a76', '#3d3b5e'],
+    claros: ['#f3f4fa', '#e6e7f3', '#d4d6ea', '#b7badb'],
   },
 ];
 
