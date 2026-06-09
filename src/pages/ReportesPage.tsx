@@ -14,10 +14,10 @@ import BarChart from '../components/ui/BarChart';
 import CalendarioVencimientos from '../components/ui/Calendario';
 import { Header } from './ProductoPage';
 
-// Paleta para categorías del donut
+// Paleta cálida editorial para la dona de categorías
 const PALETA = [
-  '#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899',
-  '#06b6d4', '#ef4444', '#84cc16', '#f97316', '#6366f1',
+  '#d8a43e', '#4fa89e', '#d07a4a', '#9aa84f', '#c46a8e',
+  '#5b8fb0', '#cf5d4e', '#8a7bbd', '#7fa05a', '#caa05a',
 ];
 
 const ReportesPage: React.FC = () => {
