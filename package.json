@@ -10,7 +10,8 @@
     "cap:sync": "npm run build && npx cap sync",
     "cap:android": "npm run build && npx cap sync android && npx cap open android",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.4",
@@ -40,6 +41,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "8.3.4",
+    "@playwright/test": "^1.60.0",
     "@types/react": "19.0.10",
     "@types/react-dom": "19.0.4",
     "@vitejs/plugin-react": "^4.0.1",
