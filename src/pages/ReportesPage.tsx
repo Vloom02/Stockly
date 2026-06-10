@@ -3,10 +3,13 @@ import { IonContent, IonPage } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import {
   ChartPieIcon, CalendarDaysIcon, ArrowTrendingDownIcon, BanknotesIcon,
+  ShoppingCartIcon, ShareIcon,
 } from '@heroicons/react/24/outline';
 import {
-  useStore, formatearMoneda, formatearFecha,
+  useStore, formatearMoneda, formatearFecha, getSetting,
 } from '../context/StoreContext';
+import { listaReposicion, reposicionATexto, MotivoReposicion } from '../lib/reportes';
+import { compartirTexto } from '../lib/compartir';
 import Card from '../components/ui/Card';
 import EmptyState from '../components/ui/EmptyState';
 import DonutChart from '../components/ui/DonutChart';
@@ -21,9 +24,12 @@ const PALETA = [
 ];
 
 const ReportesPage: React.FC = () => {
-  const { state, perdidasPorMes, distribucionPorCategoria, vencimientosDelMes, resumen } = useStore();
+  const { state, perdidasPorMes, distribucionPorCategoria, vencimientosDelMes, resumen, productosConLotes } = useStore();
   const history = useHistory();
   const [diaSeleccionado, setDiaSeleccionado] = useState<string | null>(null);
+
+  const umbralBajo = useMemo(() => parseInt(getSetting('umbral-stock-bajo', '3'), 10) || 3, []);
+  const reposicion = useMemo(() => listaReposicion(productosConLotes(), umbralBajo), [productosConLotes, umbralBajo]);
 
   const perdidas = useMemo(() => perdidasPorMes(6), [perdidasPorMes]);
   const distribucion = useMemo(() => distribucionPorCategoria(), [distribucionPorCategoria]);
@@ -145,6 +151,38 @@ const ReportesPage: React.FC = () => {
                 )}
               </Card>
 
+              {/* ─── Lista de reposición ────────────────────────────── */}
+              <SectionHeader icon={<ShoppingCartIcon width={16} height={16} />} title="Qué reponer" />
+              <Card padding="md" style={{ marginBottom: 16 }}>
+                {reposicion.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: 'var(--brand-600)', padding: 16, margin: 0, fontSize: 13, fontWeight: 500 }}>
+                    Nada para reponer por ahora. 👍
+                  </p>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{reposicion.length} producto{reposicion.length !== 1 ? 's' : ''}</span>
+                      <button
+                        type="button"
+                        onClick={() => compartirTexto(reposicionATexto(reposicion), 'Lista de reposición')}
+                        className="pressable"
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--brand-50)', color: 'var(--brand-700)', border: '1px solid var(--brand-200)', borderRadius: 'var(--radius)', padding: '6px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        <ShareIcon width={15} height={15} /> Compartir
+                      </button>
+                    </div>
+                    {reposicion.slice(0, 30).map((it, i) => (
+                      <div key={it.producto.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0', borderBottom: i < Math.min(reposicion.length, 30) - 1 ? '1px solid var(--border)' : 'none' }}>
+                        <span style={{ fontSize: 14, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 8 }}>{it.producto.nombre}</span>
+                        <MotivoBadge motivo={it.motivo} cantidad={it.cantidadTotal} />
+                      </div>
+                    ))}
+                    {reposicion.length > 30 && (
+                      <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-3)', paddingTop: 8 }}>…y {reposicion.length - 30} más</div>
+                    )}
+                  </>
+                )}
+              </Card>
+
               {/* ─── Calendario de vencimientos ─────────────────────── */}
               <SectionHeader icon={<CalendarDaysIcon width={16} height={16} />} title="Calendario de vencimientos" />
               <Card padding="md">
@@ -197,5 +235,19 @@ const LegendDot: React.FC<{ color: string; label: string }> = ({ color, label })
     {label}
   </span>
 );
+
+const MotivoBadge: React.FC<{ motivo: MotivoReposicion; cantidad: number }> = ({ motivo, cantidad }) => {
+  const cfg: Record<MotivoReposicion, { txt: string; fg: string; bg: string }> = {
+    sin_stock: { txt: 'Sin stock', fg: 'var(--level-vencido-fg)', bg: 'var(--level-vencido-bg)' },
+    por_vencer: { txt: `Por vencer · ${cantidad}`, fg: 'var(--level-urgente-fg)', bg: 'var(--level-urgente-bg)' },
+    stock_bajo: { txt: `Queda ${cantidad}`, fg: 'var(--level-aviso-fg)', bg: 'var(--level-aviso-bg)' },
+  };
+  const c = cfg[motivo];
+  return (
+    <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: c.fg, background: c.bg, padding: '3px 9px', borderRadius: 'var(--radius-full)', whiteSpace: 'nowrap' }}>
+      {c.txt}
+    </span>
+  );
+};
 
 export default ReportesPage;

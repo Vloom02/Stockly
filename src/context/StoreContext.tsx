@@ -16,6 +16,7 @@ import { supabaseConfigurado } from '../lib/supabase';
 import { almacenGet, almacenSet } from '../lib/almacen';
 import { diasRestantes, calcularNivelAlerta as _calcNivel, ordenNivel, etiquetaNivel } from '../lib/vencimientos';
 import { DescuentoConfig } from '../lib/liquidacion';
+import { sincronizarNotificaciones } from '../lib/notificaciones';
 
 // ─── Settings locales ───────────────────────────────────────────────────────
 const LS_PREFIX = 'stockly:';
@@ -448,6 +449,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         diasRestantes: diasRestantes(l.fechaVencimiento), valorLote: l.cantidad * (prod?.precio || 0),
       };
     }), [state.lotes, state.productos, state.sucursales, state.sucursalActivaId]);
+
+  // Reprogramar el aviso de vencimiento cuando cambian los lotes / productos.
+  useEffect(() => {
+    if (!state.loaded) return;
+    sincronizarNotificaciones(lotesEnriquecidos());
+  }, [state.lotes, state.productos, state.sucursalActivaId, state.loaded, lotesEnriquecidos]);
 
   const resumen = useCallback((): Resumen => {
     const e = lotesEnriquecidos();

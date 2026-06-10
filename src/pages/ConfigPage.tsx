@@ -4,7 +4,7 @@ import { IonContent, IonPage, IonToast } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import {
   MoonIcon, SunIcon, BellAlertIcon, TagIcon,
-  BuildingStorefrontIcon, ArrowRightOnRectangleIcon,
+  BuildingStorefrontIcon, ArrowRightOnRectangleIcon, PrinterIcon, ClipboardDocumentCheckIcon,
   InformationCircleIcon, ChevronRightIcon, UserCircleIcon,
   ArrowDownTrayIcon, ArrowUpTrayIcon, SwatchIcon, CloudIcon, BanknotesIcon,
 } from '@heroicons/react/24/outline';
@@ -14,6 +14,9 @@ import {
   DESC_CRITICO, DESC_URGENTE, DESC_AVISO,
 } from '../context/StoreContext';
 import { COLORES_MARCA, aplicarColorMarca, guardarColorMarca, obtenerColorMarcaGuardado } from '../lib/tema';
+import { aplicarEscalaFont, guardarEscalaFont, obtenerEscalaFont, ESCALA_MIN, ESCALA_MAX } from '../lib/tipografia';
+import { notificacionesActivas, setNotificacionesActivas, horaNotificacion, setHoraNotificacion, sincronizarNotificaciones } from '../lib/notificaciones';
+import { stockACSV, movimientosACSV } from '../lib/exportar';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -23,12 +26,15 @@ import Logo from '../components/ui/Logo';
 interface Props { onThemeToggle: () => void; isDark: boolean; }
 
 const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
-  const { state, exportarBackup, importarBackup, estadoNube, sincronizarAhora, sincronizando, reintentarFallidos } = useStore();
+  const { state, exportarBackup, importarBackup, estadoNube, sincronizarAhora, sincronizando, reintentarFallidos, lotesEnriquecidos } = useStore();
   const { comercio, miembro, cerrarSesion } = useAuth();
   const history = useHistory();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [colorMarca, setColorMarca] = useState(obtenerColorMarcaGuardado());
+  const [escalaFont, setEscalaFont] = useState(obtenerEscalaFont());
+  const [notifOn, setNotifOn] = useState(notificacionesActivas());
+  const [notifHora, setNotifHora] = useState(horaNotificacion());
 
   const [diasAviso, setDiasAviso] = useState(DIAS_AVISO_DEFAULT().toString());
   const [uAviso, setUAviso] = useState(UMBRAL_AVISO().toString());
@@ -56,6 +62,26 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
     setColorMarca(id);
     guardarColorMarca(id);
     aplicarColorMarca(id);
+  };
+
+  const cambiarEscala = (v: number) => {
+    const r = Math.round(v * 100) / 100;
+    setEscalaFont(r);
+    aplicarEscalaFont(r);   // aplica en vivo
+    guardarEscalaFont(r);   // persiste
+  };
+
+  const cambiarNotif = (on: boolean) => {
+    setNotifOn(on);
+    setNotificacionesActivas(on);
+    sincronizarNotificaciones(lotesEnriquecidos()); // pide permiso / programa o cancela
+    setToast({ show: true, msg: on ? 'Avisos de vencimiento activados' : 'Avisos desactivados' });
+  };
+
+  const cambiarNotifHora = (h: number) => {
+    setNotifHora(h);
+    setHoraNotificacion(h);
+    if (notifOn) sincronizarNotificaciones(lotesEnriquecidos());
   };
 
   const salir = async () => {
@@ -96,6 +122,33 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
     URL.revokeObjectURL(url);
     setToast({ show: true, msg: 'Backup exportado' });
   };
+
+  // Guarda un texto como archivo (Documents en Android, descarga en web).
+  const guardarTexto = async (nombre: string, contenido: string, mime: string) => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
+        await Filesystem.writeFile({ path: nombre, data: contenido, directory: Directory.Documents, encoding: Encoding.UTF8, recursive: true });
+        setToast({ show: true, msg: `Guardado en Documentos: ${nombre}` });
+      } catch {
+        setToast({ show: true, msg: 'No se pudo guardar el archivo' });
+      }
+      return;
+    }
+    const blob = new Blob([contenido], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = nombre;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setToast({ show: true, msg: 'Planilla exportada' });
+  };
+
+  const fechaHoy = () => new Date().toISOString().slice(0, 10);
+  const exportarStockCSV = () =>
+    guardarTexto(`stockly_stock_${fechaHoy()}.csv`, stockACSV(lotesEnriquecidos()), 'text/csv');
+  const exportarMovimientosCSV = () =>
+    guardarTexto(`stockly_movimientos_${fechaHoy()}.csv`, movimientosACSV(state.movimientos, state.productos), 'text/csv');
 
   const importar = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -202,6 +255,42 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
                 })}
               </div>
             </div>
+
+            {/* Tamaño de texto */}
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>Tamaño de texto</span>
+                <span style={{ fontSize: 13, color: 'var(--text-2)', fontFamily: 'var(--font-mono, monospace)' }}>
+                  {Math.round(escalaFont * 100)}%
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 13, color: 'var(--text-3)' }}>A</span>
+                <input
+                  type="range"
+                  aria-label="Tamaño de texto"
+                  min={ESCALA_MIN}
+                  max={ESCALA_MAX}
+                  step={0.05}
+                  value={escalaFont}
+                  onChange={e => cambiarEscala(parseFloat(e.target.value))}
+                  style={{ flex: 1, accentColor: 'var(--brand-500)' }}
+                />
+                <span style={{ fontSize: 22, color: 'var(--text-3)', lineHeight: 1 }}>A</span>
+              </div>
+              {escalaFont !== 1 && (
+                <button
+                  type="button"
+                  onClick={() => cambiarEscala(1)}
+                  style={{
+                    marginTop: 10, background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--brand-600)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', padding: 0,
+                  }}
+                >
+                  Restablecer al 100%
+                </button>
+              )}
+            </div>
           </Card>
 
           {/* Estado de la nube (diagnóstico) */}
@@ -254,6 +343,43 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             )}
           </Card>
 
+          {/* Notificaciones */}
+          <Card padding="md" style={{ marginBottom: 12 }}>
+            <SectionTitle icon={<BellAlertIcon width={16} height={16} />}>Avisos de vencimiento</SectionTitle>
+            <button type="button" onClick={() => cambiarNotif(!notifOn)} style={rowBtn}>
+              <span>Notificarme productos por vencer</span>
+              {/* mini switch */}
+              <span style={{
+                width: 42, height: 24, borderRadius: 999, padding: 2, flexShrink: 0,
+                background: notifOn ? 'var(--brand-500)' : 'var(--border-strong)',
+                display: 'inline-flex', alignItems: 'center',
+                justifyContent: notifOn ? 'flex-end' : 'flex-start', transition: 'all 160ms',
+              }}>
+                <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.3)' }} />
+              </span>
+            </button>
+            {notifOn && (
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 14 }}>Hora del aviso</span>
+                <select
+                  value={notifHora}
+                  onChange={e => cambiarNotifHora(parseInt(e.target.value, 10))}
+                  style={{
+                    fontFamily: 'inherit', fontSize: 14, padding: '8px 12px', borderRadius: 'var(--radius)',
+                    border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)',
+                  }}
+                >
+                  {[7, 8, 9, 10, 11, 12, 18, 19, 20, 21].map(h => (
+                    <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <p style={{ marginTop: 12, fontSize: 12, color: 'var(--text-3)', lineHeight: 1.5 }}>
+              Aviso diario en tu celular con los productos vencidos o por vencer. Funciona sin internet.
+            </p>
+          </Card>
+
           {/* Umbrales */}
           <Card padding="md" style={{ marginBottom: 12 }}>
             <SectionTitle icon={<BellAlertIcon width={16} height={16} />}>Niveles de alerta</SectionTitle>
@@ -297,6 +423,18 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
 
           {/* Backup */}
           <Card padding="none" style={{ marginBottom: 12, overflow: 'hidden' }}>
+            <button type="button" onClick={exportarStockCSV} style={linkRow}>
+              <span style={{ color: 'var(--brand-600)' }}><ArrowDownTrayIcon width={18} height={18} /></span>
+              <span style={{ flex: 1, textAlign: 'left' }}>Exportar stock (planilla CSV)</span>
+              <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
+            </button>
+            <div style={{ height: 1, background: 'var(--border)' }} />
+            <button type="button" onClick={exportarMovimientosCSV} style={linkRow}>
+              <span style={{ color: 'var(--brand-600)' }}><ArrowDownTrayIcon width={18} height={18} /></span>
+              <span style={{ flex: 1, textAlign: 'left' }}>Exportar movimientos (planilla CSV)</span>
+              <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
+            </button>
+            <div style={{ height: 1, background: 'var(--border)' }} />
             <button type="button" onClick={exportar} style={linkRow}>
               <span style={{ color: 'var(--brand-600)' }}><ArrowDownTrayIcon width={18} height={18} /></span>
               <span style={{ flex: 1, textAlign: 'left' }}>Exportar backup (JSON)</span>
@@ -317,11 +455,23 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             />
           </Card>
 
-          {/* Sucursales */}
+          {/* Sucursales + Etiquetas */}
           <Card padding="none" style={{ marginBottom: 12, overflow: 'hidden' }}>
             <button type="button" onClick={() => history.push('/sucursales')} style={linkRow}>
               <span style={{ color: 'var(--brand-600)' }}><BuildingStorefrontIcon width={18} height={18} /></span>
               <span style={{ flex: 1, textAlign: 'left' }}>Gestionar sucursales</span>
+              <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
+            </button>
+            <div style={{ height: 1, background: 'var(--border)' }} />
+            <button type="button" onClick={() => history.push('/inventario')} style={linkRow}>
+              <span style={{ color: 'var(--brand-600)' }}><ClipboardDocumentCheckIcon width={18} height={18} /></span>
+              <span style={{ flex: 1, textAlign: 'left' }}>Inventario físico (conteo)</span>
+              <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
+            </button>
+            <div style={{ height: 1, background: 'var(--border)' }} />
+            <button type="button" onClick={() => history.push('/etiquetas')} style={linkRow}>
+              <span style={{ color: 'var(--brand-600)' }}><PrinterIcon width={18} height={18} /></span>
+              <span style={{ flex: 1, textAlign: 'left' }}>Etiquetas de precios</span>
               <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
             </button>
           </Card>

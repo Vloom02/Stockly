@@ -52,13 +52,13 @@ const CalendarioVencimientos: React.FC<CalendarioProps> = ({ vencimientos, onDia
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         marginBottom: 16,
       }}>
-        <button type="button" onClick={() => cambiarMes(-1)} style={navBtn}>
+        <button type="button" aria-label="Mes anterior" onClick={() => cambiarMes(-1)} style={navBtn}>
           <ChevronLeftIcon width={18} height={18} />
         </button>
         <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em' }}>
           {MESES[mes]} {anio}
         </div>
-        <button type="button" onClick={() => cambiarMes(1)} style={navBtn}>
+        <button type="button" aria-label="Mes siguiente" onClick={() => cambiarMes(1)} style={navBtn}>
           <ChevronRightIcon width={18} height={18} />
         </button>
       </div>
