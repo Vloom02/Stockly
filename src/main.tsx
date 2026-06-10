@@ -5,6 +5,7 @@ import App from './App';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { aplicarColorMarca, obtenerColorMarcaGuardado, COLORES_MARCA } from './lib/tema';
+import { aplicarEscalaFont, obtenerEscalaFont } from './lib/tipografia';
 import { hidratarAlmacenamiento } from './lib/almacen';
 import { initSentry } from './lib/sentry';
 
@@ -17,6 +18,9 @@ async function arrancar() {
   // Aplicar el color de marca elegido por el usuario
   const colorId = obtenerColorMarcaGuardado();
   aplicarColorMarca(colorId);
+
+  // Aplicar la escala de tipografía elegida por el usuario
+  aplicarEscalaFont(obtenerEscalaFont());
   const colorActual = COLORES_MARCA.find(c => c.id === colorId) || COLORES_MARCA[0];
 
   // Configurar la barra de estado de Android
