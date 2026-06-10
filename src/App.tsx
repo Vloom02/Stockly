@@ -25,7 +25,7 @@ import { registrarPush } from './lib/push';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { StoreProvider, getSetting, setSetting } from './context/StoreContext';
-import { supabaseConfigurado } from './lib/supabase';
+import { supabase, supabaseConfigurado } from './lib/supabase';
 
 import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
@@ -46,9 +46,24 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
   const [showOnboarding, setShowOnboarding] = useState(false);
   const { comercio } = useAuth();
 
+  // Tutorial solo para comercios VACÍOS: si la cuenta ya tiene productos
+  // (usuario existente en un dispositivo nuevo), va directo al stock.
   useEffect(() => {
-    if (getSetting('onboarding-visto', '') !== 'si') setShowOnboarding(true);
-  }, []);
+    if (getSetting('onboarding-visto', '') === 'si') return;
+    (async () => {
+      try {
+        if (navigator.onLine && comercio?.id) {
+          const { data } = await supabase.from('productos')
+            .select('id').eq('comercio_id', comercio.id).limit(1);
+          if ((data?.length ?? 0) > 0) {
+            setSetting('onboarding-visto', 'si');
+            return;
+          }
+        }
+      } catch { /* sin red: mostramos el tutorial igual */ }
+      setShowOnboarding(true);
+    })();
+  }, [comercio?.id]);
 
   // Registrar push (FCM) una vez que hay comercio. No-op en web.
   useEffect(() => {
