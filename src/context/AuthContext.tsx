@@ -9,7 +9,7 @@ interface AuthContextValue {
   comercio: Comercio | null;
   miembro: Miembro | null;
   cargando: boolean;
-  registrarse: (email: string, password: string, nombre: string, nombreComercio: string) => Promise<{ error?: string }>;
+  registrarse: (email: string, password: string, nombre: string, nombreComercio: string, codigoInvitacion?: string) => Promise<{ error?: string }>;
   iniciarSesion: (email: string, password: string) => Promise<{ error?: string }>;
   cerrarSesion: () => Promise<void>;
   recargarComercio: () => void;
@@ -124,12 +124,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, []);
 
-  const registrarse = async (email: string, password: string, nombre: string, nombreComercio: string) => {
+  const registrarse = async (email: string, password: string, nombre: string, nombreComercio: string, codigoInvitacion?: string) => {
+    const codigo = (codigoInvitacion ?? '').trim().toUpperCase();
+
+    // Con código: validar ANTES de crear la cuenta, así un código vencido no
+    // termina creando un comercio propio por accidente.
+    if (codigo) {
+      const { data, error: e } = await supabase.rpc('validar_invitacion', { p: { codigo } });
+      if (e || !(data as { ok?: boolean })?.ok) {
+        return { error: 'El código de invitación no es válido o ya venció. Pedile uno nuevo al dueño.' };
+      }
+    }
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { nombre, nombre_comercio: nombreComercio },
+        data: codigo
+          ? { nombre, codigo_invitacion: codigo }
+          : { nombre, nombre_comercio: nombreComercio },
       },
     });
     if (error) return { error: traducirError(error.message) };

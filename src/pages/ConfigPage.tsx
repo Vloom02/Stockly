@@ -4,7 +4,7 @@ import { IonContent, IonPage, IonToast } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import {
   MoonIcon, SunIcon, BellAlertIcon, TagIcon,
-  BuildingStorefrontIcon, ArrowRightOnRectangleIcon, PrinterIcon, ClipboardDocumentCheckIcon,
+  BuildingStorefrontIcon, ArrowRightOnRectangleIcon, PrinterIcon, ClipboardDocumentCheckIcon, UserGroupIcon,
   InformationCircleIcon, ChevronRightIcon, UserCircleIcon,
   ArrowDownTrayIcon, ArrowUpTrayIcon, SwatchIcon, CloudIcon, BanknotesIcon,
 } from '@heroicons/react/24/outline';
@@ -460,6 +460,12 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             <button type="button" onClick={() => history.push('/sucursales')} style={linkRow}>
               <span style={{ color: 'var(--brand-600)' }}><BuildingStorefrontIcon width={18} height={18} /></span>
               <span style={{ flex: 1, textAlign: 'left' }}>Gestionar sucursales</span>
+              <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
+            </button>
+            <div style={{ height: 1, background: 'var(--border)' }} />
+            <button type="button" onClick={() => history.push('/empleados')} style={linkRow}>
+              <span style={{ color: 'var(--brand-600)' }}><UserGroupIcon width={18} height={18} /></span>
+              <span style={{ flex: 1, textAlign: 'left' }}>Empleados</span>
               <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
             </button>
             <div style={{ height: 1, background: 'var(--border)' }} />

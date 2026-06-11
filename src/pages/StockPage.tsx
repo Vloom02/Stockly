@@ -59,9 +59,23 @@ const StockPage: React.FC = () => {
           padding: '20px 16px calc(96px + env(safe-area-inset-bottom)) 16px',
           maxWidth: 760, margin: '0 auto',
         }}>
-          <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 16, letterSpacing: '-0.02em' }}>
-            Stock
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>
+              Stock
+            </h1>
+            <button
+              type="button"
+              onClick={() => history.push('/precios')}
+              className="pressable"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+                borderRadius: 'var(--radius-full)', border: '1px solid var(--brand-200)',
+                background: 'var(--brand-50)', color: 'var(--brand-700)',
+                fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+              💲 Suba de precios
+            </button>
+          </div>
 
           {/* Switch de vista */}
           <div style={{
