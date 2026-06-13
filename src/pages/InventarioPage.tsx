@@ -47,7 +47,7 @@ const InventarioPage: React.FC = () => {
   return (
     <IonPage>
       <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
-        <div style={{ padding: '20px 16px calc(120px + env(safe-area-inset-bottom)) 16px', maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ padding: '20px 16px calc(120px + var(--sab,env(safe-area-inset-bottom))) 16px', maxWidth: 760, margin: '0 auto' }}>
           <Header title="Inventario físico" onBack={() => history.goBack()} />
           <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 14px', lineHeight: 1.5 }}>
             Contá lo que hay en góndola y anotá la cantidad real. Te marcamos las diferencias y las ajustás de una.
@@ -95,7 +95,7 @@ const InventarioPage: React.FC = () => {
 
         {/* Barra fija de aplicar */}
         {diferencias.length > 0 && (
-          <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, padding: '12px 16px calc(12px + env(safe-area-inset-bottom))', background: 'var(--surface)', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, maxWidth: 760, margin: '0 auto' }}>
+          <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, padding: '12px 16px calc(12px + var(--sab,env(safe-area-inset-bottom)))', background: 'var(--surface)', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, maxWidth: 760, margin: '0 auto' }}>
             <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{diferencias.length} con diferencia</span>
             <button type="button" onClick={aplicar} disabled={guardando} className="pressable"
               style={{ background: 'var(--brand-500)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', padding: '11px 20px', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: guardando ? 0.6 : 1 }}>

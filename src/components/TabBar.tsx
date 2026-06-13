@@ -38,7 +38,7 @@ const TabBar: React.FC = () => {
       display: 'flex',
       justifyContent: 'space-around',
       alignItems: 'flex-start',
-      padding: '8px 8px calc(8px + env(safe-area-inset-bottom))',
+      padding: '8px 8px calc(8px + var(--sab,env(safe-area-inset-bottom)))',
       zIndex: 100,
       backdropFilter: 'blur(12px)',
       WebkitBackdropFilter: 'blur(12px)',

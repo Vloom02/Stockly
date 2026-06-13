@@ -60,7 +60,7 @@ const Onboarding: React.FC<Props> = ({ onComplete }) => {
       background: 'var(--bg)',
       zIndex: 2000,
       display: 'flex', flexDirection: 'column',
-      padding: 'calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom))',
+      padding: 'calc(24px + env(safe-area-inset-top)) 24px calc(24px + var(--sab,env(safe-area-inset-bottom)))',
     }}>
       {/* Header con logo y skip */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

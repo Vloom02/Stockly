@@ -265,5 +265,5 @@ body.dark ::-webkit-scrollbar-thumb { background: var(--border-strong); }
 /* ocupa su espacio. Esta regla cubre el caso del notch/safe-area en iOS y   */
 /* navegadores, sin duplicar margen en Android.                              */
 ion-content {
-  --padding-bottom: env(safe-area-inset-bottom);
+  --padding-bottom: var(--sab,env(safe-area-inset-bottom));
 }

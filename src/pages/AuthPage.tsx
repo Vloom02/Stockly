@@ -67,7 +67,7 @@ const AuthPage: React.FC = () => {
         <div style={{
           minHeight: '100%',
           display: 'flex', flexDirection: 'column', justifyContent: 'center',
-          padding: 'calc(40px + env(safe-area-inset-top)) 24px calc(40px + env(safe-area-inset-bottom))',
+          padding: 'calc(40px + env(safe-area-inset-top)) 24px calc(40px + var(--sab,env(safe-area-inset-bottom)))',
           maxWidth: 420, margin: '0 auto',
         }}>
           {/* Logo y título */}

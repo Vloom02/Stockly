@@ -56,7 +56,7 @@ const StockPage: React.FC = () => {
     <IonPage>
       <IonContent style={{ '--background': 'var(--bg)' } as any}>
         <div className="animate-fade-in" style={{
-          padding: '20px 16px calc(96px + env(safe-area-inset-bottom)) 16px',
+          padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px',
           maxWidth: 760, margin: '0 auto',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -153,7 +153,7 @@ const StockPage: React.FC = () => {
             onClick={() => history.push('/producto/nuevo')}
             style={{
               position: 'fixed', right: 16,
-              bottom: 'calc(96px + env(safe-area-inset-bottom))',
+              bottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))',
               width: 52, height: 52, borderRadius: 'var(--radius-md)',
               background: 'var(--surface)', border: '1px solid var(--brand-300)',
               color: 'var(--brand-600)', cursor: 'pointer',

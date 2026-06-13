@@ -79,7 +79,7 @@ const ProductoPage: React.FC = () => {
     <IonPage>
       <IonContent style={{ '--background': 'var(--bg)' } as any}>
         <div className="animate-fade-in" style={{
-          padding: '20px 16px calc(96px + env(safe-area-inset-bottom)) 16px',
+          padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px',
           maxWidth: 640, margin: '0 auto',
         }}>
           <Header title={esNuevo ? 'Nuevo producto' : 'Editar producto'} onBack={() => history.goBack()} />
