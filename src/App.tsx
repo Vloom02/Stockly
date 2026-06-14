@@ -174,13 +174,13 @@ const App: React.FC = () => {
     const saved = getSetting('theme', '');
     const dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
     setDark(dark);
-    document.body.classList.toggle('dark', dark);
+    document.documentElement.classList.toggle('dark', dark);
   }, []);
 
   const onThemeToggle = () => {
     const next = !isDark;
     setDark(next);
-    document.body.classList.toggle('dark', next);
+    document.documentElement.classList.toggle('dark', next);
     setSetting('theme', next ? 'dark' : 'light');
   };
 

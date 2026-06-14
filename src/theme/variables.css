@@ -128,8 +128,12 @@
   --ion-text-color: var(--text);
 }
 
-/* ─── Dark theme ──────────────────────────────────────────────────────── */
-body.dark {
+/* ─── Dark theme ──────────────────────────────────────────────────────────
+   En :root (html), NO en body: Ionic usa shadow DOM y los elementos slotted
+   heredan las variables desde :root. Si se define en body.dark, el texto queda
+   con el color del modo claro (títulos ilegibles). La clase se togglea en
+   documentElement. */
+:root.dark {
   /* "Libro nocturno": papel envejecido / cuero a la luz de vela */
   --bg:         #161109;
   --surface:    #221b12;
@@ -258,7 +262,7 @@ h1, h2, h3, h4 {
   background: var(--border-strong);
   border-radius: var(--radius-full);
 }
-body.dark ::-webkit-scrollbar-thumb { background: var(--border-strong); }
+:root.dark ::-webkit-scrollbar-thumb { background: var(--border-strong); }
 
 /* ─── Safe area Android/iOS ─────────────────────────────────────────────── */
 /* Con StatusBar.setOverlaysWebView({ overlay: false }) la barra nativa ya   */
