@@ -176,6 +176,25 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             <Logo size={28} />
           </div>
 
+          {/* Herramientas — acceso directo a las pantallas más usadas */}
+          <SectionTitle icon={<SwatchIcon width={16} height={16} />}>Herramientas</SectionTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 18 }}>
+            {[
+              { emoji: '💲', label: 'Precios',    path: '/precios' },
+              { emoji: '📋', label: 'Inventario', path: '/inventario' },
+              { emoji: '🏷️', label: 'Etiquetas',  path: '/etiquetas' },
+              { emoji: '📊', label: 'Reportes',   path: '/reportes' },
+              { emoji: '👥', label: 'Empleados',  path: '/empleados' },
+              { emoji: '🏪', label: 'Sucursales', path: '/sucursales' },
+            ].map(t => (
+              <button key={t.path} type="button" onClick={() => history.push(t.path)} className="pressable"
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '14px 6px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <span style={{ fontSize: 26, lineHeight: 1 }}>{t.emoji}</span>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)' }}>{t.label}</span>
+              </button>
+            ))}
+          </div>
+
           {/* Cuenta */}
           <Card padding="md" style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -455,32 +474,8 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             />
           </Card>
 
-          {/* Sucursales + Etiquetas */}
-          <Card padding="none" style={{ marginBottom: 12, overflow: 'hidden' }}>
-            <button type="button" onClick={() => history.push('/sucursales')} style={linkRow}>
-              <span style={{ color: 'var(--brand-600)' }}><BuildingStorefrontIcon width={18} height={18} /></span>
-              <span style={{ flex: 1, textAlign: 'left' }}>Gestionar sucursales</span>
-              <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
-            </button>
-            <div style={{ height: 1, background: 'var(--border)' }} />
-            <button type="button" onClick={() => history.push('/empleados')} style={linkRow}>
-              <span style={{ color: 'var(--brand-600)' }}><UserGroupIcon width={18} height={18} /></span>
-              <span style={{ flex: 1, textAlign: 'left' }}>Empleados</span>
-              <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
-            </button>
-            <div style={{ height: 1, background: 'var(--border)' }} />
-            <button type="button" onClick={() => history.push('/inventario')} style={linkRow}>
-              <span style={{ color: 'var(--brand-600)' }}><ClipboardDocumentCheckIcon width={18} height={18} /></span>
-              <span style={{ flex: 1, textAlign: 'left' }}>Inventario físico (conteo)</span>
-              <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
-            </button>
-            <div style={{ height: 1, background: 'var(--border)' }} />
-            <button type="button" onClick={() => history.push('/etiquetas')} style={linkRow}>
-              <span style={{ color: 'var(--brand-600)' }}><PrinterIcon width={18} height={18} /></span>
-              <span style={{ flex: 1, textAlign: 'left' }}>Etiquetas de precios</span>
-              <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
-            </button>
-          </Card>
+          {/* (Sucursales, Empleados, Inventario y Etiquetas ahora están en la
+              grilla "Herramientas" de arriba.) */}
 
           {/* Cerrar sesión */}
           <Button variant="ghost" size="md" fullWidth onClick={salir}
