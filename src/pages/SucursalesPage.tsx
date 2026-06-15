@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { IonContent, IonPage, IonToast } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import {
-  BuildingStorefrontIcon, PencilIcon, PlusIcon,
+  BuildingStorefrontIcon, PencilIcon, PlusIcon, TrashIcon,
 } from '@heroicons/react/24/outline';
 import { useStore } from '../context/StoreContext';
 import Card from '../components/ui/Card';
@@ -21,6 +21,9 @@ const SucursalesPage: React.FC = () => {
   const [editNombre, setEditNombre] = useState('');
   const [editDir, setEditDir] = useState('');
   const [toast, setToast] = useState({ show: false, msg: '' });
+
+  // Solo las activas (el borrado es lógico).
+  const sucursalesActivas = state.sucursales.filter(s => s.activa !== false);
 
   const crear = async () => {
     if (!nuevoNombre.trim()) { setToast({ show: true, msg: 'Nombre obligatorio' }); return; }
@@ -44,6 +47,19 @@ const SucursalesPage: React.FC = () => {
     setTimeout(() => history.push('/dashboard'), 700);
   };
 
+  // Borrado LÓGICO (activa=false): no pierde el stock (los lotes quedan en la
+  // base), solo deja de mostrarse. No se puede borrar la única sucursal.
+  const borrar = async (s: typeof sucursalesActivas[number]) => {
+    if (sucursalesActivas.length <= 1) { setToast({ show: true, msg: 'No podés borrar la única sucursal' }); return; }
+    if (!window.confirm(`¿Borrar la sucursal "${s.nombre}"? El stock que tenga cargado deja de verse (no se elimina).`)) return;
+    if (s.id === state.sucursalActivaId) {
+      const otra = sucursalesActivas.find(x => x.id !== s.id);
+      if (otra) setSucursalActiva(otra.id!);
+    }
+    await updateSucursal({ ...s, activa: false });
+    setToast({ show: true, msg: 'Sucursal borrada' });
+  };
+
   return (
     <IonPage>
       <IonContent style={{ '--background': 'var(--bg)' } as any}>
@@ -58,7 +74,7 @@ const SucursalesPage: React.FC = () => {
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
-            {state.sucursales.map(s => {
+            {sucursalesActivas.map(s => {
               const activa = s.id === state.sucursalActivaId;
               const enEd = editando === s.id;
               return (
@@ -97,7 +113,7 @@ const SucursalesPage: React.FC = () => {
                       {!activa && (
                         <Button variant="secondary" size="sm" onClick={() => seleccionar(s.id!)}>Usar</Button>
                       )}
-                      <button type="button"
+                      <button type="button" aria-label={`Editar ${s.nombre}`}
                         onClick={() => { setEditando(s.id!); setEditNombre(s.nombre); setEditDir(s.direccion || ''); }}
                         style={{
                           background: 'none', border: 'none', cursor: 'pointer',
@@ -105,6 +121,16 @@ const SucursalesPage: React.FC = () => {
                         }}>
                         <PencilIcon width={18} height={18} />
                       </button>
+                      {sucursalesActivas.length > 1 && (
+                        <button type="button" aria-label={`Borrar ${s.nombre}`}
+                          onClick={() => borrar(s)}
+                          style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            color: 'var(--level-vencido-fg)', padding: 6, display: 'flex',
+                          }}>
+                          <TrashIcon width={18} height={18} />
+                        </button>
+                      )}
                     </div>
                   )}
                 </Card>
