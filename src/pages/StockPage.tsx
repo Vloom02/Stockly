@@ -14,7 +14,7 @@ import { sugerirLiquidacion } from '../lib/liquidacion';
 import Card from '../components/ui/Card';
 import { NivelBadge } from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
-import { Input } from '../components/ui/Input';
+import { Input, Select } from '../components/ui/Input';
 
 type Vista = 'productos' | 'lotes';
 
@@ -25,30 +25,40 @@ const StockPage: React.FC = () => {
   const [vista, setVista] = useState<Vista>('productos');
   const [busqueda, setBusqueda] = useState('');
   const [filtro, setFiltro] = useState<NivelAlerta | 'todos'>('todos');
+  const [filtroProveedor, setFiltroProveedor] = useState<string>('todos');
 
   const productos = useMemo(() => productosConLotes(), [productosConLotes]);
   const lotes = useMemo(() => lotesEnriquecidos(), [lotesEnriquecidos]);
+
+  // Proveedores únicos cargados (para el selector de filtro).
+  const proveedores = useMemo(() => {
+    const set = new Set<string>();
+    productos.forEach(p => { const pr = p.producto.proveedor?.trim(); if (pr) set.add(pr); });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'es'));
+  }, [productos]);
 
   const productosFiltrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return productos.filter(p => {
       const mb = !q || p.producto.nombre.toLowerCase().includes(q) || (p.producto.codigoBarras?.includes(busqueda.trim()));
       const mf = filtro === 'todos' || p.nivelPeor === filtro;
-      return mb && mf;
+      const mp = filtroProveedor === 'todos' || (p.producto.proveedor?.trim() ?? '') === filtroProveedor;
+      return mb && mf && mp;
     }).sort((a, b) => ordenNivel(a.nivelPeor) - ordenNivel(b.nivelPeor));
-  }, [productos, busqueda, filtro]);
+  }, [productos, busqueda, filtro, filtroProveedor]);
 
   const lotesFiltrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return lotes.filter(l => {
       const mb = !q || l.productoNombre.toLowerCase().includes(q) || (l.numeroLote?.toLowerCase().includes(q));
       const mf = filtro === 'todos' || l.nivelAlerta === filtro;
-      return mb && mf;
+      const mp = filtroProveedor === 'todos' || (l.productoProveedor?.trim() ?? '') === filtroProveedor;
+      return mb && mf && mp;
     }).sort((a, b) => {
       const d = ordenNivel(a.nivelAlerta) - ordenNivel(b.nivelAlerta);
       return d !== 0 ? d : a.fechaVencimiento.localeCompare(b.fechaVencimiento);
     });
-  }, [lotes, busqueda, filtro]);
+  }, [lotes, busqueda, filtro, filtroProveedor]);
 
   const filtros: (NivelAlerta | 'todos')[] = ['todos', 'vencido', 'critico', 'urgente', 'aviso', 'ok'];
 
@@ -107,6 +117,16 @@ const StockPage: React.FC = () => {
               ) : undefined}
             />
           </div>
+
+          {/* Filtro por proveedor (solo si hay alguno cargado) */}
+          {proveedores.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <Select value={filtroProveedor} onChange={e => setFiltroProveedor(e.target.value)}>
+                <option value="todos">Todos los proveedores</option>
+                {proveedores.map(pr => <option key={pr} value={pr}>{pr}</option>)}
+              </Select>
+            </div>
+          )}
 
           {/* Chips filtro */}
           <div style={{
