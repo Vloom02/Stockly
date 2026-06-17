@@ -31,6 +31,7 @@ const ProductoPage: React.FC = () => {
   const [codigoBarras, setCodigoBarras] = useState(productoExistente?.codigoBarras || '');
   const [categoria, setCategoria] = useState(productoExistente?.categoria || '');
   const [precio, setPrecio] = useState(productoExistente?.precio.toString() || '0');
+  const [proveedor, setProveedor] = useState(productoExistente?.proveedor || '');
   const [diasAviso, setDiasAviso] = useState(
     productoExistente?.diasAvisoDefault.toString() || DIAS_AVISO_DEFAULT().toString()
   );
@@ -51,6 +52,7 @@ const ProductoPage: React.FC = () => {
       codigoBarras: codigoBarras.trim() || undefined,
       categoria: categoria.trim() || 'Sin categoría',
       precio: parseFloat(precio) || 0,
+      proveedor: proveedor.trim() || undefined,
       diasAvisoDefault: parseInt(diasAviso, 10) || 7,
     };
     if (productoExistente) {
@@ -109,6 +111,10 @@ const ProductoPage: React.FC = () => {
                 <option value="">— Sin categoría —</option>
                 {CATEGORIAS().map(c => <option key={c} value={c}>{c}</option>)}
               </Select>
+            </Field>
+
+            <Field label="Proveedor" hint="Quién te lo provee">
+              <Input value={proveedor} onChange={e => setProveedor(e.target.value)} placeholder="Opcional" />
             </Field>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

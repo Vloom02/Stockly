@@ -444,7 +444,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const suc = state.sucursales.find(s => s.id === l.sucursalId);
       return {
         ...l, productoNombre: prod?.nombre || '(eliminado)', productoCategoria: prod?.categoria || '',
-        productoPrecio: prod?.precio || 0, sucursalNombre: suc?.nombre || '',
+        productoPrecio: prod?.precio || 0, productoProveedor: prod?.proveedor, sucursalNombre: suc?.nombre || '',
         nivelAlerta: calcularNivelAlerta(l.fechaVencimiento, l.diasAviso),
         diasRestantes: diasRestantes(l.fechaVencimiento), valorLote: l.cantidad * (prod?.precio || 0),
       };

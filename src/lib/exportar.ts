@@ -31,7 +31,7 @@ export function stockACSV(lotes: LoteConProducto[]): string {
     .map(l => [
       l.productoNombre, l.productoCategoria, l.cantidad,
       l.productoPrecio, l.valorLote, l.fechaVencimiento, l.diasRestantes,
-      etiquetaNivel(l.nivelAlerta), l.proveedor ?? '', l.numeroLote ?? '', l.sucursalNombre,
+      etiquetaNivel(l.nivelAlerta), l.productoProveedor ?? '', l.numeroLote ?? '', l.sucursalNombre,
     ]);
   return filas([header, ...rows]);
 }

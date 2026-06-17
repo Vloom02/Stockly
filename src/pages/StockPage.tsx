@@ -255,7 +255,7 @@ const LoteRow: React.FC<{ lote: LoteConProducto; onClick: () => void }> = ({ lot
           {lote.productoNombre}
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 6 }}>
-          {lote.cantidad} unid.{lote.numeroLote ? ` · Lote ${lote.numeroLote}` : ''}{lote.proveedor ? ` · ${lote.proveedor}` : ''}
+          {lote.cantidad} unid.{lote.numeroLote ? ` · Lote ${lote.numeroLote}` : ''}{lote.productoProveedor ? ` · ${lote.productoProveedor}` : ''}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <NivelBadge nivel={lote.nivelAlerta} />

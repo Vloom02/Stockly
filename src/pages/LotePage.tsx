@@ -34,7 +34,6 @@ const LotePage: React.FC = () => {
   const [cantidad, setCantidad] = useState(loteExistente?.cantidad.toString() || '1');
   const [fechaVencimiento, setFechaVencimiento] = useState(loteExistente?.fechaVencimiento || fechaTresMeses());
   const [diasAviso, setDiasAviso] = useState(loteExistente?.diasAviso.toString() || '');
-  const [proveedor, setProveedor] = useState(loteExistente?.proveedor || '');
   const [numeroLote, setNumeroLote] = useState(loteExistente?.numeroLote || '');
 
   const [showRetirar, setShowRetirar] = useState(false);
@@ -61,7 +60,6 @@ const LotePage: React.FC = () => {
       cantidad: cant,
       fechaVencimiento,
       diasAviso: diasAvisoEf,
-      proveedor: proveedor.trim() || undefined,
       numeroLote: numeroLote.trim() || undefined,
     };
     if (loteExistente) await updateLote({ ...loteExistente, ...datos });
@@ -159,14 +157,14 @@ const LotePage: React.FC = () => {
               <Input type="date" value={fechaVencimiento} onChange={e => setFechaVencimiento(e.target.value)} />
             </Field>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Field label="Número de lote">
-                <Input value={numeroLote} onChange={e => setNumeroLote(e.target.value)} placeholder="Opcional" />
-              </Field>
-              <Field label="Proveedor">
-                <Input value={proveedor} onChange={e => setProveedor(e.target.value)} placeholder="Opcional" />
-              </Field>
-            </div>
+            <Field label="Número de lote">
+              <Input value={numeroLote} onChange={e => setNumeroLote(e.target.value)} placeholder="Opcional" />
+            </Field>
+            {producto?.proveedor && (
+              <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '-4px 0 4px' }}>
+                Proveedor: <strong>{producto.proveedor}</strong> <span style={{ color: 'var(--text-3)' }}>(se edita en el producto)</span>
+              </p>
+            )}
 
             <Button variant="primary" size="lg" fullWidth onClick={handleGuardar}
               icon={<CheckIcon width={18} height={18} />} style={{ marginTop: 8 }}>
