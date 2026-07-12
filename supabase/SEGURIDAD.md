@@ -1,4 +1,30 @@
-# Notas de seguridad (escaneo 2026-06-10)
+# Notas de seguridad
+
+## Auditoría 2026-07 (Fable) — corregido y aplicado a prod
+
+- **Fuerza bruta online en `verificar_pin` / `verificar_empleado_venta`**: sin
+  límite de intentos, un miembro podía probar todos los PINs de 4-6 dígitos vía
+  RPC. Fix: lockout de 15 min tras 5 fallos (tabla `auth_intentos`, RLS sin
+  policies — acceso solo por funciones). Migración:
+  `almacen-ventas-final/src/lib/ventas-migracion-4-auth-hardening.sql`.
+- **Hashes sin sal (SHA-256)** en `pin_hash` y `pass_hash`: migrados a bcrypt
+  (`crypt`/`gen_salt('bf')`) con upgrade perezoso — el hash legado se acepta y
+  se re-hashea en el primer login OK. Altas nuevas nacen en bcrypt
+  (`guardar_empleado_venta`, `configurar_pin`). El cliente ya no escribe
+  `pin_hash` (usa RPC `configurar_pin`).
+- **Edge Function `avisos-vencimiento` invocable con la anon key** (extraíble
+  del APK) → spam de push. Fix: header `x-cron-secret` obligatorio (secreto
+  `CRON_SECRET` en la función, enviado por el cron). Verificado: sin secreto
+  401, con secreto 200.
+- **CSV injection** en `exportar.ts` (ambas apps): textos que empiezan con
+  `= + - @ \t` se neutralizan con apóstrofe (Excel los interpretaba como
+  fórmula).
+- **npm audit**: 1 critical + 1 high pero SOLO en devDependencies (vite 5 /
+  vitest). No afectan a los APK. Upgrade a Vite 7+ pendiente como tarea aparte.
+- **`ventas_empleados` con RLS y sin policies**: intencional (deny-all; acceso
+  únicamente vía RPCs SECURITY DEFINER).
+
+# Escaneo 2026-06-10
 
 Escaneo a fondo de código + base de datos (advisors de Supabase, RLS, funciones,
 secretos, permisos Android, dependencias). Resultado y decisiones:

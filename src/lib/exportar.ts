@@ -8,7 +8,11 @@ import { etiquetaNivel } from './vencimientos';
 
 function celda(v: string | number | undefined | null): string {
   if (v === undefined || v === null) return '';
-  const s = String(v);
+  let s = String(v);
+  // CSV injection: un texto que empieza con = + - @ o tab lo interpreta Excel
+  // como fórmula (p.ej. un producto llamado "=HYPERLINK(...)"). Se neutraliza
+  // anteponiendo apóstrofe. Solo aplica a strings; los números quedan intactos.
+  if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
   // Si tiene separador, comillas o saltos → entrecomillar y duplicar comillas.
   if (/[;"\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
   return s;

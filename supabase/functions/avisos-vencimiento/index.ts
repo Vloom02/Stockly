@@ -10,6 +10,9 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const SA = JSON.parse(Deno.env.get('FCM_SERVICE_ACCOUNT')!);
+// Secreto compartido con el cron: sin él, cualquiera con la anon key (que va
+// dentro del APK) podría invocar la función y spamear push a todos los comercios.
+const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? '';
 const DIAS_AVISO = 7; // avisar lotes que vencen en 7 días o menos (incluye vencidos)
 
 const b64url = (buf: ArrayBuffer | Uint8Array | string): string => {
@@ -54,7 +57,11 @@ async function getAccessToken(): Promise<string> {
   return j.access_token as string;
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  // Solo el cron (que manda x-cron-secret) puede dispararla.
+  if (!CRON_SECRET || req.headers.get('x-cron-secret') !== CRON_SECRET) {
+    return json({ error: 'no autorizado' }, 401);
+  }
   try {
     const supa = createClient(SUPABASE_URL, SERVICE_ROLE);
     const hoy = new Date();
