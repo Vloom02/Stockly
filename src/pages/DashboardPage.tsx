@@ -25,11 +25,19 @@ import SyncBanner from '../components/SyncBanner';
 const PALETA = ['#d8a43e', '#4fa89e', '#d07a4a', '#9aa84f', '#c46a8e', '#5b8fb0', '#cf5d4e', '#8a7bbd'];
 
 const DashboardPage: React.FC = () => {
-  const { state, resumen, lotesEnriquecidos, distribucionPorCategoria } = useStore();
+  const { state, resumen, lotesEnriquecidos, distribucionPorCategoria, productosConLotes } = useStore();
   const history = useHistory();
 
   const res = useMemo(() => resumen(), [resumen]);
   const lotes = useMemo(() => lotesEnriquecidos(), [lotesEnriquecidos]);
+
+  // Productos por debajo de su stock mínimo (alerta de reposición).
+  const paraReponer = useMemo(() =>
+    productosConLotes()
+      .filter(p => (p.producto.stockMinimo ?? 0) > 0 && p.cantidadTotal < (p.producto.stockMinimo ?? 0))
+      .sort((a, b) => a.cantidadTotal - b.cantidadTotal)
+      .slice(0, 5),
+  [productosConLotes]);
   const distribucion = useMemo(() => distribucionPorCategoria(), [distribucionPorCategoria]);
 
   const enRiesgo = useMemo(() => {
@@ -209,6 +217,32 @@ const DashboardPage: React.FC = () => {
                 </Button>
               }
             />
+          )}
+
+          {/* ─── Para reponer (stock mínimo) ──────────────────────────── */}
+          {paraReponer.length > 0 && (
+            <div style={{ marginTop: 24 }}>
+              <SecHeader title="Para reponer" tag={`${paraReponer.length}`} onAction={() => history.push('/pedido')} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {paraReponer.map(p => (
+                  <Card key={p.producto.id} padding="sm" onClick={() => history.push(`/producto/${p.producto.id}`)}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ fontSize: 18, flexShrink: 0 }}>📦</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {p.producto.nombre}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
+                          Quedan <b style={{ color: 'var(--warning)' }}>{p.cantidadTotal}</b> · mínimo {p.producto.stockMinimo}
+                          {p.producto.proveedor ? ` · ${p.producto.proveedor}` : ''}
+                        </div>
+                      </div>
+                      <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)', flexShrink: 0 }} />
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
           )}
 
           {/* ─── Valor por categoría (dona) ───────────────────────────── */}

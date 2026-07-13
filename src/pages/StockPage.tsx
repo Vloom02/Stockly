@@ -258,10 +258,18 @@ const FilterChip: React.FC<{ activo: boolean; nivel?: NivelAlerta; onClick: () =
     </button>
   );
 
-const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ p, onClick }) => (
+const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ p, onClick }) => {
+  const reponer = (p.producto.stockMinimo ?? 0) > 0 && p.cantidadTotal < (p.producto.stockMinimo ?? 0);
+  return (
   <Card padding="sm" onClick={onClick}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{ width: 4, height: 52, background: colorNivel(p.nivelPeor), borderRadius: 2, flexShrink: 0 }} />
+      {p.producto.fotoUrl && (
+        <img src={p.producto.fotoUrl} alt="" loading="lazy" style={{
+          width: 44, height: 44, objectFit: 'cover', flexShrink: 0,
+          borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
+        }} />
+      )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15, marginBottom: 3, letterSpacing: '-0.01em' }}>
           {p.producto.nombre}
@@ -269,11 +277,20 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
         <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 6 }}>
           {p.producto.categoria} · {formatearMoneda(p.producto.precio)} c/u
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <NivelBadge nivel={p.nivelPeor} />
           <span style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 500 }}>
             {p.cantidadTotal} unid · {p.lotes.length} lote{p.lotes.length !== 1 ? 's' : ''}
           </span>
+          {reponer && (
+            <span style={{
+              fontSize: 11, fontWeight: 700, color: 'var(--warning)',
+              border: '1px solid var(--warning)', borderRadius: 'var(--radius-full)',
+              padding: '1px 8px', whiteSpace: 'nowrap',
+            }}>
+              📦 Reponer (mín. {p.producto.stockMinimo})
+            </span>
+          )}
         </div>
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -288,7 +305,8 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
       </div>
     </div>
   </Card>
-);
+  );
+};
 
 const LoteRow: React.FC<{ lote: LoteConProducto; onClick: () => void }> = ({ lote, onClick }) => {
   // Sugerencia de liquidación FEFO: vender antes de que venza con un descuento.

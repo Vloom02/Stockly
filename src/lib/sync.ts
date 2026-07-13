@@ -29,6 +29,8 @@ function aSnake(tabla: TablaSync, payload: any, comercioId: string, esUpdate = f
         codigo_barras: payload.codigoBarras ?? null, categoria: payload.categoria,
         precio: payload.precio, dias_aviso_default: payload.diasAvisoDefault,
         proveedor: payload.proveedor ?? null,
+        stock_minimo: payload.stockMinimo ?? 0,
+        foto_url: payload.fotoUrl ?? null,
         activo: payload.activo ?? true,
       };
     case 'lotes': {
@@ -289,6 +291,8 @@ const mapProductoLocal = (r: any) => ({
   codigoBarras: r.codigo_barras ?? undefined, categoria: r.categoria,
   precio: Number(r.precio), diasAvisoDefault: r.dias_aviso_default,
   proveedor: r.proveedor ?? undefined,
+  stockMinimo: r.stock_minimo ?? 0,
+  fotoUrl: r.foto_url ?? undefined,
   activo: r.activo, fechaCreacion: r.creado_en,
 });
 const mapLoteLocal = (r: any) => ({

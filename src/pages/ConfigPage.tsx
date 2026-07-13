@@ -184,6 +184,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
               { emoji: '📋', label: 'Inventario', path: '/inventario' },
               { emoji: '🏷️', label: 'Etiquetas',  path: '/etiquetas' },
               { emoji: '📊', label: 'Reportes',   path: '/reportes' },
+              { emoji: '🚚', label: 'Pedidos',    path: '/pedido' },
               { emoji: '👥', label: 'Empleados',  path: '/empleados' },
               { emoji: '🏪', label: 'Sucursales', path: '/sucursales' },
             ].map(t => (

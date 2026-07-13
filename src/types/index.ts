@@ -8,6 +8,8 @@ export interface Producto {
   precio: number;
   diasAvisoDefault: number;
   proveedor?: string;              // proveedor del producto (antes estaba en el lote)
+  stockMinimo?: number;            // alerta de reposición: avisar si el total baja de esto
+  fotoUrl?: string;                // miniatura en Supabase Storage (bucket productos)
   activo: boolean;
   fechaCreacion: string;
 }
