@@ -3,7 +3,7 @@ import { IonContent, IonPage } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import {
   MagnifyingGlassIcon, PlusIcon, CubeIcon, TagIcon,
-  XMarkIcon, ArchiveBoxIcon,
+  XMarkIcon, ArchiveBoxIcon, QrCodeIcon,
 } from '@heroicons/react/24/outline';
 import {
   useStore, formatearMoneda, formatearFecha,
@@ -15,15 +15,17 @@ import Card from '../components/ui/Card';
 import { NivelBadge } from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
 import { Input, Select } from '../components/ui/Input';
+import ScannerModal from '../components/ScannerModal';
 
 type Vista = 'productos' | 'lotes';
 
 const StockPage: React.FC = () => {
-  const { productosConLotes, lotesEnriquecidos } = useStore();
+  const { productosConLotes, lotesEnriquecidos, buscarProductoPorCodigo } = useStore();
   const history = useHistory();
 
   const [vista, setVista] = useState<Vista>('productos');
   const [busqueda, setBusqueda] = useState('');
+  const [showScanner, setShowScanner] = useState(false);
   const [filtro, setFiltro] = useState<NivelAlerta | 'todos'>('todos');
   const [filtroProveedor, setFiltroProveedor] = useState<string>('todos');
 
@@ -105,16 +107,29 @@ const StockPage: React.FC = () => {
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
               leftIcon={<MagnifyingGlassIcon width={18} height={18} />}
-              rightAddon={busqueda ? (
-                <button type="button" onClick={() => setBusqueda('')}
-                  style={{
-                    background: 'var(--surface-2)', border: '1px solid var(--border)',
-                    borderRadius: 'var(--radius)', padding: '0 10px', cursor: 'pointer',
-                    color: 'var(--text-2)', display: 'flex', alignItems: 'center',
-                  }}>
-                  <XMarkIcon width={16} height={16} />
-                </button>
-              ) : undefined}
+              rightAddon={
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {busqueda && (
+                    <button type="button" onClick={() => setBusqueda('')}
+                      style={{
+                        background: 'var(--surface-2)', border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius)', padding: '0 10px', cursor: 'pointer',
+                        color: 'var(--text-2)', display: 'flex', alignItems: 'center',
+                      }}>
+                      <XMarkIcon width={16} height={16} />
+                    </button>
+                  )}
+                  <button type="button" onClick={() => setShowScanner(true)}
+                    title="Escanear código de barras"
+                    style={{
+                      background: 'var(--brand-500)', border: '1px solid var(--brand-500)',
+                      borderRadius: 'var(--radius)', padding: '0 12px', cursor: 'pointer',
+                      color: '#fff', display: 'flex', alignItems: 'center',
+                    }}>
+                    <QrCodeIcon width={18} height={18} />
+                  </button>
+                </div>
+              }
             />
           </div>
 
@@ -186,6 +201,18 @@ const StockPage: React.FC = () => {
             <PlusIcon width={14} height={14} style={{ position: 'absolute', top: 8, right: 8 }} />
           </button>
         </div>
+
+        {showScanner && (
+          <ScannerModal
+            onCodigoDetectado={(codigo) => {
+              setShowScanner(false);
+              const prod = buscarProductoPorCodigo(codigo);
+              if (prod) history.push(`/producto/${prod.id}`);
+              else setBusqueda(codigo); // queda en el buscador → "Sin resultados"
+            }}
+            onCancel={() => setShowScanner(false)}
+          />
+        )}
       </IonContent>
     </IonPage>
   );
