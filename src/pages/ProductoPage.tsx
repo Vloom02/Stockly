@@ -22,7 +22,16 @@ import { formatearMoneda } from '../context/StoreContext';
 
 interface RouteParams { id?: string; }
 
+// Ionic REUTILIZA la instancia de la página cuando /producto/A y /producto/nuevo
+// matchean el mismo Route: los useState iniciales del form quedaban con los datos
+// del producto anterior y "Crear producto" generaba un duplicado. El key por :id
+// fuerza remontar el form en cada cambio de ruta.
 const ProductoPage: React.FC = () => {
+  const { id } = useParams<RouteParams>();
+  return <ProductoForm key={id ?? 'nuevo'} />;
+};
+
+const ProductoForm: React.FC = () => {
   const { state, addProducto, updateProducto, deleteProducto, fefoSugeridos, buscarProductoPorCodigo } = useStore();
   const { comercio } = useAuth();
   const history = useHistory();
@@ -46,6 +55,7 @@ const ProductoPage: React.FC = () => {
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [showScanner, setShowScanner] = useState(false);
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
+  const [guardando, setGuardando] = useState(false);
 
   const lotes = productoId ? fefoSugeridos(productoId) : [];
 
@@ -64,10 +74,17 @@ const ProductoPage: React.FC = () => {
   }, [productoId]);
 
   const handleGuardar = async () => {
+    if (guardando) return; // anti doble-tap: evita crear dos veces
     if (!nombre.trim()) { setToast({ show: true, msg: 'El nombre es obligatorio' }); return; }
     if (codigoBarras.trim()) {
       const ex = buscarProductoPorCodigo(codigoBarras.trim());
       if (ex && ex.id !== productoId) { setToast({ show: true, msg: 'Ya existe un producto con ese código' }); return; }
+    }
+    // Al CREAR, bloquear nombre exacto repetido (otra fuente de duplicados).
+    if (!productoExistente) {
+      const nombreNorm = nombre.trim().toLowerCase();
+      const repetido = state.productos.find(p => p.activo && p.nombre.trim().toLowerCase() === nombreNorm);
+      if (repetido) { setToast({ show: true, msg: `Ya existe "${repetido.nombre}". Editalo desde Stock.` }); return; }
     }
     const datos = {
       nombre: nombre.trim(),
@@ -78,12 +95,17 @@ const ProductoPage: React.FC = () => {
       stockMinimo: Math.max(0, parseInt(stockMinimo, 10) || 0),
       diasAvisoDefault: parseInt(diasAviso, 10) || 7,
     };
-    if (productoExistente) {
-      await updateProducto({ ...productoExistente, ...datos });
-      history.goBack();
-    } else {
-      const nuevoId = await addProducto(datos);
-      history.replace(`/lote/nuevo?productoId=${nuevoId}`);
+    setGuardando(true);
+    try {
+      if (productoExistente) {
+        await updateProducto({ ...productoExistente, ...datos });
+        history.goBack();
+      } else {
+        const nuevoId = await addProducto(datos);
+        history.replace(`/lote/nuevo?productoId=${nuevoId}`);
+      }
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -193,9 +215,9 @@ const ProductoPage: React.FC = () => {
               </Field>
             )}
 
-            <Button variant="primary" size="lg" fullWidth onClick={handleGuardar}
+            <Button variant="primary" size="lg" fullWidth onClick={handleGuardar} disabled={guardando}
               icon={<PlusIcon width={18} height={18} />} style={{ marginTop: 8 }}>
-              {esNuevo ? 'Crear producto' : 'Guardar cambios'}
+              {guardando ? 'Guardando…' : esNuevo ? 'Crear producto' : 'Guardar cambios'}
             </Button>
           </Card>
 

@@ -17,7 +17,16 @@ import { Header } from './ProductoPage';
 
 interface RouteParams { id?: string; }
 
+// Mismo fix que ProductoPage: Ionic reutiliza la instancia de la página entre
+// /lote/A y /lote/nuevo (mismo Route) y el form arrastraba los datos del lote
+// anterior → lotes duplicados. El key por :id (+productoId del query) remonta.
 const LotePage: React.FC = () => {
+  const { id } = useParams<RouteParams>();
+  const location = useLocation();
+  return <LoteForm key={`${id ?? 'nuevo'}${location.search}`} />;
+};
+
+const LoteForm: React.FC = () => {
   const { state, addLote, updateLote, retirarLote } = useStore();
   const history = useHistory();
   const location = useLocation();
