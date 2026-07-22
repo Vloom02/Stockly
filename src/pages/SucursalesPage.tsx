@@ -21,15 +21,26 @@ const SucursalesPage: React.FC = () => {
   const [editNombre, setEditNombre] = useState('');
   const [editDir, setEditDir] = useState('');
   const [toast, setToast] = useState({ show: false, msg: '' });
+  const [creando, setCreando] = useState(false);
 
   // Solo las activas (el borrado es lógico).
   const sucursalesActivas = state.sucursales.filter(s => s.activa !== false);
 
   const crear = async () => {
-    if (!nuevoNombre.trim()) { setToast({ show: true, msg: 'Nombre obligatorio' }); return; }
-    await addSucursal({ nombre: nuevoNombre.trim(), direccion: nuevaDir.trim() || undefined });
-    setNuevoNombre(''); setNuevaDir('');
-    setToast({ show: true, msg: 'Sucursal creada' });
+    if (creando) return; // anti doble-tap
+    const nombre = nuevoNombre.trim();
+    if (!nombre) { setToast({ show: true, msg: 'Nombre obligatorio' }); return; }
+    if (sucursalesActivas.some(s => s.nombre.trim().toLowerCase() === nombre.toLowerCase())) {
+      setToast({ show: true, msg: 'Ya existe una sucursal con ese nombre' }); return;
+    }
+    setCreando(true);
+    try {
+      await addSucursal({ nombre, direccion: nuevaDir.trim() || undefined });
+      setNuevoNombre(''); setNuevaDir('');
+      setToast({ show: true, msg: 'Sucursal creada' });
+    } finally {
+      setCreando(false);
+    }
   };
 
   const editar = async (id: string) => {
@@ -147,8 +158,8 @@ const SucursalesPage: React.FC = () => {
             <Field label="Dirección">
               <Input value={nuevaDir} onChange={e => setNuevaDir(e.target.value)} placeholder="Opcional" />
             </Field>
-            <Button variant="primary" size="md" fullWidth onClick={crear}
-              icon={<PlusIcon width={18} height={18} />}>Crear sucursal</Button>
+            <Button variant="primary" size="md" fullWidth onClick={crear} disabled={creando}
+              icon={<PlusIcon width={18} height={18} />}>{creando ? 'Creando…' : 'Crear sucursal'}</Button>
           </Card>
         </div>
 

@@ -50,6 +50,7 @@ const LoteForm: React.FC = () => {
   const [cantRetirar, setCantRetirar] = useState('');
   const [notasRetiro, setNotasRetiro] = useState('');
   const [toast, setToast] = useState({ show: false, msg: '' });
+  const [procesando, setProcesando] = useState(false); // anti doble-tap (guardar y retirar)
 
   const producto = productoId ? state.productos.find(p => p.id === productoId) : undefined;
   const diasAvisoEf = diasAviso ? parseInt(diasAviso, 10) : (producto?.diasAvisoDefault || 7);
@@ -63,6 +64,7 @@ const LoteForm: React.FC = () => {
     if (!Number.isFinite(cant) || cant <= 0) { setToast({ show: true, msg: 'Cantidad inválida' }); return; }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaVencimiento)) { setToast({ show: true, msg: 'Fecha inválida' }); return; }
 
+    if (procesando) return;
     const datos = {
       productoId: productoId,
       sucursalId: state.sucursalActivaId,
@@ -71,19 +73,29 @@ const LoteForm: React.FC = () => {
       diasAviso: diasAvisoEf,
       numeroLote: numeroLote.trim() || undefined,
     };
-    if (loteExistente) await updateLote({ ...loteExistente, ...datos });
-    else await addLote(datos);
-    history.goBack();
+    setProcesando(true);
+    try {
+      if (loteExistente) await updateLote({ ...loteExistente, ...datos });
+      else await addLote(datos);
+      history.goBack();
+    } finally {
+      setProcesando(false);
+    }
   };
 
   const handleRetirar = async () => {
-    if (!loteExistente?.id) return;
+    if (!loteExistente?.id || procesando) return;
     const cant = parseInt(cantRetirar, 10);
     if (!Number.isFinite(cant) || cant <= 0 || cant > loteExistente.cantidad) {
       setToast({ show: true, msg: 'Cantidad inválida' }); return;
     }
-    await retirarLote(loteExistente.id, tipoRetiro, cant, notasRetiro.trim() || undefined);
-    history.goBack();
+    setProcesando(true);
+    try {
+      await retirarLote(loteExistente.id, tipoRetiro, cant, notasRetiro.trim() || undefined);
+      history.goBack();
+    } finally {
+      setProcesando(false);
+    }
   };
 
   return (
@@ -175,9 +187,9 @@ const LoteForm: React.FC = () => {
               </p>
             )}
 
-            <Button variant="primary" size="lg" fullWidth onClick={handleGuardar}
+            <Button variant="primary" size="lg" fullWidth onClick={handleGuardar} disabled={procesando}
               icon={<CheckIcon width={18} height={18} />} style={{ marginTop: 8 }}>
-              {esNuevo ? 'Crear lote' : 'Guardar cambios'}
+              {procesando ? 'Guardando…' : esNuevo ? 'Crear lote' : 'Guardar cambios'}
             </Button>
           </Card>
 
@@ -210,8 +222,8 @@ const LoteForm: React.FC = () => {
                     <Button variant="secondary" size="md" fullWidth
                       onClick={() => { setShowRetirar(false); setCantRetirar(''); setNotasRetiro(''); }}>
                       Cancelar</Button>
-                    <Button variant="primary" size="md" fullWidth onClick={handleRetirar}>
-                      Confirmar</Button>
+                    <Button variant="primary" size="md" fullWidth onClick={handleRetirar} disabled={procesando}>
+                      {procesando ? 'Retirando…' : 'Confirmar'}</Button>
                   </div>
                 </>
               )}
