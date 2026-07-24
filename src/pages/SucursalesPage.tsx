@@ -5,6 +5,7 @@ import {
   BuildingStorefrontIcon, PencilIcon, PlusIcon, TrashIcon,
 } from '@heroicons/react/24/outline';
 import { useStore } from '../context/StoreContext';
+import { useConfirm } from '../lib/useConfirm';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { Field, Input } from '../components/ui/Input';
@@ -14,6 +15,7 @@ import { Header } from './ProductoPage';
 const SucursalesPage: React.FC = () => {
   const { state, addSucursal, updateSucursal, setSucursalActiva } = useStore();
   const history = useHistory();
+  const confirmar = useConfirm();
 
   const [nuevoNombre, setNuevoNombre] = useState('');
   const [nuevaDir, setNuevaDir] = useState('');
@@ -62,7 +64,7 @@ const SucursalesPage: React.FC = () => {
   // base), solo deja de mostrarse. No se puede borrar la única sucursal.
   const borrar = async (s: typeof sucursalesActivas[number]) => {
     if (sucursalesActivas.length <= 1) { setToast({ show: true, msg: 'No podés borrar la única sucursal' }); return; }
-    if (!window.confirm(`¿Borrar la sucursal "${s.nombre}"? El stock que tenga cargado deja de verse (no se elimina).`)) return;
+    if (!(await confirmar(`¿Borrar la sucursal "${s.nombre}"? El stock que tenga cargado deja de verse (no se elimina).`, { peligro: true, okText: 'Borrar' }))) return;
     if (s.id === state.sucursalActivaId) {
       const otra = sucursalesActivas.find(x => x.id !== s.id);
       if (otra) setSucursalActiva(otra.id!);

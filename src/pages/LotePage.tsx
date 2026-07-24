@@ -51,6 +51,9 @@ const LoteForm: React.FC = () => {
   const [notasRetiro, setNotasRetiro] = useState('');
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [procesando, setProcesando] = useState(false); // anti doble-tap (guardar y retirar)
+  // Mostrar el override de días de aviso si el lote ya lo tenía seteado.
+  const [mostrarAvanzado, setMostrarAvanzado] = useState(!!loteExistente?.diasAviso &&
+    loteExistente.diasAviso !== state.productos.find(p => p.id === loteExistente.productoId)?.diasAvisoDefault);
 
   const producto = productoId ? state.productos.find(p => p.id === productoId) : undefined;
   const diasAvisoEf = diasAviso ? parseInt(diasAviso, 10) : (producto?.diasAvisoDefault || 7);
@@ -164,19 +167,27 @@ const LoteForm: React.FC = () => {
               </p>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Field label="Cantidad" required>
-                <Input value={cantidad} onChange={e => setCantidad(e.target.value)} inputMode="numeric" />
-              </Field>
-              <Field label="Días aviso">
-                <Input value={diasAviso} onChange={e => setDiasAviso(e.target.value)} inputMode="numeric"
-                  placeholder={producto?.diasAvisoDefault.toString()} />
-              </Field>
-            </div>
+            <Field label="Cantidad" required>
+              <Input value={cantidad} onChange={e => setCantidad(e.target.value)} inputMode="numeric" />
+            </Field>
 
             <Field label="Fecha de vencimiento" required>
               <Input type="date" value={fechaVencimiento} onChange={e => setFechaVencimiento(e.target.value)} />
             </Field>
+
+            {/* Override de días de aviso: avanzado, oculto por defecto (ya hay un
+                default por producto y un umbral global; mostrarlo siempre confundía). */}
+            {!mostrarAvanzado ? (
+              <button type="button" onClick={() => setMostrarAvanzado(true)}
+                style={{ background: 'none', border: 'none', color: 'var(--brand-600)', fontWeight: 600, cursor: 'pointer', padding: '2px 0 6px', fontFamily: 'inherit', fontSize: 12 }}>
+                + Ajustar días de aviso de este lote
+              </button>
+            ) : (
+              <Field label="Días de aviso (solo este lote)" hint={`Default del producto: ${producto?.diasAvisoDefault ?? 7}`}>
+                <Input value={diasAviso} onChange={e => setDiasAviso(e.target.value)} inputMode="numeric"
+                  placeholder={producto?.diasAvisoDefault.toString()} />
+              </Field>
+            )}
 
             <Field label="Número de lote">
               <Input value={numeroLote} onChange={e => setNumeroLote(e.target.value)} placeholder="Opcional" />

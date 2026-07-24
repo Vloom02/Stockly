@@ -11,6 +11,7 @@ import { useHistory } from 'react-router-dom';
 import { UserGroupIcon, UserPlusIcon, TrashIcon, ShareIcon } from '@heroicons/react/24/outline';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../lib/useConfirm';
 import Card from '../components/ui/Card';
 import EmptyState from '../components/ui/EmptyState';
 import { compartirTexto } from '../lib/compartir';
@@ -22,6 +23,7 @@ interface InvRow { id: string; codigo: string; expira_en: string; }
 const EmpleadosPage: React.FC = () => {
   const { comercio, miembro } = useAuth();
   const history = useHistory();
+  const confirmar = useConfirm();
   const [miembros, setMiembros] = useState<MiembroRow[]>([]);
   const [pendientes, setPendientes] = useState<InvRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,13 +79,13 @@ const EmpleadosPage: React.FC = () => {
   };
 
   const anularInvitacion = async (id: string) => {
-    if (!window.confirm('¿Anular este código de invitación?')) return;
+    if (!(await confirmar('¿Anular este código de invitación?', { peligro: true, okText: 'Anular' }))) return;
     const { error } = await supabase.from('invitaciones').delete().eq('id', id);
     if (!error) { setPendientes(p => p.filter(x => x.id !== id)); }
   };
 
   const quitar = async (m: MiembroRow) => {
-    if (!window.confirm(`¿Quitar a "${m.nombre ?? 'este empleado'}" del comercio? Va a perder el acceso.`)) return;
+    if (!(await confirmar(`¿Quitar a "${m.nombre ?? 'este empleado'}" del comercio? Va a perder el acceso.`, { peligro: true, okText: 'Quitar' }))) return;
     const { error } = await supabase.rpc('quitar_miembro', { p: { miembro_id: m.id } });
     if (error) { setToast({ show: true, msg: 'No se pudo quitar: ' + error.message }); return; }
     setMiembros(x => x.filter(y => y.id !== m.id));
