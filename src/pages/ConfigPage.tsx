@@ -4,7 +4,7 @@ import { IonContent, IonPage, IonToast } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import {
   MoonIcon, SunIcon, BellAlertIcon, TagIcon,
-  BuildingStorefrontIcon, ArrowRightOnRectangleIcon, PrinterIcon, ClipboardDocumentCheckIcon,
+  BuildingStorefrontIcon, ArrowRightOnRectangleIcon, PrinterIcon, ClipboardDocumentCheckIcon, UserGroupIcon,
   InformationCircleIcon, ChevronRightIcon, UserCircleIcon,
   ArrowDownTrayIcon, ArrowUpTrayIcon, SwatchIcon, CloudIcon, BanknotesIcon,
 } from '@heroicons/react/24/outline';
@@ -168,12 +168,32 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
     <IonPage>
       <IonContent style={{ '--background': 'var(--bg)' } as any}>
         <div className="animate-fade-in" style={{
-          padding: '20px 16px calc(96px + env(safe-area-inset-bottom)) 16px',
+          padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px',
           maxWidth: 640, margin: '0 auto',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
             <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em' }}>Ajustes</h1>
             <Logo size={28} />
+          </div>
+
+          {/* Herramientas — acceso directo a las pantallas más usadas */}
+          <SectionTitle icon={<SwatchIcon width={16} height={16} />}>Herramientas</SectionTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 18 }}>
+            {[
+              { emoji: '💲', label: 'Precios',    path: '/precios' },
+              { emoji: '📋', label: 'Inventario', path: '/inventario' },
+              { emoji: '🏷️', label: 'Etiquetas',  path: '/etiquetas' },
+              { emoji: '📊', label: 'Reportes',   path: '/reportes' },
+              { emoji: '🚚', label: 'Pedidos',    path: '/pedido' },
+              { emoji: '👥', label: 'Empleados',  path: '/empleados' },
+              { emoji: '🏪', label: 'Sucursales', path: '/sucursales' },
+            ].map(t => (
+              <button key={t.path} type="button" onClick={() => history.push(t.path)} className="pressable"
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '14px 6px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <span style={{ fontSize: 26, lineHeight: 1 }}>{t.emoji}</span>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)' }}>{t.label}</span>
+              </button>
+            ))}
           </div>
 
           {/* Cuenta */}
@@ -455,26 +475,8 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             />
           </Card>
 
-          {/* Sucursales + Etiquetas */}
-          <Card padding="none" style={{ marginBottom: 12, overflow: 'hidden' }}>
-            <button type="button" onClick={() => history.push('/sucursales')} style={linkRow}>
-              <span style={{ color: 'var(--brand-600)' }}><BuildingStorefrontIcon width={18} height={18} /></span>
-              <span style={{ flex: 1, textAlign: 'left' }}>Gestionar sucursales</span>
-              <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
-            </button>
-            <div style={{ height: 1, background: 'var(--border)' }} />
-            <button type="button" onClick={() => history.push('/inventario')} style={linkRow}>
-              <span style={{ color: 'var(--brand-600)' }}><ClipboardDocumentCheckIcon width={18} height={18} /></span>
-              <span style={{ flex: 1, textAlign: 'left' }}>Inventario físico (conteo)</span>
-              <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
-            </button>
-            <div style={{ height: 1, background: 'var(--border)' }} />
-            <button type="button" onClick={() => history.push('/etiquetas')} style={linkRow}>
-              <span style={{ color: 'var(--brand-600)' }}><PrinterIcon width={18} height={18} /></span>
-              <span style={{ flex: 1, textAlign: 'left' }}>Etiquetas de precios</span>
-              <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
-            </button>
-          </Card>
+          {/* (Sucursales, Empleados, Inventario y Etiquetas ahora están en la
+              grilla "Herramientas" de arriba.) */}
 
           {/* Cerrar sesión */}
           <Button variant="ghost" size="md" fullWidth onClick={salir}

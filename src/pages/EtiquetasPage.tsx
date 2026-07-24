@@ -38,7 +38,7 @@ const EtiquetasPage: React.FC = () => {
           }
         `}</style>
 
-        <div style={{ padding: '20px 16px calc(96px + env(safe-area-inset-bottom)) 16px', maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px', maxWidth: 760, margin: '0 auto' }}>
           <div className="no-print">
             <Header title="Etiquetas" onBack={() => history.goBack()} />
 

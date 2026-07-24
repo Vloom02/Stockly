@@ -234,7 +234,7 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
       {/* Footer info */}
       {scannerSupported && !error && (
         <div style={{
-          padding: '16px 20px calc(16px + env(safe-area-inset-bottom)) 20px',
+          padding: '16px 20px calc(16px + var(--sab,env(safe-area-inset-bottom))) 20px',
           background: 'rgba(0,0,0,0.7)',
           color: '#fff',
           textAlign: 'center',

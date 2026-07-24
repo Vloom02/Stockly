@@ -232,6 +232,7 @@ export type Database = {
           id: string
           nombre: string
           precio: number
+          proveedor: string | null
         }
         Insert: {
           activo?: boolean
@@ -243,6 +244,7 @@ export type Database = {
           id?: string
           nombre: string
           precio?: number
+          proveedor?: string | null
         }
         Update: {
           activo?: boolean
@@ -254,6 +256,7 @@ export type Database = {
           id?: string
           nombre?: string
           precio?: number
+          proveedor?: string | null
         }
         Relationships: [
           {

@@ -7,7 +7,7 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import type { LoteConProducto } from '../types';
-import { ordenNivel } from './vencimientos';
+import { ordenNivel, diasRestantes, nivelPorDias, UmbralesVencimiento } from './vencimientos';
 import { almacenGet, almacenSet } from './almacen';
 
 const NOTIF_ID = 4090; // id fijo: siempre pisamos el aviso anterior
@@ -47,25 +47,68 @@ function proximaHora(h: number): Date {
   return at;
 }
 
+// Umbrales configurables (mismos defaults que StoreContext).
+function umbrales(): UmbralesVencimiento {
+  const n = (k: string, def: number) => parseInt(getSetting(PREFIX + k, String(def)), 10) || def;
+  return { critico: n('umbral-critico', 7), urgente: n('umbral-urgente', 30), aviso: n('umbral-aviso', 60) };
+}
+
 /**
- * Reprograma el aviso de vencimiento a partir de los lotes enriquecidos.
+ * Reprograma los avisos de vencimiento para los PRÓXIMOS 7 DÍAS a partir de los
+ * lotes enriquecidos. Cada día se recalcula contra su fecha objetivo, así el
+ * aviso del día 5 es correcto aunque el usuario no abra la app en el medio.
+ * Al abrir la app, todo se reprograma con datos frescos.
  * No-op fuera de Android. Pide permiso solo si los avisos están activos.
  */
 export async function sincronizarNotificaciones(lotes: LoteConProducto[]): Promise<void> {
   if (Capacitor.getPlatform() !== 'android') return;
 
+  const DIAS = 7;
   try {
-    // Siempre limpiamos el aviso anterior antes de decidir.
-    await LocalNotifications.cancel({ notifications: [{ id: NOTIF_ID }] });
+    // Siempre limpiamos los avisos anteriores antes de decidir.
+    await LocalNotifications.cancel({
+      notifications: Array.from({ length: DIAS }, (_, d) => ({ id: NOTIF_ID + d })),
+    });
 
     if (!notificacionesActivas()) return;
 
-    // Solo lo accionable: vencidos + críticos + urgentes.
-    const relevantes = lotes
-      .filter(l => l.nivelAlerta === 'vencido' || l.nivelAlerta === 'critico' || l.nivelAlerta === 'urgente')
-      .sort((a, b) => ordenNivel(a.nivelAlerta) - ordenNivel(b.nivelAlerta) || a.diasRestantes - b.diasRestantes);
+    const u = umbrales();
+    const base = proximaHora(horaNotificacion());
+    const aProgramar = [];
 
-    if (relevantes.length === 0) return;
+    for (let d = 0; d < DIAS; d++) {
+      const objetivo = new Date(base);
+      objetivo.setDate(objetivo.getDate() + d);
+
+      // Recalcular qué estará vencido/crítico/urgente EN esa fecha.
+      const relevantes = lotes
+        .map(l => ({ lote: l, dias: diasRestantes(l.fechaVencimiento, objetivo) }))
+        .map(x => ({ ...x, nivel: nivelPorDias(x.dias, u, x.lote.diasAviso) }))
+        .filter(x => x.nivel === 'vencido' || x.nivel === 'critico' || x.nivel === 'urgente')
+        .sort((a, b) => ordenNivel(a.nivel) - ordenNivel(b.nivel) || a.dias - b.dias);
+
+      if (relevantes.length === 0) continue;
+
+      const vencidos = relevantes.filter(x => x.nivel === 'vencido').length;
+      const top = relevantes.slice(0, 3).map(x => `• ${x.lote.productoNombre} — ${textoVence(x.dias)}`);
+      const resto = relevantes.length - Math.min(3, relevantes.length);
+      if (resto > 0) top.push(`…y ${resto} más`);
+
+      aProgramar.push({
+        id: NOTIF_ID + d,
+        title: vencidos > 0
+          ? `⚠️ ${vencidos} producto${vencidos !== 1 ? 's' : ''} vencido${vencidos !== 1 ? 's' : ''}`
+          : `${relevantes.length} producto${relevantes.length !== 1 ? 's' : ''} por vencer`,
+        body: top.join('\n'),
+        largeBody: top.join('\n'),
+        summaryText: 'Vencimientos',
+        schedule: { at: objetivo, allowWhileIdle: true },
+        smallIcon: 'ic_stat_icon',
+        iconColor: '#e7bd4d',
+      });
+    }
+
+    if (aProgramar.length === 0) return;
 
     // Permiso (solo lo pedimos si hay algo para avisar).
     let perm = await LocalNotifications.checkPermissions();
@@ -74,29 +117,9 @@ export async function sincronizarNotificaciones(lotes: LoteConProducto[]): Promi
       if (perm.display !== 'granted') return;
     }
 
-    const vencidos = relevantes.filter(l => l.nivelAlerta === 'vencido').length;
-    const top = relevantes.slice(0, 3).map(l => `• ${l.productoNombre} — ${textoVence(l.diasRestantes)}`);
-    const resto = relevantes.length - top.length;
-    if (resto > 0) top.push(`…y ${resto} más`);
-
-    const title = vencidos > 0
-      ? `⚠️ ${vencidos} producto${vencidos !== 1 ? 's' : ''} vencido${vencidos !== 1 ? 's' : ''}`
-      : `${relevantes.length} producto${relevantes.length !== 1 ? 's' : ''} por vencer`;
-
-    await LocalNotifications.schedule({
-      notifications: [{
-        id: NOTIF_ID,
-        title,
-        body: top.join('\n'),
-        largeBody: top.join('\n'),
-        summaryText: 'Vencimientos',
-        schedule: { at: proximaHora(horaNotificacion()), allowWhileIdle: true },
-        smallIcon: 'ic_stat_icon',
-        iconColor: '#e7bd4d',
-      }],
-    });
+    await LocalNotifications.schedule({ notifications: aProgramar });
   } catch (e) {
     // En web o si el plugin no está, no rompemos la app.
-    console.warn('No se pudo programar la notificación de vencimiento', e);
+    console.warn('No se pudo programar las notificaciones de vencimiento', e);
   }
 }

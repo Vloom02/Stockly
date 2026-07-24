@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { IonContent, IonPage, IonToast } from '@ionic/react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -15,11 +15,25 @@ import { Field, Input, Select } from '../components/ui/Input';
 import { NivelBadge } from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
 import ScannerModal from '../components/ScannerModal';
+import { useAuth } from '../context/AuthContext';
+import { elegirYSubirFoto } from '../lib/fotos';
+import { supabase } from '../lib/supabase';
+import { formatearMoneda } from '../context/StoreContext';
 
 interface RouteParams { id?: string; }
 
+// Ionic REUTILIZA la instancia de la página cuando /producto/A y /producto/nuevo
+// matchean el mismo Route: los useState iniciales del form quedaban con los datos
+// del producto anterior y "Crear producto" generaba un duplicado. El key por :id
+// fuerza remontar el form en cada cambio de ruta.
 const ProductoPage: React.FC = () => {
+  const { id } = useParams<RouteParams>();
+  return <ProductoForm key={id ?? 'nuevo'} />;
+};
+
+const ProductoForm: React.FC = () => {
   const { state, addProducto, updateProducto, deleteProducto, fefoSugeridos, buscarProductoPorCodigo } = useStore();
+  const { comercio } = useAuth();
   const history = useHistory();
   const { id } = useParams<RouteParams>();
   const esNuevo = id === 'nuevo' || !id;
@@ -31,35 +45,84 @@ const ProductoPage: React.FC = () => {
   const [codigoBarras, setCodigoBarras] = useState(productoExistente?.codigoBarras || '');
   const [categoria, setCategoria] = useState(productoExistente?.categoria || '');
   const [precio, setPrecio] = useState(productoExistente?.precio.toString() || '0');
+  const [proveedor, setProveedor] = useState(productoExistente?.proveedor || '');
+  const [stockMinimo, setStockMinimo] = useState((productoExistente?.stockMinimo ?? 0).toString());
+  const [fotoUrl, setFotoUrl] = useState(productoExistente?.fotoUrl);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [diasAviso, setDiasAviso] = useState(
     productoExistente?.diasAvisoDefault.toString() || DIAS_AVISO_DEFAULT().toString()
   );
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [showScanner, setShowScanner] = useState(false);
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
+  const [guardando, setGuardando] = useState(false);
 
   const lotes = productoId ? fefoSugeridos(productoId) : [];
 
+  // Historial de precios (lo registra un trigger en la DB; solo lectura, online).
+  const [historialPrecios, setHistorialPrecios] = useState<
+    { precio_anterior: number; precio_nuevo: number; cambiado_en: string }[]
+  >([]);
+  useEffect(() => {
+    if (!productoId || !navigator.onLine) return;
+    supabase.from('precios_historial')
+      .select('precio_anterior, precio_nuevo, cambiado_en')
+      .eq('producto_id', productoId)
+      .order('cambiado_en', { ascending: false })
+      .limit(8)
+      .then(({ data }) => setHistorialPrecios(data ?? []));
+  }, [productoId]);
+
   const handleGuardar = async () => {
+    if (guardando) return; // anti doble-tap: evita crear dos veces
     if (!nombre.trim()) { setToast({ show: true, msg: 'El nombre es obligatorio' }); return; }
     if (codigoBarras.trim()) {
       const ex = buscarProductoPorCodigo(codigoBarras.trim());
       if (ex && ex.id !== productoId) { setToast({ show: true, msg: 'Ya existe un producto con ese código' }); return; }
+    }
+    // Al CREAR, bloquear nombre exacto repetido (otra fuente de duplicados).
+    if (!productoExistente) {
+      const nombreNorm = nombre.trim().toLowerCase();
+      const repetido = state.productos.find(p => p.activo && p.nombre.trim().toLowerCase() === nombreNorm);
+      if (repetido) { setToast({ show: true, msg: `Ya existe "${repetido.nombre}". Editalo desde Stock.` }); return; }
     }
     const datos = {
       nombre: nombre.trim(),
       codigoBarras: codigoBarras.trim() || undefined,
       categoria: categoria.trim() || 'Sin categoría',
       precio: parseFloat(precio) || 0,
+      proveedor: proveedor.trim() || undefined,
+      stockMinimo: Math.max(0, parseInt(stockMinimo, 10) || 0),
       diasAvisoDefault: parseInt(diasAviso, 10) || 7,
     };
-    if (productoExistente) {
-      await updateProducto({ ...productoExistente, ...datos });
-      history.goBack();
-    } else {
-      const nuevoId = await addProducto(datos);
-      history.replace(`/lote/nuevo?productoId=${nuevoId}`);
+    setGuardando(true);
+    try {
+      if (productoExistente) {
+        await updateProducto({ ...productoExistente, ...datos });
+        history.goBack();
+      } else {
+        const nuevoId = await addProducto(datos);
+        history.replace(`/lote/nuevo?productoId=${nuevoId}`);
+      }
+    } finally {
+      setGuardando(false);
     }
+  };
+
+  const handleFoto = async () => {
+    if (!productoExistente?.id || !comercio?.id) return;
+    setSubiendoFoto(true);
+    try {
+      const url = await elegirYSubirFoto(comercio.id, productoExistente.id);
+      if (url) {
+        setFotoUrl(url);
+        await updateProducto({ ...productoExistente, fotoUrl: url });
+        setToast({ show: true, msg: 'Foto actualizada' });
+      }
+    } catch (e) {
+      setToast({ show: true, msg: e instanceof Error ? e.message : 'No se pudo subir la foto' });
+    }
+    setSubiendoFoto(false);
   };
 
   const handleEliminar = async () => {
@@ -79,7 +142,7 @@ const ProductoPage: React.FC = () => {
     <IonPage>
       <IonContent style={{ '--background': 'var(--bg)' } as any}>
         <div className="animate-fade-in" style={{
-          padding: '20px 16px calc(96px + env(safe-area-inset-bottom)) 16px',
+          padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px',
           maxWidth: 640, margin: '0 auto',
         }}>
           <Header title={esNuevo ? 'Nuevo producto' : 'Editar producto'} onBack={() => history.goBack()} />
@@ -111,6 +174,10 @@ const ProductoPage: React.FC = () => {
               </Select>
             </Field>
 
+            <Field label="Proveedor" hint="Quién te lo provee">
+              <Input value={proveedor} onChange={e => setProveedor(e.target.value)} placeholder="Opcional" />
+            </Field>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <Field label="Precio unitario ($)">
                 <Input value={precio} onChange={e => setPrecio(e.target.value)} inputMode="decimal" />
@@ -120,9 +187,37 @@ const ProductoPage: React.FC = () => {
               </Field>
             </div>
 
-            <Button variant="primary" size="lg" fullWidth onClick={handleGuardar}
+            <Field label="Stock mínimo" hint="Avisa para reponer si el total queda por debajo (0 = sin aviso)">
+              <Input value={stockMinimo} onChange={e => setStockMinimo(e.target.value)} inputMode="numeric" />
+            </Field>
+
+            {productoExistente && (
+              <Field label="Foto" hint="Se ve como miniatura en las listas">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {fotoUrl ? (
+                    <img src={fotoUrl} alt={nombre} style={{
+                      width: 56, height: 56, objectFit: 'cover',
+                      borderRadius: 'var(--radius)', border: '1px solid var(--border)',
+                    }} />
+                  ) : (
+                    <div style={{
+                      width: 56, height: 56, borderRadius: 'var(--radius)',
+                      border: '1px dashed var(--border)', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)',
+                    }}>
+                      <CubeIcon width={22} height={22} />
+                    </div>
+                  )}
+                  <Button variant="secondary" size="md" onClick={handleFoto} disabled={subiendoFoto}>
+                    {subiendoFoto ? 'Subiendo…' : fotoUrl ? 'Cambiar foto' : 'Agregar foto'}
+                  </Button>
+                </div>
+              </Field>
+            )}
+
+            <Button variant="primary" size="lg" fullWidth onClick={handleGuardar} disabled={guardando}
               icon={<PlusIcon width={18} height={18} />} style={{ marginTop: 8 }}>
-              {esNuevo ? 'Crear producto' : 'Guardar cambios'}
+              {guardando ? 'Guardando…' : esNuevo ? 'Crear producto' : 'Guardar cambios'}
             </Button>
           </Card>
 
@@ -172,6 +267,41 @@ const ProductoPage: React.FC = () => {
                     );
                   })}
                 </div>
+              )}
+
+              {historialPrecios.length > 0 && (
+                <>
+                  <h2 style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em', margin: '20px 0 4px' }}>
+                    Historial de precios
+                  </h2>
+                  <Card padding="sm" style={{ marginBottom: 16 }}>
+                    {historialPrecios.map((h, i) => {
+                      const pct = h.precio_anterior > 0
+                        ? Math.round(((h.precio_nuevo - h.precio_anterior) / h.precio_anterior) * 100) : 0;
+                      const subio = h.precio_nuevo > h.precio_anterior;
+                      return (
+                        <div key={i} style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          gap: 8, fontSize: 13, padding: '6px 4px',
+                          borderBottom: i < historialPrecios.length - 1 ? '1px dashed var(--border)' : 'none',
+                        }}>
+                          <span style={{ color: 'var(--text-2)' }}>
+                            {new Date(h.cambiado_en).toLocaleDateString('es-AR')}
+                          </span>
+                          <span>
+                            {formatearMoneda(Number(h.precio_anterior))} → <b>{formatearMoneda(Number(h.precio_nuevo))}</b>
+                          </span>
+                          <span style={{
+                            fontWeight: 700, fontSize: 12,
+                            color: subio ? 'var(--danger)' : 'var(--level-ok-fg)',
+                          }}>
+                            {subio ? '+' : ''}{pct}%
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </Card>
+                </>
               )}
 
               <Button variant="ghost" size="md" fullWidth onClick={handleEliminar}

@@ -17,20 +17,23 @@ import { NivelBadge } from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
 import Button from '../components/ui/Button';
 import Logo from '../components/ui/Logo';
-import DonutChart from '../components/ui/DonutChart';
 import { SkeletonDashboard } from '../components/ui/Skeleton';
 import SyncBanner from '../components/SyncBanner';
 
-// Paleta cálida editorial para la dona de categorías
-const PALETA = ['#d8a43e', '#4fa89e', '#d07a4a', '#9aa84f', '#c46a8e', '#5b8fb0', '#cf5d4e', '#8a7bbd'];
-
 const DashboardPage: React.FC = () => {
-  const { state, resumen, lotesEnriquecidos, distribucionPorCategoria } = useStore();
+  const { state, resumen, lotesEnriquecidos, productosConLotes } = useStore();
   const history = useHistory();
 
   const res = useMemo(() => resumen(), [resumen]);
   const lotes = useMemo(() => lotesEnriquecidos(), [lotesEnriquecidos]);
-  const distribucion = useMemo(() => distribucionPorCategoria(), [distribucionPorCategoria]);
+
+  // Productos por debajo de su stock mínimo (alerta de reposición).
+  const paraReponer = useMemo(() =>
+    productosConLotes()
+      .filter(p => (p.producto.stockMinimo ?? 0) > 0 && p.cantidadTotal < (p.producto.stockMinimo ?? 0))
+      .sort((a, b) => a.cantidadTotal - b.cantidadTotal)
+      .slice(0, 5),
+  [productosConLotes]);
 
   const enRiesgo = useMemo(() => {
     return lotes
@@ -42,11 +45,6 @@ const DashboardPage: React.FC = () => {
       })
       .slice(0, 6);
   }, [lotes]);
-
-  const segmentos = useMemo(() =>
-    distribucion.slice(0, 8).map((d, i) => ({
-      label: d.categoria, valor: d.valor, color: PALETA[i % PALETA.length],
-    })), [distribucion]);
 
   const sucursalActiva = state.sucursales.find(s => s.id === state.sucursalActivaId);
   const hoy = new Date().toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' });
@@ -65,7 +63,7 @@ const DashboardPage: React.FC = () => {
     <IonPage>
       <IonContent style={{ '--background': 'var(--bg)' } as any}>
         <div className="animate-fade-in" style={{
-          padding: '20px 16px calc(96px + env(safe-area-inset-bottom)) 16px',
+          padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px',
           maxWidth: 760, margin: '0 auto',
         }}>
 
@@ -93,11 +91,22 @@ const DashboardPage: React.FC = () => {
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '8px 0 0' }}>
               <Logo size={34} showText />
-              <span style={{
-                transform: 'rotate(-8deg)', border: '2px solid var(--level-ok-fg)', color: 'var(--level-ok-fg)',
-                borderRadius: 5, padding: '3px 8px', textAlign: 'center', opacity: 0.9, lineHeight: 1,
-                fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, letterSpacing: '0.03em',
-              }}>AL DÍA</span>
+              {(() => {
+                // Sello dinámico: refleja el estado real del stock (antes decía
+                // siempre "AL DÍA" aunque hubiera vencidos → engañaba).
+                const nivelSello = res.lotesVencidos > 0
+                  ? { txt: `${res.lotesVencidos} VENCIDO${res.lotesVencidos > 1 ? 'S' : ''}`, color: 'var(--level-vencido-fg)' }
+                  : (res.lotesCriticos + res.lotesUrgentes) > 0
+                    ? { txt: 'REVISAR', color: 'var(--level-urgente-fg)' }
+                    : { txt: 'AL DÍA', color: 'var(--level-ok-fg)' };
+                return (
+                  <span style={{
+                    transform: 'rotate(-8deg)', border: `2px solid ${nivelSello.color}`, color: nivelSello.color,
+                    borderRadius: 5, padding: '3px 8px', textAlign: 'center', opacity: 0.9, lineHeight: 1,
+                    fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, letterSpacing: '0.03em',
+                  }}>{nivelSello.txt}</span>
+                );
+              })()}
             </div>
 
             <div style={{
@@ -211,31 +220,34 @@ const DashboardPage: React.FC = () => {
             />
           )}
 
-          {/* ─── Valor por categoría (dona) ───────────────────────────── */}
-          {distribucion.length > 0 && (
+          {/* ─── Para reponer (stock mínimo) ──────────────────────────── */}
+          {paraReponer.length > 0 && (
             <div style={{ marginTop: 24 }}>
-              <SecHeader title="Valor por categoría" />
-              <Card padding="md">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-                  <DonutChart segmentos={segmentos} size={132} grosor={20}
-                    centroValor={formatearMoneda(res.valorTotal)} centroLabel="Total" />
-                  <div style={{ flex: 1, minWidth: 150, display: 'flex', flexDirection: 'column', gap: 9 }}>
-                    {distribucion.slice(0, 6).map((d, i) => {
-                      const pct = res.valorTotal > 0 ? Math.round((d.valor / res.valorTotal) * 100) : 0;
-                      return (
-                        <div key={d.categoria} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-2)' }}>
-                          <span style={{ width: 11, height: 11, borderRadius: 3, background: PALETA[i % PALETA.length], flexShrink: 0 }} />
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.categoria}</span>
-                          <b style={{ marginLeft: 'auto', color: 'var(--text)', fontFamily: 'var(--font-display)', fontWeight: 700 }}>{formatearMoneda(d.valor)}</b>
-                          <i style={{ fontStyle: 'normal', color: 'var(--text-3)', fontSize: 11, minWidth: 32, textAlign: 'right' }}>{pct}%</i>
+              <SecHeader title="Para reponer" tag={`${paraReponer.length}`} onAction={() => history.push('/pedido')} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {paraReponer.map(p => (
+                  <Card key={p.producto.id} padding="sm" onClick={() => history.push(`/producto/${p.producto.id}`)}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ fontSize: 18, flexShrink: 0 }}>📦</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {p.producto.nombre}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </Card>
+                        <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
+                          Quedan <b style={{ color: 'var(--warning)' }}>{p.cantidadTotal}</b> · mínimo {p.producto.stockMinimo}
+                          {p.producto.proveedor ? ` · ${p.producto.proveedor}` : ''}
+                        </div>
+                      </div>
+                      <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)', flexShrink: 0 }} />
+                    </div>
+                  </Card>
+                ))}
+              </div>
             </div>
           )}
+
+          {/* El desglose por categoría (dona) vive en Reportes: el Dashboard
+              queda enfocado en lo accionable (vencimientos + reposición). */}
         </div>
       </IonContent>
     </IonPage>

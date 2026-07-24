@@ -14,6 +14,9 @@ const ReportesPage    = lazy(() => import('./pages/ReportesPage'));
 const SucursalesPage  = lazy(() => import('./pages/SucursalesPage'));
 const EtiquetasPage   = lazy(() => import('./pages/EtiquetasPage'));
 const InventarioPage  = lazy(() => import('./pages/InventarioPage'));
+const PreciosPage     = lazy(() => import('./pages/PreciosPage'));
+const PedidoPage      = lazy(() => import('./pages/PedidoPage'));
+const EmpleadosPage   = lazy(() => import('./pages/EmpleadosPage'));
 const ConfigPage      = lazy(() => import('./pages/ConfigPage'));
 const AuthPage        = lazy(() => import('./pages/AuthPage'));
 import TabBar from './components/TabBar';
@@ -25,7 +28,7 @@ import { registrarPush } from './lib/push';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { StoreProvider, getSetting, setSetting } from './context/StoreContext';
-import { supabaseConfigurado } from './lib/supabase';
+import { supabase, supabaseConfigurado } from './lib/supabase';
 
 import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
@@ -37,6 +40,11 @@ import '@ionic/react/css/text-alignment.css';
 import '@ionic/react/css/text-transformation.css';
 import '@ionic/react/css/flex-utils.css';
 import '@ionic/react/css/display.css';
+// Fuentes self-hosted (offline-first: no dependen de Google Fonts ni suman
+// round-trip de red al arranque). Variable = un archivo cubre todos los pesos.
+import '@fontsource-variable/bitter';
+import '@fontsource-variable/bitter/wght-italic.css';
+import '@fontsource-variable/hanken-grotesk';
 import './theme/variables.css';
 
 setupIonicReact();
@@ -46,9 +54,24 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
   const [showOnboarding, setShowOnboarding] = useState(false);
   const { comercio } = useAuth();
 
+  // Tutorial solo para comercios VACÍOS: si la cuenta ya tiene productos
+  // (usuario existente en un dispositivo nuevo), va directo al stock.
   useEffect(() => {
-    if (getSetting('onboarding-visto', '') !== 'si') setShowOnboarding(true);
-  }, []);
+    if (getSetting('onboarding-visto', '') === 'si') return;
+    (async () => {
+      try {
+        if (navigator.onLine && comercio?.id) {
+          const { data } = await supabase.from('productos')
+            .select('id').eq('comercio_id', comercio.id).limit(1);
+          if ((data?.length ?? 0) > 0) {
+            setSetting('onboarding-visto', 'si');
+            return;
+          }
+        }
+      } catch { /* sin red: mostramos el tutorial igual */ }
+      setShowOnboarding(true);
+    })();
+  }, [comercio?.id]);
 
   // Registrar push (FCM) una vez que hay comercio. No-op en web.
   useEffect(() => {
@@ -82,6 +105,9 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
           <Route path="/sucursales" exact><Suspense fallback={<Cargando />}><SucursalesPage /></Suspense></Route>
           <Route path="/etiquetas" exact><Suspense fallback={<Cargando />}><EtiquetasPage /></Suspense></Route>
           <Route path="/inventario" exact><Suspense fallback={<Cargando />}><InventarioPage /></Suspense></Route>
+          <Route path="/precios" exact><Suspense fallback={<Cargando />}><PreciosPage /></Suspense></Route>
+          <Route path="/pedido" exact><Suspense fallback={<Cargando />}><PedidoPage /></Suspense></Route>
+          <Route path="/empleados" exact><Suspense fallback={<Cargando />}><EmpleadosPage /></Suspense></Route>
           <Route path="/config" exact><Suspense fallback={<Cargando />}><ConfigPage onThemeToggle={onThemeToggle} isDark={isDark} /></Suspense></Route>
           <Route path="/" exact><Redirect to="/dashboard" /></Route>
         </IonRouterOutlet>
@@ -155,13 +181,13 @@ const App: React.FC = () => {
     const saved = getSetting('theme', '');
     const dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
     setDark(dark);
-    document.body.classList.toggle('dark', dark);
+    document.documentElement.classList.toggle('dark', dark);
   }, []);
 
   const onThemeToggle = () => {
     const next = !isDark;
     setDark(next);
-    document.body.classList.toggle('dark', next);
+    document.documentElement.classList.toggle('dark', next);
     setSetting('theme', next ? 'dark' : 'light');
   };
 

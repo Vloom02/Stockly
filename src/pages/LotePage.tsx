@@ -17,7 +17,16 @@ import { Header } from './ProductoPage';
 
 interface RouteParams { id?: string; }
 
+// Mismo fix que ProductoPage: Ionic reutiliza la instancia de la página entre
+// /lote/A y /lote/nuevo (mismo Route) y el form arrastraba los datos del lote
+// anterior → lotes duplicados. El key por :id (+productoId del query) remonta.
 const LotePage: React.FC = () => {
+  const { id } = useParams<RouteParams>();
+  const location = useLocation();
+  return <LoteForm key={`${id ?? 'nuevo'}${location.search}`} />;
+};
+
+const LoteForm: React.FC = () => {
   const { state, addLote, updateLote, retirarLote } = useStore();
   const history = useHistory();
   const location = useLocation();
@@ -34,7 +43,6 @@ const LotePage: React.FC = () => {
   const [cantidad, setCantidad] = useState(loteExistente?.cantidad.toString() || '1');
   const [fechaVencimiento, setFechaVencimiento] = useState(loteExistente?.fechaVencimiento || fechaTresMeses());
   const [diasAviso, setDiasAviso] = useState(loteExistente?.diasAviso.toString() || '');
-  const [proveedor, setProveedor] = useState(loteExistente?.proveedor || '');
   const [numeroLote, setNumeroLote] = useState(loteExistente?.numeroLote || '');
 
   const [showRetirar, setShowRetirar] = useState(false);
@@ -42,6 +50,10 @@ const LotePage: React.FC = () => {
   const [cantRetirar, setCantRetirar] = useState('');
   const [notasRetiro, setNotasRetiro] = useState('');
   const [toast, setToast] = useState({ show: false, msg: '' });
+  const [procesando, setProcesando] = useState(false); // anti doble-tap (guardar y retirar)
+  // Mostrar el override de días de aviso si el lote ya lo tenía seteado.
+  const [mostrarAvanzado, setMostrarAvanzado] = useState(!!loteExistente?.diasAviso &&
+    loteExistente.diasAviso !== state.productos.find(p => p.id === loteExistente.productoId)?.diasAvisoDefault);
 
   const producto = productoId ? state.productos.find(p => p.id === productoId) : undefined;
   const diasAvisoEf = diasAviso ? parseInt(diasAviso, 10) : (producto?.diasAvisoDefault || 7);
@@ -55,35 +67,45 @@ const LotePage: React.FC = () => {
     if (!Number.isFinite(cant) || cant <= 0) { setToast({ show: true, msg: 'Cantidad inválida' }); return; }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaVencimiento)) { setToast({ show: true, msg: 'Fecha inválida' }); return; }
 
+    if (procesando) return;
     const datos = {
       productoId: productoId,
       sucursalId: state.sucursalActivaId,
       cantidad: cant,
       fechaVencimiento,
       diasAviso: diasAvisoEf,
-      proveedor: proveedor.trim() || undefined,
       numeroLote: numeroLote.trim() || undefined,
     };
-    if (loteExistente) await updateLote({ ...loteExistente, ...datos });
-    else await addLote(datos);
-    history.goBack();
+    setProcesando(true);
+    try {
+      if (loteExistente) await updateLote({ ...loteExistente, ...datos });
+      else await addLote(datos);
+      history.goBack();
+    } finally {
+      setProcesando(false);
+    }
   };
 
   const handleRetirar = async () => {
-    if (!loteExistente?.id) return;
+    if (!loteExistente?.id || procesando) return;
     const cant = parseInt(cantRetirar, 10);
     if (!Number.isFinite(cant) || cant <= 0 || cant > loteExistente.cantidad) {
       setToast({ show: true, msg: 'Cantidad inválida' }); return;
     }
-    await retirarLote(loteExistente.id, tipoRetiro, cant, notasRetiro.trim() || undefined);
-    history.goBack();
+    setProcesando(true);
+    try {
+      await retirarLote(loteExistente.id, tipoRetiro, cant, notasRetiro.trim() || undefined);
+      history.goBack();
+    } finally {
+      setProcesando(false);
+    }
   };
 
   return (
     <IonPage>
       <IonContent style={{ '--background': 'var(--bg)' } as any}>
         <div className="animate-fade-in" style={{
-          padding: '20px 16px calc(96px + env(safe-area-inset-bottom)) 16px',
+          padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px',
           maxWidth: 640, margin: '0 auto',
         }}>
           <Header title={esNuevo ? 'Nuevo lote' : 'Editar lote'} onBack={() => history.goBack()} />
@@ -145,32 +167,40 @@ const LotePage: React.FC = () => {
               </p>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Field label="Cantidad" required>
-                <Input value={cantidad} onChange={e => setCantidad(e.target.value)} inputMode="numeric" />
-              </Field>
-              <Field label="Días aviso">
-                <Input value={diasAviso} onChange={e => setDiasAviso(e.target.value)} inputMode="numeric"
-                  placeholder={producto?.diasAvisoDefault.toString()} />
-              </Field>
-            </div>
+            <Field label="Cantidad" required>
+              <Input value={cantidad} onChange={e => setCantidad(e.target.value)} inputMode="numeric" />
+            </Field>
 
             <Field label="Fecha de vencimiento" required>
               <Input type="date" value={fechaVencimiento} onChange={e => setFechaVencimiento(e.target.value)} />
             </Field>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Field label="Número de lote">
-                <Input value={numeroLote} onChange={e => setNumeroLote(e.target.value)} placeholder="Opcional" />
+            {/* Override de días de aviso: avanzado, oculto por defecto (ya hay un
+                default por producto y un umbral global; mostrarlo siempre confundía). */}
+            {!mostrarAvanzado ? (
+              <button type="button" onClick={() => setMostrarAvanzado(true)}
+                style={{ background: 'none', border: 'none', color: 'var(--brand-600)', fontWeight: 600, cursor: 'pointer', padding: '2px 0 6px', fontFamily: 'inherit', fontSize: 12 }}>
+                + Ajustar días de aviso de este lote
+              </button>
+            ) : (
+              <Field label="Días de aviso (solo este lote)" hint={`Default del producto: ${producto?.diasAvisoDefault ?? 7}`}>
+                <Input value={diasAviso} onChange={e => setDiasAviso(e.target.value)} inputMode="numeric"
+                  placeholder={producto?.diasAvisoDefault.toString()} />
               </Field>
-              <Field label="Proveedor">
-                <Input value={proveedor} onChange={e => setProveedor(e.target.value)} placeholder="Opcional" />
-              </Field>
-            </div>
+            )}
 
-            <Button variant="primary" size="lg" fullWidth onClick={handleGuardar}
+            <Field label="Número de lote">
+              <Input value={numeroLote} onChange={e => setNumeroLote(e.target.value)} placeholder="Opcional" />
+            </Field>
+            {producto?.proveedor && (
+              <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '-4px 0 4px' }}>
+                Proveedor: <strong>{producto.proveedor}</strong> <span style={{ color: 'var(--text-3)' }}>(se edita en el producto)</span>
+              </p>
+            )}
+
+            <Button variant="primary" size="lg" fullWidth onClick={handleGuardar} disabled={procesando}
               icon={<CheckIcon width={18} height={18} />} style={{ marginTop: 8 }}>
-              {esNuevo ? 'Crear lote' : 'Guardar cambios'}
+              {procesando ? 'Guardando…' : esNuevo ? 'Crear lote' : 'Guardar cambios'}
             </Button>
           </Card>
 
@@ -203,8 +233,8 @@ const LotePage: React.FC = () => {
                     <Button variant="secondary" size="md" fullWidth
                       onClick={() => { setShowRetirar(false); setCantRetirar(''); setNotasRetiro(''); }}>
                       Cancelar</Button>
-                    <Button variant="primary" size="md" fullWidth onClick={handleRetirar}>
-                      Confirmar</Button>
+                    <Button variant="primary" size="md" fullWidth onClick={handleRetirar} disabled={procesando}>
+                      {procesando ? 'Retirando…' : 'Confirmar'}</Button>
                   </div>
                 </>
               )}

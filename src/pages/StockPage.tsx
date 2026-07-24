@@ -3,7 +3,7 @@ import { IonContent, IonPage } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import {
   MagnifyingGlassIcon, PlusIcon, CubeIcon, TagIcon,
-  XMarkIcon, ArchiveBoxIcon,
+  XMarkIcon, ArchiveBoxIcon, QrCodeIcon,
 } from '@heroicons/react/24/outline';
 import {
   useStore, formatearMoneda, formatearFecha,
@@ -14,41 +14,53 @@ import { sugerirLiquidacion } from '../lib/liquidacion';
 import Card from '../components/ui/Card';
 import { NivelBadge } from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
-import { Input } from '../components/ui/Input';
+import { Input, Select } from '../components/ui/Input';
+import ScannerModal from '../components/ScannerModal';
 
 type Vista = 'productos' | 'lotes';
 
 const StockPage: React.FC = () => {
-  const { productosConLotes, lotesEnriquecidos } = useStore();
+  const { productosConLotes, lotesEnriquecidos, buscarProductoPorCodigo } = useStore();
   const history = useHistory();
 
   const [vista, setVista] = useState<Vista>('productos');
   const [busqueda, setBusqueda] = useState('');
+  const [showScanner, setShowScanner] = useState(false);
   const [filtro, setFiltro] = useState<NivelAlerta | 'todos'>('todos');
+  const [filtroProveedor, setFiltroProveedor] = useState<string>('todos');
 
   const productos = useMemo(() => productosConLotes(), [productosConLotes]);
   const lotes = useMemo(() => lotesEnriquecidos(), [lotesEnriquecidos]);
+
+  // Proveedores únicos cargados (para el selector de filtro).
+  const proveedores = useMemo(() => {
+    const set = new Set<string>();
+    productos.forEach(p => { const pr = p.producto.proveedor?.trim(); if (pr) set.add(pr); });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'es'));
+  }, [productos]);
 
   const productosFiltrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return productos.filter(p => {
       const mb = !q || p.producto.nombre.toLowerCase().includes(q) || (p.producto.codigoBarras?.includes(busqueda.trim()));
       const mf = filtro === 'todos' || p.nivelPeor === filtro;
-      return mb && mf;
+      const mp = filtroProveedor === 'todos' || (p.producto.proveedor?.trim() ?? '') === filtroProveedor;
+      return mb && mf && mp;
     }).sort((a, b) => ordenNivel(a.nivelPeor) - ordenNivel(b.nivelPeor));
-  }, [productos, busqueda, filtro]);
+  }, [productos, busqueda, filtro, filtroProveedor]);
 
   const lotesFiltrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return lotes.filter(l => {
       const mb = !q || l.productoNombre.toLowerCase().includes(q) || (l.numeroLote?.toLowerCase().includes(q));
       const mf = filtro === 'todos' || l.nivelAlerta === filtro;
-      return mb && mf;
+      const mp = filtroProveedor === 'todos' || (l.productoProveedor?.trim() ?? '') === filtroProveedor;
+      return mb && mf && mp;
     }).sort((a, b) => {
       const d = ordenNivel(a.nivelAlerta) - ordenNivel(b.nivelAlerta);
       return d !== 0 ? d : a.fechaVencimiento.localeCompare(b.fechaVencimiento);
     });
-  }, [lotes, busqueda, filtro]);
+  }, [lotes, busqueda, filtro, filtroProveedor]);
 
   const filtros: (NivelAlerta | 'todos')[] = ['todos', 'vencido', 'critico', 'urgente', 'aviso', 'ok'];
 
@@ -56,12 +68,26 @@ const StockPage: React.FC = () => {
     <IonPage>
       <IonContent style={{ '--background': 'var(--bg)' } as any}>
         <div className="animate-fade-in" style={{
-          padding: '20px 16px calc(96px + env(safe-area-inset-bottom)) 16px',
+          padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px',
           maxWidth: 760, margin: '0 auto',
         }}>
-          <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 16, letterSpacing: '-0.02em' }}>
-            Stock
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>
+              Stock
+            </h1>
+            <button
+              type="button"
+              onClick={() => history.push('/precios')}
+              className="pressable"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+                borderRadius: 'var(--radius-full)', border: '1px solid var(--brand-200)',
+                background: 'var(--brand-50)', color: 'var(--brand-700)',
+                fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+              💲 Suba de precios
+            </button>
+          </div>
 
           {/* Switch de vista */}
           <div style={{
@@ -81,18 +107,41 @@ const StockPage: React.FC = () => {
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
               leftIcon={<MagnifyingGlassIcon width={18} height={18} />}
-              rightAddon={busqueda ? (
-                <button type="button" onClick={() => setBusqueda('')}
-                  style={{
-                    background: 'var(--surface-2)', border: '1px solid var(--border)',
-                    borderRadius: 'var(--radius)', padding: '0 10px', cursor: 'pointer',
-                    color: 'var(--text-2)', display: 'flex', alignItems: 'center',
-                  }}>
-                  <XMarkIcon width={16} height={16} />
-                </button>
-              ) : undefined}
+              rightAddon={
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {busqueda && (
+                    <button type="button" onClick={() => setBusqueda('')}
+                      style={{
+                        background: 'var(--surface-2)', border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius)', padding: '0 10px', cursor: 'pointer',
+                        color: 'var(--text-2)', display: 'flex', alignItems: 'center',
+                      }}>
+                      <XMarkIcon width={16} height={16} />
+                    </button>
+                  )}
+                  <button type="button" onClick={() => setShowScanner(true)}
+                    title="Escanear código de barras"
+                    style={{
+                      background: 'var(--brand-500)', border: '1px solid var(--brand-500)',
+                      borderRadius: 'var(--radius)', padding: '0 12px', cursor: 'pointer',
+                      color: '#fff', display: 'flex', alignItems: 'center',
+                    }}>
+                    <QrCodeIcon width={18} height={18} />
+                  </button>
+                </div>
+              }
             />
           </div>
+
+          {/* Filtro por proveedor (solo si hay alguno cargado) */}
+          {proveedores.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <Select value={filtroProveedor} onChange={e => setFiltroProveedor(e.target.value)}>
+                <option value="todos">Todos los proveedores</option>
+                {proveedores.map(pr => <option key={pr} value={pr}>{pr}</option>)}
+              </Select>
+            </div>
+          )}
 
           {/* Chips filtro */}
           <div style={{
@@ -139,7 +188,7 @@ const StockPage: React.FC = () => {
             onClick={() => history.push('/producto/nuevo')}
             style={{
               position: 'fixed', right: 16,
-              bottom: 'calc(96px + env(safe-area-inset-bottom))',
+              bottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))',
               width: 52, height: 52, borderRadius: 'var(--radius-md)',
               background: 'var(--surface)', border: '1px solid var(--brand-300)',
               color: 'var(--brand-600)', cursor: 'pointer',
@@ -152,6 +201,18 @@ const StockPage: React.FC = () => {
             <PlusIcon width={14} height={14} style={{ position: 'absolute', top: 8, right: 8 }} />
           </button>
         </div>
+
+        {showScanner && (
+          <ScannerModal
+            onCodigoDetectado={(codigo) => {
+              setShowScanner(false);
+              const prod = buscarProductoPorCodigo(codigo);
+              if (prod) history.push(`/producto/${prod.id}`);
+              else setBusqueda(codigo); // queda en el buscador → "Sin resultados"
+            }}
+            onCancel={() => setShowScanner(false)}
+          />
+        )}
       </IonContent>
     </IonPage>
   );
@@ -197,10 +258,18 @@ const FilterChip: React.FC<{ activo: boolean; nivel?: NivelAlerta; onClick: () =
     </button>
   );
 
-const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ p, onClick }) => (
+const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ p, onClick }) => {
+  const reponer = (p.producto.stockMinimo ?? 0) > 0 && p.cantidadTotal < (p.producto.stockMinimo ?? 0);
+  return (
   <Card padding="sm" onClick={onClick}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{ width: 4, height: 52, background: colorNivel(p.nivelPeor), borderRadius: 2, flexShrink: 0 }} />
+      {p.producto.fotoUrl && (
+        <img src={p.producto.fotoUrl} alt="" loading="lazy" style={{
+          width: 44, height: 44, objectFit: 'cover', flexShrink: 0,
+          borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
+        }} />
+      )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15, marginBottom: 3, letterSpacing: '-0.01em' }}>
           {p.producto.nombre}
@@ -208,11 +277,20 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
         <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 6 }}>
           {p.producto.categoria} · {formatearMoneda(p.producto.precio)} c/u
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <NivelBadge nivel={p.nivelPeor} />
           <span style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 500 }}>
             {p.cantidadTotal} unid · {p.lotes.length} lote{p.lotes.length !== 1 ? 's' : ''}
           </span>
+          {reponer && (
+            <span style={{
+              fontSize: 11, fontWeight: 700, color: 'var(--warning)',
+              border: '1px solid var(--warning)', borderRadius: 'var(--radius-full)',
+              padding: '1px 8px', whiteSpace: 'nowrap',
+            }}>
+              📦 Reponer (mín. {p.producto.stockMinimo})
+            </span>
+          )}
         </div>
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -227,7 +305,8 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
       </div>
     </div>
   </Card>
-);
+  );
+};
 
 const LoteRow: React.FC<{ lote: LoteConProducto; onClick: () => void }> = ({ lote, onClick }) => {
   // Sugerencia de liquidación FEFO: vender antes de que venza con un descuento.
@@ -241,7 +320,7 @@ const LoteRow: React.FC<{ lote: LoteConProducto; onClick: () => void }> = ({ lot
           {lote.productoNombre}
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 6 }}>
-          {lote.cantidad} unid.{lote.numeroLote ? ` · Lote ${lote.numeroLote}` : ''}{lote.proveedor ? ` · ${lote.proveedor}` : ''}
+          {lote.cantidad} unid.{lote.numeroLote ? ` · Lote ${lote.numeroLote}` : ''}{lote.productoProveedor ? ` · ${lote.productoProveedor}` : ''}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <NivelBadge nivel={lote.nivelAlerta} />

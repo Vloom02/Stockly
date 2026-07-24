@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { IonContent, IonPage, IonToast } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import {
-  BuildingStorefrontIcon, PencilIcon, PlusIcon,
+  BuildingStorefrontIcon, PencilIcon, PlusIcon, TrashIcon,
 } from '@heroicons/react/24/outline';
 import { useStore } from '../context/StoreContext';
+import { useConfirm } from '../lib/useConfirm';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { Field, Input } from '../components/ui/Input';
@@ -14,6 +15,7 @@ import { Header } from './ProductoPage';
 const SucursalesPage: React.FC = () => {
   const { state, addSucursal, updateSucursal, setSucursalActiva } = useStore();
   const history = useHistory();
+  const confirmar = useConfirm();
 
   const [nuevoNombre, setNuevoNombre] = useState('');
   const [nuevaDir, setNuevaDir] = useState('');
@@ -21,12 +23,26 @@ const SucursalesPage: React.FC = () => {
   const [editNombre, setEditNombre] = useState('');
   const [editDir, setEditDir] = useState('');
   const [toast, setToast] = useState({ show: false, msg: '' });
+  const [creando, setCreando] = useState(false);
+
+  // Solo las activas (el borrado es lógico).
+  const sucursalesActivas = state.sucursales.filter(s => s.activa !== false);
 
   const crear = async () => {
-    if (!nuevoNombre.trim()) { setToast({ show: true, msg: 'Nombre obligatorio' }); return; }
-    await addSucursal({ nombre: nuevoNombre.trim(), direccion: nuevaDir.trim() || undefined });
-    setNuevoNombre(''); setNuevaDir('');
-    setToast({ show: true, msg: 'Sucursal creada' });
+    if (creando) return; // anti doble-tap
+    const nombre = nuevoNombre.trim();
+    if (!nombre) { setToast({ show: true, msg: 'Nombre obligatorio' }); return; }
+    if (sucursalesActivas.some(s => s.nombre.trim().toLowerCase() === nombre.toLowerCase())) {
+      setToast({ show: true, msg: 'Ya existe una sucursal con ese nombre' }); return;
+    }
+    setCreando(true);
+    try {
+      await addSucursal({ nombre, direccion: nuevaDir.trim() || undefined });
+      setNuevoNombre(''); setNuevaDir('');
+      setToast({ show: true, msg: 'Sucursal creada' });
+    } finally {
+      setCreando(false);
+    }
   };
 
   const editar = async (id: string) => {
@@ -44,11 +60,24 @@ const SucursalesPage: React.FC = () => {
     setTimeout(() => history.push('/dashboard'), 700);
   };
 
+  // Borrado LÓGICO (activa=false): no pierde el stock (los lotes quedan en la
+  // base), solo deja de mostrarse. No se puede borrar la única sucursal.
+  const borrar = async (s: typeof sucursalesActivas[number]) => {
+    if (sucursalesActivas.length <= 1) { setToast({ show: true, msg: 'No podés borrar la única sucursal' }); return; }
+    if (!(await confirmar(`¿Borrar la sucursal "${s.nombre}"? El stock que tenga cargado deja de verse (no se elimina).`, { peligro: true, okText: 'Borrar' }))) return;
+    if (s.id === state.sucursalActivaId) {
+      const otra = sucursalesActivas.find(x => x.id !== s.id);
+      if (otra) setSucursalActiva(otra.id!);
+    }
+    await updateSucursal({ ...s, activa: false });
+    setToast({ show: true, msg: 'Sucursal borrada' });
+  };
+
   return (
     <IonPage>
       <IonContent style={{ '--background': 'var(--bg)' } as any}>
         <div className="animate-fade-in" style={{
-          padding: '20px 16px calc(96px + env(safe-area-inset-bottom)) 16px',
+          padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px',
           maxWidth: 640, margin: '0 auto',
         }}>
           <Header title="Sucursales" onBack={() => history.goBack()} />
@@ -58,7 +87,7 @@ const SucursalesPage: React.FC = () => {
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
-            {state.sucursales.map(s => {
+            {sucursalesActivas.map(s => {
               const activa = s.id === state.sucursalActivaId;
               const enEd = editando === s.id;
               return (
@@ -97,7 +126,7 @@ const SucursalesPage: React.FC = () => {
                       {!activa && (
                         <Button variant="secondary" size="sm" onClick={() => seleccionar(s.id!)}>Usar</Button>
                       )}
-                      <button type="button"
+                      <button type="button" aria-label={`Editar ${s.nombre}`}
                         onClick={() => { setEditando(s.id!); setEditNombre(s.nombre); setEditDir(s.direccion || ''); }}
                         style={{
                           background: 'none', border: 'none', cursor: 'pointer',
@@ -105,6 +134,16 @@ const SucursalesPage: React.FC = () => {
                         }}>
                         <PencilIcon width={18} height={18} />
                       </button>
+                      {sucursalesActivas.length > 1 && (
+                        <button type="button" aria-label={`Borrar ${s.nombre}`}
+                          onClick={() => borrar(s)}
+                          style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            color: 'var(--level-vencido-fg)', padding: 6, display: 'flex',
+                          }}>
+                          <TrashIcon width={18} height={18} />
+                        </button>
+                      )}
                     </div>
                   )}
                 </Card>
@@ -121,8 +160,8 @@ const SucursalesPage: React.FC = () => {
             <Field label="Dirección">
               <Input value={nuevaDir} onChange={e => setNuevaDir(e.target.value)} placeholder="Opcional" />
             </Field>
-            <Button variant="primary" size="md" fullWidth onClick={crear}
-              icon={<PlusIcon width={18} height={18} />}>Crear sucursal</Button>
+            <Button variant="primary" size="md" fullWidth onClick={crear} disabled={creando}
+              icon={<PlusIcon width={18} height={18} />}>{creando ? 'Creando…' : 'Crear sucursal'}</Button>
           </Card>
         </div>
 

@@ -7,6 +7,9 @@ export interface Producto {
   categoria: string;
   precio: number;
   diasAvisoDefault: number;
+  proveedor?: string;              // proveedor del producto (antes estaba en el lote)
+  stockMinimo?: number;            // alerta de reposición: avisar si el total baja de esto
+  fotoUrl?: string;                // miniatura en Supabase Storage (bucket productos)
   activo: boolean;
   fechaCreacion: string;
 }
@@ -21,7 +24,7 @@ export interface Lote {
   fechaVencimiento: string;        // ISO date (YYYY-MM-DD)
   diasAviso: number;
   fechaIngreso: string;
-  proveedor?: string;
+  proveedor?: string;              // (legado) ya no se carga en el alta de lote
   numeroLote?: string;
   retirado: boolean;
 }
@@ -106,6 +109,7 @@ export interface LoteConProducto extends Lote {
   productoNombre: string;
   productoCategoria: string;
   productoPrecio: number;
+  productoProveedor?: string;
   sucursalNombre: string;
   nivelAlerta: NivelAlerta;
   diasRestantes: number;
