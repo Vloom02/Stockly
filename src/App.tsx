@@ -40,6 +40,11 @@ import '@ionic/react/css/text-alignment.css';
 import '@ionic/react/css/text-transformation.css';
 import '@ionic/react/css/flex-utils.css';
 import '@ionic/react/css/display.css';
+// Fuentes self-hosted (offline-first: no dependen de Google Fonts ni suman
+// round-trip de red al arranque). Variable = un archivo cubre todos los pesos.
+import '@fontsource-variable/bitter';
+import '@fontsource-variable/bitter/wght-italic.css';
+import '@fontsource-variable/hanken-grotesk';
 import './theme/variables.css';
 
 setupIonicReact();

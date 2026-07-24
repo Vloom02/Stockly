@@ -24,9 +24,9 @@ export async function elegirYSubirFoto(comercioId: string, productoId: string): 
     foto = await Camera.getPhoto({
       resultType: CameraResultType.Base64,
       source: CameraSource.Prompt,   // el usuario elige cámara o galería
-      quality: 70,
-      width: 512,                    // el plugin ya la achica
-      correctOrientation: true,
+      quality: 65,
+      width: 320,                    // se muestra a 44-56px; 320 cubre 3x de sobra
+      correctOrientation: true,      // ponytail: sin thumb aparte — bajar el tamaño de captura
     });
   } catch {
     return null; // canceló el selector
