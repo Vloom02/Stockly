@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { evaluarPlan } from './plan';
+import { finDelDiaLocal, evaluarPlan } from './plan';
 import { Comercio } from '../types';
 
 const base = (over: Partial<Comercio>): Comercio => ({
@@ -39,6 +39,14 @@ describe('evaluarPlan', () => {
     expect(r.tipo).toBe('trial_vencido');
   });
 
+  it('trial vencido con fecha timestamptz de la base → bloqueado', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-20T10:00:00'));
+    const r = evaluarPlan(base({ plan: 'trial', trialHasta: '2026-06-16T19:03:12.123+00:00' }));
+    expect(r.activo).toBe(false);
+    expect(r.tipo).toBe('trial_vencido');
+  });
+
   it('trial sin fecha → permite (no bloquear por falta de dato)', () => {
     expect(evaluarPlan(base({ plan: 'trial', trialHasta: undefined }))).toEqual({ activo: true, tipo: 'trial' });
   });
@@ -46,5 +54,19 @@ describe('evaluarPlan', () => {
   it('plan desconocido se trata como trial', () => {
     const r = evaluarPlan(base({ plan: 'cualquier-cosa', trialHasta: undefined }));
     expect(r).toEqual({ activo: true, tipo: 'trial' });
+  });
+});
+
+describe('finDelDiaLocal', () => {
+  it('una fecha sola es ese día local, hasta las 23:59:59', () => {
+    const d = finDelDiaLocal('2026-06-16');
+    expect([d.getFullYear(), d.getMonth() + 1, d.getDate(), d.getHours(), d.getMinutes()]).toEqual([2026, 6, 16, 23, 59]);
+  });
+  it('un timestamptz usa el día LOCAL del instante (no la fecha UTC)', () => {
+    const iso = '2026-06-16T01:30:00+00:00';
+    const local = new Date(iso);
+    const d = finDelDiaLocal(iso);
+    expect(d.getDate()).toBe(local.getDate());
+    expect(d.getHours()).toBe(23);
   });
 });

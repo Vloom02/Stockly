@@ -19,6 +19,7 @@ const PedidoPage      = lazy(() => import('./pages/PedidoPage'));
 const EmpleadosPage   = lazy(() => import('./pages/EmpleadosPage'));
 const ConfigPage      = lazy(() => import('./pages/ConfigPage'));
 const AuthPage        = lazy(() => import('./pages/AuthPage'));
+const SoportePage     = lazy(() => import('./pages/SoportePage'));
 import TabBar from './components/TabBar';
 import Onboarding from './components/Onboarding';
 import Logo from './components/ui/Logo';
@@ -42,10 +43,11 @@ import '@ionic/react/css/flex-utils.css';
 import '@ionic/react/css/display.css';
 // Fuentes self-hosted (offline-first: no dependen de Google Fonts ni suman
 // round-trip de red al arranque). Variable = un archivo cubre todos los pesos.
-import '@fontsource-variable/bitter';
-import '@fontsource-variable/bitter/wght-italic.css';
-import '@fontsource-variable/hanken-grotesk';
+// Atkinson Hyperlegible: diseñada para baja visión (letras que no se confunden: Il1, O0).
+import '@fontsource-variable/atkinson-hyperlegible-next';
+import '@fontsource-variable/atkinson-hyperlegible-mono';
 import './theme/variables.css';
+import './theme/motion.css';
 
 setupIonicReact();
 
@@ -108,6 +110,7 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
           <Route path="/precios" exact><Suspense fallback={<Cargando />}><PreciosPage /></Suspense></Route>
           <Route path="/pedido" exact><Suspense fallback={<Cargando />}><PedidoPage /></Suspense></Route>
           <Route path="/empleados" exact><Suspense fallback={<Cargando />}><EmpleadosPage /></Suspense></Route>
+          <Route path="/soporte" exact><Suspense fallback={<Cargando />}><SoportePage /></Suspense></Route>
           <Route path="/config" exact><Suspense fallback={<Cargando />}><ConfigPage onThemeToggle={onThemeToggle} isDark={isDark} /></Suspense></Route>
           <Route path="/" exact><Redirect to="/dashboard" /></Route>
         </IonRouterOutlet>
@@ -179,7 +182,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const saved = getSetting('theme', '');
-    const dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const dark = saved === 'dark'; // claro por defecto: más legible; el oscuro se elige en Ajustes
     setDark(dark);
     document.documentElement.classList.toggle('dark', dark);
   }, []);

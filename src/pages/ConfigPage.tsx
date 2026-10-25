@@ -6,7 +6,7 @@ import {
   MoonIcon, SunIcon, BellAlertIcon, TagIcon,
   BuildingStorefrontIcon, ArrowRightOnRectangleIcon, PrinterIcon, ClipboardDocumentCheckIcon, UserGroupIcon,
   InformationCircleIcon, ChevronRightIcon, UserCircleIcon,
-  ArrowDownTrayIcon, ArrowUpTrayIcon, SwatchIcon, CloudIcon, BanknotesIcon,
+  ArrowDownTrayIcon, ArrowUpTrayIcon, SwatchIcon, CloudIcon, BanknotesIcon, ClockIcon, CurrencyDollarIcon, ClipboardDocumentListIcon, ShoppingCartIcon, ChartBarIcon,
 } from '@heroicons/react/24/outline';
 import {
   useStore, setSetting,
@@ -14,25 +14,27 @@ import {
   DESC_CRITICO, DESC_URGENTE, DESC_AVISO,
 } from '../context/StoreContext';
 import { COLORES_MARCA, aplicarColorMarca, guardarColorMarca, obtenerColorMarcaGuardado } from '../lib/tema';
-import { aplicarEscalaFont, guardarEscalaFont, obtenerEscalaFont, ESCALA_MIN, ESCALA_MAX } from '../lib/tipografia';
+import { aplicarEscalaFont, guardarEscalaFont, obtenerEscalaFont } from '../lib/tipografia';
 import { notificacionesActivas, setNotificacionesActivas, horaNotificacion, setHoraNotificacion, sincronizarNotificaciones } from '../lib/notificaciones';
 import { stockACSV, movimientosACSV } from '../lib/exportar';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { Field, Input, Textarea } from '../components/ui/Input';
+import { Field, Input, Textarea, Opciones } from '../components/ui/Input';
 import Logo from '../components/ui/Logo';
 
+import { movimientoActivo, guardarMovimiento } from '../lib/movimiento';
 interface Props { onThemeToggle: () => void; isDark: boolean; }
 
 const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
   const { state, exportarBackup, importarBackup, estadoNube, sincronizarAhora, sincronizando, reintentarFallidos, lotesEnriquecidos } = useStore();
-  const { comercio, miembro, cerrarSesion } = useAuth();
+  const { comercio, miembro, esDueno, esAdminPlataforma, cerrarSesion } = useAuth();
   const history = useHistory();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [colorMarca, setColorMarca] = useState(obtenerColorMarcaGuardado());
   const [escalaFont, setEscalaFont] = useState(obtenerEscalaFont());
+  const [movimiento, setMovimiento] = useState(movimientoActivo);
   const [notifOn, setNotifOn] = useState(notificacionesActivas());
   const [notifHora, setNotifHora] = useState(horaNotificacion());
 
@@ -176,22 +178,33 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             <Logo size={28} />
           </div>
 
+          {/* Desarrollador / soporte: solo si el servidor lo reconoce como admin */}
+          {esAdminPlataforma && (
+            <Button variant="primary" size="lg" fullWidth onClick={() => history.push('/soporte')} style={{ marginBottom: 16 }}>
+              Panel de soporte (todos los comercios)
+            </Button>
+          )}
+
           {/* Herramientas — acceso directo a las pantallas más usadas */}
           <SectionTitle icon={<SwatchIcon width={16} height={16} />}>Herramientas</SectionTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 18 }}>
+          <div className="lista-animada" style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', background: 'var(--surface)', overflow: 'hidden', marginBottom: 18 }}>
             {[
-              { emoji: '💲', label: 'Precios',    path: '/precios' },
-              { emoji: '📋', label: 'Inventario', path: '/inventario' },
-              { emoji: '🏷️', label: 'Etiquetas',  path: '/etiquetas' },
-              { emoji: '📊', label: 'Reportes',   path: '/reportes' },
-              { emoji: '🚚', label: 'Pedidos',    path: '/pedido' },
-              { emoji: '👥', label: 'Empleados',  path: '/empleados' },
-              { emoji: '🏪', label: 'Sucursales', path: '/sucursales' },
-            ].map(t => (
+              { Icon: ClockIcon,          label: 'Historial',               desc: 'Todo lo que entró y salió',        path: '/movimientos' },
+              { Icon: CurrencyDollarIcon, label: 'Cambiar precios',         desc: 'Subir precios de a uno',           path: '/precios', soloDueno: true },
+              { Icon: ClipboardDocumentListIcon, label: 'Contar la mercadería', desc: 'Corregir lo que hay en góndola', path: '/inventario' },
+              { Icon: ShoppingCartIcon,   label: 'Qué tengo que comprar',   desc: 'Lista para el proveedor',          path: '/pedido' },
+              { Icon: ChartBarIcon,       label: 'Reportes y pérdidas',     desc: 'Cuánto se venció este mes',        path: '/reportes', soloDueno: true },
+              { Icon: TagIcon,            label: 'Etiquetas de precio',     desc: 'Para imprimir y pegar',            path: '/etiquetas' },
+              { Icon: UserGroupIcon,      label: 'Empleados',               desc: 'Invitar o dar de baja',            path: '/empleados', soloDueno: true },
+              { Icon: BuildingStorefrontIcon, label: 'Locales',             desc: 'Si tenés más de un negocio',       path: '/sucursales', soloDueno: true },
+            ].filter(t => esDueno || !('soloDueno' in t)).map((t, i) => (
               <button key={t.path} type="button" onClick={() => history.push(t.path)} className="pressable"
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '14px 6px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontFamily: 'inherit' }}>
-                <span style={{ fontSize: 26, lineHeight: 1 }}>{t.emoji}</span>
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)' }}>{t.label}</span>
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 14, minHeight: 64, padding: '12px 16px', border: 'none', borderTop: i ? '1px solid var(--border)' : 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', color: 'var(--text)' }}>
+                <t.Icon width={26} height={26} style={{ color: 'var(--brand-600)', flexShrink: 0 }} />
+                <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 16, fontWeight: 600 }}>{t.label}</span>
+                  <span style={{ fontSize: 14, color: 'var(--text-2)' }}>{t.desc}</span>
+                </span>
               </button>
             ))}
           </div>
@@ -208,11 +221,11 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 15 }}>{comercio?.nombre || 'Mi comercio'}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
+                <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
                   {miembro?.nombre} · {miembro?.rol === 'dueno' ? 'Dueño' : 'Empleado'}
                 </div>
                 {comercio?.plan === 'trial' && (
-                  <div style={{ fontSize: 11, color: 'var(--warning)', fontWeight: 600, marginTop: 2 }}>
+                  <div style={{ fontSize: 14, color: 'var(--level-urgente-fg)', fontWeight: 700, marginTop: 2 }}>
                     Período de prueba
                   </div>
                 )}
@@ -225,9 +238,9 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             <SectionTitle icon={<InformationCircleIcon width={16} height={16} />}>Resumen</SectionTitle>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginTop: 8 }}>
               <Stat label="Productos" value={state.productos.length} />
-              <Stat label="Lotes" value={state.lotes.length} />
-              <Stat label="Sucursales" value={state.sucursales.length} />
-              <Stat label="Movim." value={state.movimientos.length} />
+              <Stat label="Compras" value={state.lotes.length} />
+              <Stat label="Locales" value={state.sucursales.length} />
+              <Stat label="Registros" value={state.movimientos.length} />
             </div>
           </Card>
 
@@ -247,7 +260,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
                 <SwatchIcon width={16} height={16} style={{ color: 'var(--text-2)' }} />
                 <span style={{ fontSize: 14, fontWeight: 600 }}>Color de la app</span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
                 {COLORES_MARCA.map(c => {
                   const seleccionado = c.id === colorMarca;
                   return (
@@ -267,7 +280,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
                         boxShadow: seleccionado ? `0 0 0 3px var(--surface), 0 0 0 5px ${c.tonos[1]}` : 'none',
                         transition: 'all 150ms',
                       }} />
-                      <span style={{ fontSize: 11, color: seleccionado ? 'var(--text)' : 'var(--text-3)', fontWeight: seleccionado ? 600 : 400 }}>
+                      <span style={{ fontSize: 13, color: seleccionado ? 'var(--text)' : 'var(--text-3)', fontWeight: seleccionado ? 600 : 400 }}>
                         {c.nombre}
                       </span>
                     </button>
@@ -276,40 +289,21 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
               </div>
             </div>
 
-            {/* Tamaño de texto */}
+            {/* Tamaño de texto: opciones grandes (un deslizador es difícil con dedos grandes o temblor) */}
             <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <span style={{ fontSize: 14, fontWeight: 600 }}>Tamaño de texto</span>
-                <span style={{ fontSize: 13, color: 'var(--text-2)', fontFamily: 'var(--font-mono, monospace)' }}>
-                  {Math.round(escalaFont * 100)}%
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 13, color: 'var(--text-3)' }}>A</span>
-                <input
-                  type="range"
-                  aria-label="Tamaño de texto"
-                  min={ESCALA_MIN}
-                  max={ESCALA_MAX}
-                  step={0.05}
-                  value={escalaFont}
-                  onChange={e => cambiarEscala(parseFloat(e.target.value))}
-                  style={{ flex: 1, accentColor: 'var(--brand-500)' }}
-                />
-                <span style={{ fontSize: 22, color: 'var(--text-3)', lineHeight: 1 }}>A</span>
-              </div>
-              {escalaFont !== 1 && (
-                <button
-                  type="button"
-                  onClick={() => cambiarEscala(1)}
-                  style={{
-                    marginTop: 10, background: 'none', border: 'none', cursor: 'pointer',
-                    color: 'var(--brand-600)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', padding: 0,
-                  }}
-                >
-                  Restablecer al 100%
-                </button>
-              )}
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Tamaño de letra</div>
+              <Opciones etiqueta="Tamaño de letra" columnas={3}
+                valor={escalaFont < 1.07 ? '1' : escalaFont < 1.22 ? '1.15' : '1.3'}
+                onChange={v => cambiarEscala(Number(v))}
+                opciones={[{ valor: '1', etiqueta: 'Normal' }, { valor: '1.15', etiqueta: 'Grande' }, { valor: '1.3', etiqueta: 'Muy grande' }]} />
+            </div>
+
+            {/* Animaciones: además de "Quitar animaciones" de Android */}
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Animaciones</div>
+              <Opciones etiqueta="Animaciones" columnas={2} valor={movimiento ? 'si' : 'no'}
+                onChange={v => { guardarMovimiento(v === 'si'); setMovimiento(v === 'si'); }}
+                opciones={[{ valor: 'si', etiqueta: 'Sí' }, { valor: 'no', etiqueta: 'No' }]} />
             </div>
           </Card>
 
@@ -342,7 +336,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
                 </div>
               )}
               {estadoNube.ultimoError && (
-                <div style={{ marginTop: 8, padding: 10, borderRadius: 8, background: 'var(--level-vencido-bg)', color: 'var(--level-vencido-fg)', fontSize: 12 }}>
+                <div style={{ marginTop: 8, padding: 10, borderRadius: 8, background: 'var(--level-vencido-bg)', color: 'var(--level-vencido-fg)', fontSize: 13 }}>
                   Último error: {estadoNube.ultimoError}
                 </div>
               )}
@@ -353,7 +347,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             </button>
             {state.bloqueadosSync > 0 && (
               <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: 'var(--level-vencido-bg)' }}>
-                <div style={{ fontSize: 12, color: 'var(--level-vencido-fg)', marginBottom: 8 }}>
+                <div style={{ fontSize: 13, color: 'var(--level-vencido-fg)', marginBottom: 8 }}>
                   Hay {state.bloqueadosSync} cambio{state.bloqueadosSync > 1 ? 's' : ''} que no se pudo sincronizar. No se perdieron: tocá para reintentar.
                 </div>
                 <Button variant="secondary" size="md" fullWidth onClick={reintentarFallidos} disabled={sincronizando}>
@@ -379,23 +373,15 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
               </span>
             </button>
             {notifOn && (
-              <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 14 }}>Hora del aviso</span>
-                <select
-                  value={notifHora}
-                  onChange={e => cambiarNotifHora(parseInt(e.target.value, 10))}
-                  style={{
-                    fontFamily: 'inherit', fontSize: 14, padding: '8px 12px', borderRadius: 'var(--radius)',
-                    border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)',
-                  }}
-                >
-                  {[7, 8, 9, 10, 11, 12, 18, 19, 20, 21].map(h => (
-                    <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
-                  ))}
-                </select>
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>¿A qué hora te avisamos?</div>
+                <Opciones etiqueta="Hora del aviso" columnas={4} valor={String(notifHora)}
+                  onChange={v => cambiarNotifHora(parseInt(v, 10))}
+                  opciones={[7, 8, 9, 10, 11, 12, 18, 19, 20, 21].map(h => ({ valor: String(h), etiqueta: `${h} hs` }))} />
+                
               </div>
             )}
-            <p style={{ marginTop: 12, fontSize: 12, color: 'var(--text-3)', lineHeight: 1.5 }}>
+            <p style={{ marginTop: 12, fontSize: 13, color: 'var(--text-3)', lineHeight: 1.5 }}>
               Aviso diario en tu celular con los productos vencidos o por vencer. Funciona sin internet.
             </p>
           </Card>
@@ -403,7 +389,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           {/* Umbrales */}
           <Card padding="md" style={{ marginBottom: 12 }}>
             <SectionTitle icon={<BellAlertIcon width={16} height={16} />}>Niveles de alerta</SectionTitle>
-            <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '0 0 12px' }}>
+            <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 12px' }}>
               Días de anticipación para cada nivel de escalado.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
@@ -416,10 +402,11 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             </Field>
           </Card>
 
-          {/* Liquidación FEFO */}
+          {/* Descuentos por vencimiento (solo dueño) */}
+          {esDueno && (
           <Card padding="md" style={{ marginBottom: 12 }}>
-            <SectionTitle icon={<BanknotesIcon width={16} height={16} />}>Liquidación FEFO</SectionTitle>
-            <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '0 0 12px' }}>
+            <SectionTitle icon={<BanknotesIcon width={16} height={16} />}>Descuentos para lo que está por vencer</SectionTitle>
+            <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 12px' }}>
               Descuento (%) sugerido para rematar lotes según su nivel de vencimiento. Poné 0 para desactivar uno.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
@@ -428,6 +415,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
               <DescField nivel="aviso" label="Aviso" value={descAviso} onChange={setDescAviso} />
             </div>
           </Card>
+          )}
 
           {/* Categorías */}
           <Card padding="md" style={{ marginBottom: 12 }}>
@@ -441,7 +429,8 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             Guardar configuración
           </Button>
 
-          {/* Backup */}
+          {/* Backup (solo dueño: tiene precios, y la importación crea productos) */}
+          {esDueno && (
           <Card padding="none" style={{ marginBottom: 12, overflow: 'hidden' }}>
             <button type="button" onClick={exportarStockCSV} style={linkRow}>
               <span style={{ color: 'var(--brand-600)' }}><ArrowDownTrayIcon width={18} height={18} /></span>
@@ -474,6 +463,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
               style={{ display: 'none' }}
             />
           </Card>
+          )}
 
           {/* (Sucursales, Empleados, Inventario y Etiquetas ahora están en la
               grilla "Herramientas" de arriba.) */}
@@ -485,7 +475,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             Cerrar sesión
           </Button>
 
-          <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-3)', marginTop: 20 }}>
+          <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-3)', marginTop: 20 }}>
             Stockly v1.0 · Datos en la nube
           </p>
         </div>
@@ -506,7 +496,7 @@ const SectionTitle: React.FC<{ icon: React.ReactNode; children: React.ReactNode 
 const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
   <div style={{ textAlign: 'center' }}>
     <div style={{ fontFamily: 'var(--font-display)', fontSize: 21, fontWeight: 800, letterSpacing: '-0.02em' }}>{value}</div>
-    <div style={{ fontSize: 10, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{label}</div>
+    <div style={{ fontSize: 13, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{label}</div>
   </div>
 );
 const UmbralField: React.FC<{ nivel: string; label: string; value: string; onChange: (v: string) => void }> =
@@ -514,10 +504,10 @@ const UmbralField: React.FC<{ nivel: string; label: string; value: string; onCha
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: `var(--level-${nivel}-fg)` }} />
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{label}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>{label}</span>
       </div>
       <Input value={value} onChange={e => onChange(e.target.value)} inputMode="numeric" />
-      <p style={{ fontSize: 10, color: 'var(--text-3)', margin: '4px 0 0', textAlign: 'center' }}>días</p>
+      <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '4px 0 0', textAlign: 'center' }}>días</p>
     </div>
   );
 const DescField: React.FC<{ nivel: string; label: string; value: string; onChange: (v: string) => void }> =
@@ -525,10 +515,10 @@ const DescField: React.FC<{ nivel: string; label: string; value: string; onChang
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: `var(--level-${nivel}-fg)` }} />
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{label}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>{label}</span>
       </div>
       <Input value={value} onChange={e => onChange(e.target.value)} inputMode="numeric" />
-      <p style={{ fontSize: 10, color: 'var(--text-3)', margin: '4px 0 0', textAlign: 'center' }}>% desc.</p>
+      <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '4px 0 0', textAlign: 'center' }}>% desc.</p>
     </div>
   );
 const rowBtn: React.CSSProperties = {

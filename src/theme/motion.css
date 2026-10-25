@@ -1,0 +1,72 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Movimiento — vistoso pero pensado para gente mayor
+   · Cada animación cuenta algo: apareció, se agregó, salió bien, hay que mirar acá.
+   · Solo transform/opacity (fluido en celulares de gama baja, sin saltos de layout).
+   · Duraciones un poco más largas que lo habitual (se ven sin apurar); salida más corta.
+   · Nada titila más de 3 veces por segundo (WCAG 2.3.1) ni se mueve en loop (salvo cargas).
+   · Nunca bloquea el toque. Se apaga con "Quitar animaciones" de Android o con la
+     opción de la app (data-movimiento="no").
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --mov-rapido: 160ms;   /* respuesta al toque */
+  --mov-base: 380ms;     /* aparecer */
+  --mov-lento: 620ms;    /* celebrar */
+  --mov-escalon: 45ms;   /* aparición escalonada en listas */
+  --ease-salida: cubic-bezier(0.22, 1, 0.36, 1);     /* frena suave al final */
+  --ease-resorte: cubic-bezier(0.34, 1.45, 0.64, 1); /* pequeño rebote */
+}
+
+@keyframes mov-entrar  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes mov-pop     { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
+@keyframes mov-paso    { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes mov-subir   { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+@keyframes mov-latido  { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
+@keyframes mov-rebote  { 0% { transform: scale(1); } 35% { transform: scale(1.28); } 100% { transform: scale(1); } }
+@keyframes mov-sacudir { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+@keyframes mov-trazo   { to { stroke-dashoffset: 0; } }
+@keyframes mov-brillo  { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
+.anim-entrar  { animation: mov-entrar var(--mov-base) var(--ease-salida) both;
+                animation-delay: calc(min(var(--i, 0), 12) * var(--mov-escalon)); }
+.anim-pop     { animation: mov-pop var(--mov-base) var(--ease-resorte) both; }
+.anim-paso    { animation: mov-paso var(--mov-base) var(--ease-salida) both; }
+.anim-subir   { animation: mov-subir var(--mov-base) var(--ease-salida) both; }
+.anim-atencion { animation: mov-latido 1.3s ease-in-out .5s 2; }   /* dos latidos y se queda quieto */
+.anim-rebote  { animation: mov-rebote var(--mov-lento) var(--ease-resorte); }
+.anim-sacudir { animation: mov-sacudir 440ms ease-in-out; }       /* "no era esa clave" */
+
+/* Listas: cada hijo aparece un poquito después del anterior (sin tocar cada componente). */
+.lista-animada > * { animation: mov-entrar var(--mov-base) var(--ease-salida) both; }
+.lista-animada > :nth-child(2)  { animation-delay: calc(1 * var(--mov-escalon)); }
+.lista-animada > :nth-child(3)  { animation-delay: calc(2 * var(--mov-escalon)); }
+.lista-animada > :nth-child(4)  { animation-delay: calc(3 * var(--mov-escalon)); }
+.lista-animada > :nth-child(5)  { animation-delay: calc(4 * var(--mov-escalon)); }
+.lista-animada > :nth-child(6)  { animation-delay: calc(5 * var(--mov-escalon)); }
+.lista-animada > :nth-child(7)  { animation-delay: calc(6 * var(--mov-escalon)); }
+.lista-animada > :nth-child(8)  { animation-delay: calc(7 * var(--mov-escalon)); }
+.lista-animada > :nth-child(n+9) { animation-delay: calc(8 * var(--mov-escalon)); }
+
+/* Respuesta al toque: se hunde apenas y vuelve (no cambia el tamaño de la caja). */
+.pressable { transition: transform var(--mov-rapido) var(--ease-salida), box-shadow var(--mov-rapido) ease, background-color var(--mov-rapido) ease, border-color var(--mov-rapido) ease; }
+.pressable:active { transform: scale(.96); }
+
+/* Tilde que se dibuja ("¡listo!") */
+.check-dibujo .c { stroke-dasharray: 160; stroke-dashoffset: 160; animation: mov-trazo var(--mov-lento) var(--ease-salida) forwards; }
+.check-dibujo .t { stroke-dasharray: 40; stroke-dashoffset: 40; animation: mov-trazo 360ms var(--ease-salida) 420ms forwards; }
+
+/* Barra de progreso de pasos: el color avanza suave */
+.barra-paso { transition: background-color var(--mov-base) var(--ease-salida); }
+
+/* Botón principal con un brillo que cruza una sola vez al aparecer (invita a tocarlo). */
+.brillo-una-vez { position: relative; overflow: hidden; }
+.brillo-una-vez::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, .45) 50%, transparent 70%);
+  transform: translateX(-100%); animation: mov-brillo 900ms var(--ease-salida) 600ms 1 both; }
+
+/* Apagar todo: opción de Android o de la app. Los retrasos también (si no, las listas tardan). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+:root[data-movimiento="no"] *, :root[data-movimiento="no"] *::before, :root[data-movimiento="no"] *::after {
+  animation-duration: .01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important;
+}

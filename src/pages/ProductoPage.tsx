@@ -11,7 +11,7 @@ import {
 } from '../context/StoreContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { Field, Input, Select } from '../components/ui/Input';
+import { Field, Input, Opciones } from '../components/ui/Input';
 import { NivelBadge } from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
 import ScannerModal from '../components/ScannerModal';
@@ -20,6 +20,7 @@ import { elegirYSubirFoto } from '../lib/fotos';
 import { supabase } from '../lib/supabase';
 import { formatearMoneda } from '../context/StoreContext';
 
+import { parseMonto } from '../lib/numeros';
 interface RouteParams { id?: string; }
 
 // Ionic REUTILIZA la instancia de la página cuando /producto/A y /producto/nuevo
@@ -33,7 +34,7 @@ const ProductoPage: React.FC = () => {
 
 const ProductoForm: React.FC = () => {
   const { state, addProducto, updateProducto, deleteProducto, fefoSugeridos, buscarProductoPorCodigo } = useStore();
-  const { comercio } = useAuth();
+  const { comercio, esDueno } = useAuth();
   const history = useHistory();
   const { id } = useParams<RouteParams>();
   const esNuevo = id === 'nuevo' || !id;
@@ -73,24 +74,31 @@ const ProductoForm: React.FC = () => {
       .then(({ data }) => setHistorialPrecios(data ?? []));
   }, [productoId]);
 
+  const [errores, setErrores] = useState<Record<string, string>>({});
+
   const handleGuardar = async () => {
     if (guardando) return; // anti doble-tap: evita crear dos veces
-    if (!nombre.trim()) { setToast({ show: true, msg: 'El nombre es obligatorio' }); return; }
+    // Errores al lado de cada campo, en palabras simples y diciendo cómo arreglarlo.
+    const err: Record<string, string> = {};
+    if (!nombre.trim()) err.nombre = 'Escribí el nombre del producto.';
     if (codigoBarras.trim()) {
       const ex = buscarProductoPorCodigo(codigoBarras.trim());
-      if (ex && ex.id !== productoId) { setToast({ show: true, msg: 'Ya existe un producto con ese código' }); return; }
+      if (ex && ex.id !== productoId) err.codigo = `Ese código ya es de "${ex.nombre}". Revisalo o dejalo vacío.`;
     }
     // Al CREAR, bloquear nombre exacto repetido (otra fuente de duplicados).
-    if (!productoExistente) {
+    if (!productoExistente && nombre.trim()) {
       const nombreNorm = nombre.trim().toLowerCase();
       const repetido = state.productos.find(p => p.activo && p.nombre.trim().toLowerCase() === nombreNorm);
-      if (repetido) { setToast({ show: true, msg: `Ya existe "${repetido.nombre}". Editalo desde Stock.` }); return; }
+      if (repetido) err.nombre = `Ya existe "${repetido.nombre}". Buscalo en Mercadería para cambiarlo.`;
     }
+    if (precio.trim() && Number.isNaN(parseMonto(precio))) err.precio = 'Escribí solo el número, por ejemplo 1.500';
+    setErrores(err);
+    if (Object.keys(err).length) return;
     const datos = {
       nombre: nombre.trim(),
       codigoBarras: codigoBarras.trim() || undefined,
       categoria: categoria.trim() || 'Sin categoría',
-      precio: parseFloat(precio) || 0,
+      precio: parseMonto(precio) || 0,
       proveedor: proveedor.trim() || undefined,
       stockMinimo: Math.max(0, parseInt(stockMinimo, 10) || 0),
       diasAvisoDefault: parseInt(diasAviso, 10) || 7,
@@ -145,18 +153,23 @@ const ProductoForm: React.FC = () => {
           padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px',
           maxWidth: 640, margin: '0 auto',
         }}>
-          <Header title={esNuevo ? 'Nuevo producto' : 'Editar producto'} onBack={() => history.goBack()} />
+          <Header title={esNuevo ? 'Nuevo producto' : esDueno ? 'Editar producto' : 'Producto'} onBack={() => history.goBack()} />
+          {!esDueno && (
+            <p role="note" style={{ fontSize: 16, color: 'var(--text-2)', background: 'var(--surface-2)', borderRadius: 'var(--radius)', padding: '12px 14px', marginBottom: 12 }}>
+              {esNuevo ? 'Solo el dueño puede crear productos nuevos. Pedíselo y después cargá la mercadería.' : 'Solo el dueño puede cambiar los datos o el precio del producto.'}
+            </p>
+          )}
 
           <Card padding="md" style={{ marginBottom: 16 }}>
-            <Field label="Nombre del producto" required>
-              <Input value={nombre} onChange={e => setNombre(e.target.value)}
+            <Field label="Nombre del producto" required error={errores.nombre}>
+              <Input value={nombre} onChange={e => { setNombre(e.target.value); setErrores(x => ({ ...x, nombre: '' })); }}
                 placeholder="Ej: Leche La Serenísima 1L" />
             </Field>
 
-            <Field label="Código de barras">
+            <Field label="Código de barras" error={errores.codigo}>
               <Input
                 value={codigoBarras}
-                onChange={e => setCodigoBarras(e.target.value)}
+                onChange={e => { setCodigoBarras(e.target.value); setErrores(x => ({ ...x, codigo: '' })); }}
                 inputMode="numeric"
                 placeholder="Opcional"
                 leftIcon={<QrCodeIcon width={18} height={18} />}
@@ -168,10 +181,10 @@ const ProductoForm: React.FC = () => {
             </Field>
 
             <Field label="Categoría">
-              <Select value={categoria} onChange={e => setCategoria(e.target.value)}>
-                <option value="">— Sin categoría —</option>
-                {CATEGORIAS().map(c => <option key={c} value={c}>{c}</option>)}
-              </Select>
+              <Opciones etiqueta="Categoría" valor={categoria} onChange={setCategoria}
+                opciones={[{ valor: '', etiqueta: 'Sin categoría' },
+                  ...(categoria && !CATEGORIAS().includes(categoria) ? [categoria, ...CATEGORIAS()] : CATEGORIAS())
+                    .map(c => ({ valor: c, etiqueta: c }))]} />
             </Field>
 
             <Field label="Proveedor" hint="Quién te lo provee">
@@ -179,10 +192,10 @@ const ProductoForm: React.FC = () => {
             </Field>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Field label="Precio unitario ($)">
-                <Input value={precio} onChange={e => setPrecio(e.target.value)} inputMode="decimal" />
+              <Field label="Precio de venta ($)" error={errores.precio}>
+                <Input value={precio} onChange={e => { setPrecio(e.target.value); setErrores(x => ({ ...x, precio: '' })); }} inputMode="decimal" />
               </Field>
-              <Field label="Días aviso default" hint="Anticipación">
+              <Field label="Avisar antes de vencer" hint="Días de anticipación">
                 <Input value={diasAviso} onChange={e => setDiasAviso(e.target.value)} inputMode="numeric" />
               </Field>
             </div>
@@ -215,27 +228,29 @@ const ProductoForm: React.FC = () => {
               </Field>
             )}
 
-            <Button variant="primary" size="lg" fullWidth onClick={handleGuardar} disabled={guardando}
-              icon={<PlusIcon width={18} height={18} />} style={{ marginTop: 8 }}>
-              {guardando ? 'Guardando…' : esNuevo ? 'Crear producto' : 'Guardar cambios'}
-            </Button>
+            {esDueno && (
+              <Button variant="primary" size="lg" fullWidth onClick={handleGuardar} disabled={guardando}
+                icon={<PlusIcon width={18} height={18} />} style={{ marginTop: 8 }}>
+                {guardando ? 'Guardando…' : esNuevo ? 'Crear producto' : 'Guardar cambios'}
+              </Button>
+            )}
           </Card>
 
           {/* Lotes FEFO */}
           {productoExistente && (
             <>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <h2 style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em' }}>Lotes</h2>
+                <h2 style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em' }}>Mercadería cargada</h2>
                 <Button variant="secondary" size="sm"
                   onClick={() => history.push(`/lote/nuevo?productoId=${productoExistente.id}`)}
-                  icon={<PlusIcon width={16} height={16} />}>Nuevo lote</Button>
+                  icon={<PlusIcon width={16} height={16} />}>Cargar más</Button>
               </div>
-              <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '0 0 12px' }}>
-                Ordenados por FEFO · vendé primero los de arriba
+              <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 12px' }}>
+                Vendé primero las de arriba: son las que vencen antes
               </p>
 
               {lotes.length === 0 ? (
-                <EmptyState icon={<CubeIcon width={28} height={28} />} title="Sin lotes cargados"
+                <EmptyState icon={<CubeIcon width={28} height={28} />} title="No hay mercadería cargada"
                   description="Agregá un lote con su fecha de vencimiento." />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
@@ -256,7 +271,7 @@ const ProductoForm: React.FC = () => {
                             </div>
                             <div style={{ marginTop: 4 }}>
                               <NivelBadge nivel={nivel} />
-                              <span style={{ fontSize: 11, color: 'var(--text-2)', marginLeft: 8 }}>
+                              <span style={{ fontSize: 13, color: 'var(--text-2)', marginLeft: 8 }}>
                                 {textoEstado(l.fechaVencimiento)}
                               </span>
                             </div>
@@ -292,7 +307,7 @@ const ProductoForm: React.FC = () => {
                             {formatearMoneda(Number(h.precio_anterior))} → <b>{formatearMoneda(Number(h.precio_nuevo))}</b>
                           </span>
                           <span style={{
-                            fontWeight: 700, fontSize: 12,
+                            fontWeight: 700, fontSize: 13,
                             color: subio ? 'var(--danger)' : 'var(--level-ok-fg)',
                           }}>
                             {subio ? '+' : ''}{pct}%
@@ -304,11 +319,13 @@ const ProductoForm: React.FC = () => {
                 </>
               )}
 
-              <Button variant="ghost" size="md" fullWidth onClick={handleEliminar}
-                icon={<TrashIcon width={16} height={16} />}
-                style={{ color: 'var(--danger)' }}>
-                Eliminar producto
-              </Button>
+              {esDueno && (
+                <Button variant="ghost" size="md" fullWidth onClick={handleEliminar}
+                  icon={<TrashIcon width={16} height={16} />}
+                  style={{ color: 'var(--danger)' }}>
+                  Eliminar producto
+                </Button>
+              )}
             </>
           )}
         </div>

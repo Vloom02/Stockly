@@ -1,12 +1,11 @@
 import React from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import {
-  HomeIcon, CubeIcon, PlusIcon, ClockIcon, Cog6ToothIcon,
+  HomeIcon, CubeIcon, PlusIcon, Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 import {
   HomeIcon as HomeSolid,
   CubeIcon as CubeSolid,
-  ClockIcon as ClockSolid,
   Cog6ToothIcon as CogSolid,
 } from '@heroicons/react/24/solid';
 
@@ -20,9 +19,9 @@ interface TabConfig {
 
 const TABS: TabConfig[] = [
   { path: '/dashboard',   Icon: HomeIcon,    IconActive: HomeSolid,  label: 'Inicio' },
-  { path: '/stock',       Icon: CubeIcon,    IconActive: CubeSolid,  label: 'Stock' },
-  { path: '/lote/nuevo',  Icon: PlusIcon,    IconActive: PlusIcon,   label: 'Nuevo', fab: true },
-  { path: '/movimientos', Icon: ClockIcon,   IconActive: ClockSolid, label: 'Historial' },
+  { path: '/stock',       Icon: CubeIcon,    IconActive: CubeSolid,  label: 'Mercadería' },
+  { path: '/lote/nuevo',  Icon: PlusIcon,    IconActive: PlusIcon,   label: 'Cargar', fab: true },
+  // Historial se abre desde Ajustes: 4 pestañas en vez de 5 (menos opciones a la vista).
   { path: '/config',      Icon: Cog6ToothIcon, IconActive: CogSolid, label: 'Ajustes' },
 ];
 
@@ -58,7 +57,9 @@ const TabBar: React.FC = () => {
               key={t.path}
               type="button"
               onClick={() => history.push(t.path)}
+              aria-label={t.label}
               style={{
+                position: 'relative',
                 background: 'var(--brand-500)',
                 border: 'none',
                 cursor: 'pointer',
@@ -71,7 +72,7 @@ const TabBar: React.FC = () => {
                 color: '#fff',
                 boxShadow: 'var(--shadow-brand)',
                 transition: 'transform 150ms, box-shadow 200ms',
-                marginTop: -8,
+                marginTop: -20,
               }}
               onMouseDown={(e) => {
                 e.currentTarget.style.transform = 'scale(0.92)';
@@ -79,6 +80,7 @@ const TabBar: React.FC = () => {
               }}
             >
               <PlusIcon width={26} height={26} strokeWidth={2.5 as any} />
+              <span style={{ position: 'absolute', top: '100%', marginTop: 4, fontSize: 13, fontWeight: 700, color: 'var(--brand-600)', whiteSpace: 'nowrap' }}>{t.label}</span>
             </button>
           );
         }
@@ -103,9 +105,9 @@ const TabBar: React.FC = () => {
               minHeight: 48,
             }}
           >
-            <Ico width={22} height={22} />
+            <span key={active ? 'on' : 'off'} className={active ? 'anim-rebote' : undefined} style={{ display: 'flex' }}><Ico width={22} height={22} /></span>
             <span style={{
-              fontSize: 10,
+              fontSize: 14,
               fontWeight: active ? 600 : 500,
               letterSpacing: '-0.005em',
             }}>{t.label}</span>

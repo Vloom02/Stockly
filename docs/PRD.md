@@ -125,7 +125,7 @@ poco tiempo, sin formación técnica. Idioma: español rioplatense (es-AR).
 | Backend | Supabase: Postgres 17 + RLS, Auth, edge functions, cron (`pg_cron` + `pg_net`) |
 | Datos locales | IndexedDB (catálogo, outbox, settings) + Capacitor Preferences |
 | Observabilidad | Sentry (solo producción, sin PII, tag por app) |
-| Calidad | Vitest (56 tests unitarios) · Playwright (smoke E2E anti-pantalla-blanca) · CI en GitHub Actions |
+| Calidad | Vitest (70 tests unitarios: 42 Stockly + 28 Ventas) · Playwright (smoke E2E anti-pantalla-blanca) · CI en GitHub Actions |
 
 Flujo clave: `Ventas (carrito) → RPC registrar_venta → lotes (FEFO, lock) +
 movimientos → visible en Stockly`. La devolución recorre el camino inverso.
@@ -137,7 +137,7 @@ Escaneo completo documentado en [`supabase/SEGURIDAD.md`](../supabase/SEGURIDAD.
 - RLS en el 100% de las tablas, policies por rol; funciones definer con
   `search_path` fijo; PIN verificado server-side (el hash no viaja al cliente).
 - Sin secretos en el código; `.env` y keystore fuera de git; permisos Android
-  mínimos (INTERNET + cámara solo en Stockly).
+  mínimos (INTERNET + cámara en ambas apps: escáner de códigos).
 - Warnings aceptados y justificados: `pg_net` en `public` (lo usa el cron),
   `validar_invitacion` anónima (pre-registro; fuerza bruta inviable),
   HaveIBeenPwned (requiere plan Pro).

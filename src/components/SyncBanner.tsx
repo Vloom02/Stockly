@@ -27,29 +27,30 @@ const SyncBanner: React.FC = () => {
     color = 'var(--level-aviso-fg)';
     icon = <ExclamationTriangleIcon width={16} height={16} />;
     texto = state.pendientesSync > 0
-      ? `Sin conexión · ${state.pendientesSync} cambio${state.pendientesSync !== 1 ? 's' : ''} pendiente${state.pendientesSync !== 1 ? 's' : ''}`
-      : 'Sin conexión · los cambios se guardan en el dispositivo';
+      ? `Sin internet: ${state.pendientesSync} cambio${state.pendientesSync !== 1 ? 's' : ''} guardado${state.pendientesSync !== 1 ? 's' : ''}, se mandan solos cuando vuelva`
+      : 'Sin internet: podés seguir usando la app, todo queda guardado';
   } else if (sincronizando) {
     bg = 'var(--brand-50)';
     color = 'var(--brand-700)';
     icon = <ArrowPathIcon width={16} height={16} style={{ animation: 'spin 0.8s linear infinite' }} />;
-    texto = 'Sincronizando...';
+    texto = 'Guardando en la nube...';
   } else if (state.pendientesSync > 0) {
     bg = 'var(--brand-50)';
     color = 'var(--brand-700)';
     icon = <CloudIcon width={16} height={16} />;
-    texto = `${state.pendientesSync} cambio${state.pendientesSync !== 1 ? 's' : ''} por subir · tocá para sincronizar`;
+    texto = `${state.pendientesSync} cambio${state.pendientesSync !== 1 ? 's' : ''} sin mandar · tocá acá para mandar ahora`;
     clickable = true;
   }
 
   return (
     <div
+      role={clickable ? 'button' : 'status'}
       onClick={clickable ? () => sincronizarAhora() : undefined}
       style={{
         display: 'flex', alignItems: 'center', gap: 8,
         background: bg, color,
-        borderRadius: 'var(--radius)', padding: '8px 12px',
-        fontSize: 12, fontWeight: 600, marginBottom: 12,
+        borderRadius: 'var(--radius)', padding: '12px 14px', minHeight: 48,
+        fontSize: 15, fontWeight: 600, marginBottom: 12,
         cursor: clickable ? 'pointer' : 'default',
       }}
     >

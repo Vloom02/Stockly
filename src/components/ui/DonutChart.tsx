@@ -80,7 +80,7 @@ const DonutChart: React.FC<DonutChartProps> = ({
             </div>
           )}
           {centroLabel && (
-            <div style={{ fontSize: 10, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <div style={{ fontSize: 13, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               {centroLabel}
             </div>
           )}

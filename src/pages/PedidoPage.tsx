@@ -75,7 +75,7 @@ const PedidoPage: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                   <TruckIcon width={18} height={18} style={{ color: 'var(--brand-600)', flexShrink: 0 }} />
                   <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, flex: 1 }}>{proveedor}</h2>
-                  <span style={{ fontSize: 12, color: 'var(--text-2)' }}>
+                  <span style={{ fontSize: 13, color: 'var(--text-2)' }}>
                     {items.length} producto{items.length !== 1 ? 's' : ''}
                   </span>
                 </div>

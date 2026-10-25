@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { IonContent, IonPage } from '@ionic/react';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import {
   MagnifyingGlassIcon, PlusIcon, CubeIcon, TagIcon,
   XMarkIcon, ArchiveBoxIcon, QrCodeIcon,
@@ -14,19 +14,36 @@ import { sugerirLiquidacion } from '../lib/liquidacion';
 import Card from '../components/ui/Card';
 import { NivelBadge } from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
-import { Input, Select } from '../components/ui/Input';
+import { Input, Opciones } from '../components/ui/Input';
 import ScannerModal from '../components/ScannerModal';
+import { useAuth } from '../context/AuthContext';
 
 type Vista = 'productos' | 'lotes';
+
+function coincideNivel(filtro: NivelAlerta | 'todos' | 'pronto', nivel: NivelAlerta): boolean {
+  if (filtro === 'todos') return true;
+  if (filtro === 'pronto') return nivel === 'critico' || nivel === 'urgente';
+  return nivel === filtro;
+}
 
 const StockPage: React.FC = () => {
   const { productosConLotes, lotesEnriquecidos, buscarProductoPorCodigo } = useStore();
   const history = useHistory();
+  const { esDueno } = useAuth();
 
   const [vista, setVista] = useState<Vista>('productos');
   const [busqueda, setBusqueda] = useState('');
   const [showScanner, setShowScanner] = useState(false);
-  const [filtro, setFiltro] = useState<NivelAlerta | 'todos'>('todos');
+  // 'pronto' = crítico + urgente (lo usa la tarjeta "vencen pronto" del inicio)
+  const [filtro, setFiltro] = useState<NivelAlerta | 'todos' | 'pronto'>('todos');
+  const location = useLocation();
+  useEffect(() => {
+    const q = new URLSearchParams(location.search);
+    const nivel = q.get('nivel') as NivelAlerta | 'pronto' | null;
+    if (nivel) setFiltro(nivel);
+    else setFiltro(f => (f === 'pronto' ? 'todos' : f)); // 'pronto' no tiene chip: no dejarlo invisible
+    if (q.get('vista') === 'lotes') setVista('lotes');
+  }, [location.search]);
   const [filtroProveedor, setFiltroProveedor] = useState<string>('todos');
 
   const productos = useMemo(() => productosConLotes(), [productosConLotes]);
@@ -43,7 +60,7 @@ const StockPage: React.FC = () => {
     const q = busqueda.trim().toLowerCase();
     return productos.filter(p => {
       const mb = !q || p.producto.nombre.toLowerCase().includes(q) || (p.producto.codigoBarras?.includes(busqueda.trim()));
-      const mf = filtro === 'todos' || p.nivelPeor === filtro;
+      const mf = coincideNivel(filtro, p.nivelPeor);
       const mp = filtroProveedor === 'todos' || (p.producto.proveedor?.trim() ?? '') === filtroProveedor;
       return mb && mf && mp;
     }).sort((a, b) => ordenNivel(a.nivelPeor) - ordenNivel(b.nivelPeor));
@@ -53,7 +70,7 @@ const StockPage: React.FC = () => {
     const q = busqueda.trim().toLowerCase();
     return lotes.filter(l => {
       const mb = !q || l.productoNombre.toLowerCase().includes(q) || (l.numeroLote?.toLowerCase().includes(q));
-      const mf = filtro === 'todos' || l.nivelAlerta === filtro;
+      const mf = coincideNivel(filtro, l.nivelAlerta);
       const mp = filtroProveedor === 'todos' || (l.productoProveedor?.trim() ?? '') === filtroProveedor;
       return mb && mf && mp;
     }).sort((a, b) => {
@@ -73,9 +90,9 @@ const StockPage: React.FC = () => {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>
-              Stock
+              Mercadería
             </h1>
-            <button
+            {esDueno && <button
               type="button"
               onClick={() => history.push('/precios')}
               className="pressable"
@@ -83,10 +100,10 @@ const StockPage: React.FC = () => {
                 display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
                 borderRadius: 'var(--radius-full)', border: '1px solid var(--brand-200)',
                 background: 'var(--brand-50)', color: 'var(--brand-700)',
-                fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', minHeight: 44,
               }}>
-              💲 Suba de precios
-            </button>
+              💲 Subir precios
+            </button>}
           </div>
 
           {/* Switch de vista */}
@@ -97,13 +114,13 @@ const StockPage: React.FC = () => {
             <SegBtn activa={vista === 'productos'} onClick={() => setVista('productos')}
               icon={<CubeIcon width={16} height={16} />}>Por producto</SegBtn>
             <SegBtn activa={vista === 'lotes'} onClick={() => setVista('lotes')}
-              icon={<TagIcon width={16} height={16} />}>Por lote</SegBtn>
+              icon={<TagIcon width={16} height={16} />}>Por vencimiento</SegBtn>
           </div>
 
           {/* Búsqueda */}
           <div style={{ marginBottom: 12 }}>
             <Input
-              placeholder="Buscar producto o lote..."
+              placeholder="Buscar producto..."
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
               leftIcon={<MagnifyingGlassIcon width={18} height={18} />}
@@ -136,10 +153,9 @@ const StockPage: React.FC = () => {
           {/* Filtro por proveedor (solo si hay alguno cargado) */}
           {proveedores.length > 0 && (
             <div style={{ marginBottom: 12 }}>
-              <Select value={filtroProveedor} onChange={e => setFiltroProveedor(e.target.value)}>
-                <option value="todos">Todos los proveedores</option>
-                {proveedores.map(pr => <option key={pr} value={pr}>{pr}</option>)}
-              </Select>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>Proveedor</div>
+              <Opciones etiqueta="Proveedor" columnas={3} valor={filtroProveedor} onChange={setFiltroProveedor}
+                opciones={[{ valor: 'todos', etiqueta: 'Todos' }, ...proveedores.map(pr => ({ valor: pr, etiqueta: pr }))]} />
             </div>
           )}
 
@@ -162,7 +178,7 @@ const StockPage: React.FC = () => {
               <EmptyState icon={<ArchiveBoxIcon width={32} height={32} />} title="Sin resultados"
                 description="Probá cambiar la búsqueda o los filtros." />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="lista-animada" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {productosFiltrados.map(p => (
                   <ProductoCard key={p.producto.id} p={p}
                     onClick={() => history.push(`/producto/${p.producto.id}`)} />
@@ -174,7 +190,7 @@ const StockPage: React.FC = () => {
               <EmptyState icon={<TagIcon width={32} height={32} />} title="Sin resultados"
                 description="Probá cambiar la búsqueda o los filtros." />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="lista-animada" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {lotesFiltrados.map(l => (
                   <LoteRow key={l.id} lote={l} onClick={() => history.push(`/lote/${l.id}`)} />
                 ))}
@@ -182,8 +198,8 @@ const StockPage: React.FC = () => {
             )
           )}
 
-          {/* FAB nuevo producto */}
-          <button
+          {/* FAB nuevo producto (solo dueño) */}
+          {esDueno && <button
             type="button"
             onClick={() => history.push('/producto/nuevo')}
             style={{
@@ -199,7 +215,7 @@ const StockPage: React.FC = () => {
           >
             <CubeIcon width={24} height={24} />
             <PlusIcon width={14} height={14} style={{ position: 'absolute', top: 8, right: 8 }} />
-          </button>
+          </button>}
         </div>
 
         {showScanner && (
@@ -274,17 +290,17 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
         <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15, marginBottom: 3, letterSpacing: '-0.01em' }}>
           {p.producto.nombre}
         </div>
-        <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 6 }}>
+        <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 6 }}>
           {p.producto.categoria} · {formatearMoneda(p.producto.precio)} c/u
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <NivelBadge nivel={p.nivelPeor} />
-          <span style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 500 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>
             {p.cantidadTotal} unid · {p.lotes.length} lote{p.lotes.length !== 1 ? 's' : ''}
           </span>
           {reponer && (
             <span style={{
-              fontSize: 11, fontWeight: 700, color: 'var(--warning)',
+              fontSize: 13, fontWeight: 700, color: 'var(--warning)',
               border: '1px solid var(--warning)', borderRadius: 'var(--radius-full)',
               padding: '1px 8px', whiteSpace: 'nowrap',
             }}>
@@ -298,7 +314,7 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
           {formatearMoneda(p.valorTotal)}
         </div>
         {p.proximoVencimiento && (
-          <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 2 }}>
+          <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 2 }}>
             {formatearFecha(p.proximoVencimiento)}
           </div>
         )}
@@ -319,18 +335,18 @@ const LoteRow: React.FC<{ lote: LoteConProducto; onClick: () => void }> = ({ lot
         <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15, marginBottom: 2, letterSpacing: '-0.01em' }}>
           {lote.productoNombre}
         </div>
-        <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 6 }}>
+        <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 6 }}>
           {lote.cantidad} unid.{lote.numeroLote ? ` · Lote ${lote.numeroLote}` : ''}{lote.productoProveedor ? ` · ${lote.productoProveedor}` : ''}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <NivelBadge nivel={lote.nivelAlerta} />
-          <span style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 500 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>
             {textoEstado(lote.fechaVencimiento)}
           </span>
           {liq.aplicar && (
             <span title={`Sugerencia: liquidá a ${formatearMoneda(liq.precioFinal)} (precio normal ${formatearMoneda(liq.precioOriginal)}) para venderlo antes de que venza`}
               style={{
-                fontSize: 11, fontWeight: 700, color: 'var(--brand-600)',
+                fontSize: 13, fontWeight: 700, color: 'var(--brand-600)',
                 background: 'var(--brand-50, var(--surface-2))',
                 border: '1px solid var(--brand-300)',
                 borderRadius: 'var(--radius-full)', padding: '2px 8px',
@@ -344,7 +360,7 @@ const LoteRow: React.FC<{ lote: LoteConProducto; onClick: () => void }> = ({ lot
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600 }}>{formatearFecha(lote.fechaVencimiento)}</div>
-        <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>
+        <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>
           {formatearMoneda(lote.valorLote)}
         </div>
       </div>

@@ -17,20 +17,20 @@ interface Slide {
 const SLIDES: Slide[] = [
   {
     icon: <ArchiveBoxIcon width={40} height={40} />,
-    titulo: 'Controlá tu stock por lotes',
-    descripcion: 'Cargá cada producto una vez y agregá lotes con distintas fechas de vencimiento. Stockly los organiza por vos.',
+    titulo: 'Toda tu mercadería en un lugar',
+    descripcion: 'Cargá cada producto una vez y, cada vez que comprás, anotá cuánto entró y cuándo vence. Stockly lo ordena por vos.',
     color: 'var(--brand-500)',
   },
   {
     icon: <BellAlertIcon width={40} height={40} />,
     titulo: 'Alertas antes de que sea tarde',
-    descripcion: 'Niveles escalados (aviso, urgente, crítico) te avisan con anticipación. Nunca más perdés plata por vencimientos.',
+    descripcion: 'La app te avisa con tiempo lo que está por vencer, así no perdés plata.',
     color: 'var(--warning)',
   },
   {
     icon: <ArrowPathRoundedSquareIcon width={40} height={40} />,
     titulo: 'Vendé en el orden correcto',
-    descripcion: 'El sistema FEFO te dice qué lote vender primero (el que vence antes), reduciendo el desperdicio al mínimo.',
+    descripcion: 'La app te dice qué vender primero (lo que vence antes), así no se te vence nada.',
     color: 'var(--info)',
   },
 ];

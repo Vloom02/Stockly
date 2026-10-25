@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { Comercio, Miembro } from '../types';
@@ -8,6 +8,10 @@ interface AuthContextValue {
   session: Session | null;
   comercio: Comercio | null;
   miembro: Miembro | null;
+  /** true salvo para empleados. Sin miembro cargado (offline) no se recorta nada. */
+  esDueno: boolean;
+  /** Desarrollador / soporte de la plataforma (tabla plataforma_admins). */
+  esAdminPlataforma: boolean;
   cargando: boolean;
   registrarse: (email: string, password: string, nombre: string, nombreComercio: string, codigoInvitacion?: string) => Promise<{ error?: string }>;
   iniciarSesion: (email: string, password: string) => Promise<{ error?: string }>;
@@ -21,10 +25,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [session, setSession] = useState<Session | null>(null);
   const [comercio, setComercio] = useState<Comercio | null>(null);
   const [miembro, setMiembro] = useState<Miembro | null>(null);
+  const [esAdminPlataforma, setEsAdminPlataforma] = useState(false);
+  const adminConsultadoPara = useRef<string | null>(null); // es_admin_plataforma: una vez por usuario
   const [cargando, setCargando] = useState(true);
 
   // Cargar comercio + membresía del usuario logueado
   const cargarDatosUsuario = async (userId: string) => {
+    // Rol de soporte: si la función no existe (migración 8 sin aplicar) queda en false.
+    if (adminConsultadoPara.current !== userId) {
+      adminConsultadoPara.current = userId;
+      supabase.rpc('es_admin_plataforma').then(({ data }) => setEsAdminPlataforma(data === true), () => setEsAdminPlataforma(false));
+    }
     const { data: miembros } = await supabase
       .from('miembros')
       .select('*, comercios(*)')
@@ -114,6 +125,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       } else {
         setComercio(null);
         setMiembro(null);
+        setEsAdminPlataforma(false);
       }
     });
 
@@ -176,6 +188,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setSession(null);
     setComercio(null);
     setMiembro(null);
+    setEsAdminPlataforma(false);
   };
 
   // Volver a traer los datos del comercio (ej: tras activar la suscripción)
@@ -187,7 +200,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   return (
     <AuthContext.Provider value={{
-      session, comercio, miembro, cargando,
+      session, comercio, miembro, esDueno: miembro?.rol !== 'empleado', esAdminPlataforma, cargando,
       registrarse, iniciarSesion, cerrarSesion, recargarComercio,
     }}>
       {children}
@@ -205,7 +218,7 @@ export function useAuth(): AuthContextValue {
 function traducirError(msg: string): string {
   if (msg.includes('Invalid login credentials')) return 'Email o contraseña incorrectos';
   if (msg.includes('User already registered')) return 'Ese email ya está registrado';
-  if (msg.includes('Password should be at least')) return 'La contraseña debe tener al menos 6 caracteres';
+  if (msg.includes('Password should be at least')) return 'La contraseña es muy corta (mínimo 8 caracteres)';
   if (msg.includes('Unable to validate email')) return 'El email no es válido';
   if (msg.includes('Email not confirmed')) return 'Confirmá tu email antes de iniciar sesión';
   return msg;

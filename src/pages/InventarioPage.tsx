@@ -72,10 +72,10 @@ const InventarioPage: React.FC = () => {
                   <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid ' + (diff !== 0 ? 'var(--brand-300)' : 'var(--border)'), borderRadius: 'var(--radius)', padding: '10px 12px' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.productoNombre}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Vence {formatearFecha(l.fechaVencimiento)} · sistema: {l.cantidad}</div>
+                      <div style={{ fontSize: 13, color: 'var(--text-3)' }}>Vence {formatearFecha(l.fechaVencimiento)} · sistema: {l.cantidad}</div>
                     </div>
                     {diff !== 0 && (
-                      <span style={{ fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-mono)', color: diff > 0 ? 'var(--brand-600)' : 'var(--level-vencido-fg)' }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: diff > 0 ? 'var(--brand-600)' : 'var(--level-vencido-fg)' }}>
                         {diff > 0 ? '+' : ''}{diff}
                       </span>
                     )}
