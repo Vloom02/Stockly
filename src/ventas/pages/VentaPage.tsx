@@ -242,7 +242,7 @@ const VentaPage: React.FC = () => {
               <button type="button"
                 onClick={async () => { if (await confirmar(`¿Cerrar el turno de ${cajero.nombre}?`, { okText: 'Cerrar turno' })) cerrarTurno(); }}
                 className="pressable"
-                style={{ marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 'var(--radius-full)', border: '1px solid var(--color-primary-border)', background: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', minHeight: 44, borderRadius: 'var(--radius-full)', border: '1px solid var(--color-primary-border)', background: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                 <IcoUserIcon width={16} height={16} /> {cajero.nombre} · salir
               </button>
             )}

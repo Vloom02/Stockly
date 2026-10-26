@@ -252,7 +252,7 @@ const LedgerStat: React.FC<{ n: number; l: string }> = ({ n, l }) => (
 );
 
 const SecHeader: React.FC<{ title: string; tag?: string; onAction?: () => void }> = ({ title, tag, onAction }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, rowGap: 6, marginBottom: 12 }}>
     <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, margin: 0, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>{title}</h2>
     <span style={{ flex: 1 }} />
     {tag && <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-2)', background: 'var(--surface-3)', borderRadius: 20, padding: '3px 10px' }}>{tag}</span>}

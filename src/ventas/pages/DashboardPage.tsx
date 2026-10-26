@@ -148,16 +148,16 @@ const DashboardPage: React.FC = () => {
   return (
     <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
       <div style={{ padding: 'var(--space-4)', maxWidth: 520, margin: '0 auto', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
           <BotonVolver />
-          <h1 style={{ fontSize: 20, fontWeight: 700 }}>Resumen del día</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h1 style={{ fontSize: 20, fontWeight: 700, flex: '1 1 140px' }}>Resumen del día</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
             <button onClick={exportarCSV} disabled={ventas.length === 0} aria-label="Exportar ventas a CSV" className="pressable"
-              style={{ background: 'var(--surface-2)', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-full)', padding: '7px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 700, color: 'var(--text-2)', fontFamily: 'inherit', opacity: ventas.length === 0 ? 0.5 : 1 }}>
+              style={{ background: 'var(--surface-2)', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-full)', padding: '7px 14px', minHeight: 48, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 15, fontWeight: 700, color: 'var(--text-2)', fontFamily: 'inherit', opacity: ventas.length === 0 ? 0.5 : 1 }}>
               <IcoArrowDownTrayIcon width={18} height={18} /> CSV
             </button>
-            <button onClick={load} aria-label="Actualizar datos" className="pressable" style={{ background: 'var(--surface-2)', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-full)', padding: 8, cursor: 'pointer', display: 'flex' }}>
-              <ArrowPathIcon size={16} color="var(--text-2)" />
+            <button onClick={load} aria-label="Actualizar datos" className="pressable" style={{ background: 'var(--surface-2)', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-full)', width: 48, height: 48, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ArrowPathIcon size={22} color="var(--text-2)" />
             </button>
           </div>
         </div>
@@ -166,7 +166,7 @@ const DashboardPage: React.FC = () => {
         <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
           {(['hoy', 'semana'] as const).map(r => (
             <button key={r} onClick={() => setRange(r)}
-              style={{ flex: 1, padding: 8, border: range === r ? '1.5px solid var(--color-primary)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: range === r ? 'var(--color-primary-bg)' : 'var(--surface)', color: range === r ? 'var(--color-primary-dark)' : 'var(--text-2)', cursor: 'pointer', fontWeight: 600, fontSize: 14, fontFamily: 'inherit' }}>
+              style={{ flex: 1, padding: 8, minHeight: 48, border: range === r ? '1.5px solid var(--color-primary)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: range === r ? 'var(--color-primary-bg)' : 'var(--surface)', color: range === r ? 'var(--color-primary-dark)' : 'var(--text-2)', cursor: 'pointer', fontWeight: 600, fontSize: 14, fontFamily: 'inherit' }}>
               {r === 'hoy' ? 'Hoy' : 'Últimos 7 días'}
             </button>
           ))}

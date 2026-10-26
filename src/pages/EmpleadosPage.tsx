@@ -150,8 +150,8 @@ const EmpleadosPage: React.FC = () => {
                     </div>
                     {m.rol === 'empleado' && (
                       <button type="button" aria-label={`Quitar a ${m.nombre ?? 'empleado'}`} onClick={() => quitar(m)} className="pressable"
-                        style={{ width: 36, height: 36, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--level-vencido-fg)' }}>
-                        <TrashIcon width={16} height={16} />
+                        style={{ width: 48, height: 48, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--level-vencido-fg)' }}>
+                        <TrashIcon width={22} height={22} />
                       </button>
                     )}
                   </div>

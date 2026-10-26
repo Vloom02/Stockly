@@ -155,7 +155,7 @@ const ReportesPage: React.FC = () => {
                         type="button"
                         onClick={() => compartirTexto(reposicionATexto(reposicion), 'Lista de reposición')}
                         className="pressable"
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--brand-50)', color: 'var(--brand-700)', border: '1px solid var(--brand-200)', borderRadius: 'var(--radius)', padding: '6px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--brand-50)', color: 'var(--brand-700)', border: '1px solid var(--brand-200)', borderRadius: 'var(--radius)', padding: '6px 14px', minHeight: 44, fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                         <ShareIcon width={15} height={15} /> Compartir
                       </button>
                     </div>

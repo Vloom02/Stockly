@@ -55,7 +55,7 @@ const MovimientosPage: React.FC = () => {
             {chips.map(c => (
               <button key={c.val} type="button" onClick={() => setFiltro(c.val)}
                 style={{
-                  padding: '6px 14px', fontSize: 13, borderRadius: 'var(--radius-full)',
+                  padding: '6px 16px', minHeight: 44, fontSize: 15, borderRadius: 'var(--radius-full)',
                   border: '1px solid ' + (filtro === c.val ? 'var(--brand-500)' : 'var(--border)'),
                   background: filtro === c.val ? 'var(--brand-500)' : 'var(--surface)',
                   color: filtro === c.val ? '#fff' : 'var(--text-2)',

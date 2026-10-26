@@ -167,8 +167,8 @@ const CierrePage: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <BotonVolver />
           <h1 style={{ fontSize: 20, fontWeight: 700 }}>Cerrar la caja</h1>
-          <button onClick={load} className="pressable" style={{ background: 'var(--surface-2)', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-full)', padding: 8, cursor: 'pointer', display: 'flex' }}>
-            <ArrowPathIcon size={16} color="var(--text-2)" />
+          <button onClick={load} aria-label="Actualizar datos" className="pressable" style={{ background: 'var(--surface-2)', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-full)', width: 48, height: 48, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ArrowPathIcon size={22} color="var(--text-2)" />
           </button>
         </div>
         <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 12 }}>
@@ -331,7 +331,7 @@ const CierrePage: React.FC = () => {
             type="button"
             onClick={() => history.push('/ventas/cajeros')}
             className="pressable"
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', marginTop: 8, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', minHeight: 48, marginTop: 8, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
             Gestionar cajeros
           </button>
           <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 8, textAlign: 'center' }}>

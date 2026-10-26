@@ -241,10 +241,10 @@ const SegBtn: React.FC<{ activa: boolean; onClick: () => void; icon: React.React
   ({ activa, onClick, icon, children }) => (
     <button type="button" onClick={onClick}
       style={{
-        flex: 1, padding: '9px 12px', border: 'none',
+        flex: 1, padding: '9px 12px', minHeight: 48, border: 'none',
         background: activa ? 'var(--surface)' : 'transparent',
         color: activa ? 'var(--text)' : 'var(--text-2)',
-        borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: 13,
+        borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 15,
         cursor: 'pointer', fontFamily: 'inherit',
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         boxShadow: activa ? 'var(--shadow-xs)' : 'none',
@@ -258,7 +258,7 @@ const FilterChip: React.FC<{ activo: boolean; nivel?: NivelAlerta; onClick: () =
   ({ activo, nivel, onClick, children }) => (
     <button type="button" onClick={onClick}
       style={{
-        padding: '6px 14px', fontSize: 13, borderRadius: 'var(--radius-full)',
+        padding: '6px 16px', minHeight: 44, fontSize: 15, borderRadius: 'var(--radius-full)',
         border: '1px solid ' + (activo ? 'var(--brand-500)' : 'var(--border)'),
         background: activo ? 'var(--brand-500)' : 'var(--surface)',
         color: activo ? '#fff' : 'var(--text-2)',

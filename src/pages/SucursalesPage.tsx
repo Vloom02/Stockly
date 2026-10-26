@@ -130,9 +130,9 @@ const SucursalesPage: React.FC = () => {
                         onClick={() => { setEditando(s.id!); setEditNombre(s.nombre); setEditDir(s.direccion || ''); }}
                         style={{
                           background: 'none', border: 'none', cursor: 'pointer',
-                          color: 'var(--text-3)', padding: 6, display: 'flex',
+                          color: 'var(--text-2)', width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
-                        <PencilIcon width={18} height={18} />
+                        <PencilIcon width={22} height={22} />
                       </button>
                       {sucursalesActivas.length > 1 && (
                         <button type="button" aria-label={`Borrar ${s.nombre}`}
