@@ -59,7 +59,7 @@ const CajeroGate: React.FC = () => {
   return (
     <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
       <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-6)', paddingTop: 'calc(var(--space-6) + var(--ion-safe-area-top, 0px))' }}>
-        <h1 className="anim-pop" style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.01em', textAlign: 'center' }}>¿Quién va a vender?</h1>
+        <h1 className="anim-pop" style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.01em', textAlign: 'center' }}>¿Quién va a atender?</h1>
         <p style={{ fontSize: 16, color: 'var(--text-2)', marginBottom: 'var(--space-5)', textAlign: 'center', maxWidth: 320, lineHeight: 1.5 }}>
           {comercio?.nombre ?? 'El comercio'} — tocá tu nombre.
         </p>

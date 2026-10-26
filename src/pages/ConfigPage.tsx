@@ -18,6 +18,7 @@ import { aplicarEscalaFont, guardarEscalaFont, obtenerEscalaFont } from '../lib/
 import { notificacionesActivas, setNotificacionesActivas, horaNotificacion, setHoraNotificacion, sincronizarNotificaciones } from '../lib/notificaciones';
 import { stockACSV, movimientosACSV } from '../lib/exportar';
 import { useAuth } from '../context/AuthContext';
+import { useEmpleado } from '../ventas/context/EmpleadoContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { Field, Input, Textarea, Opciones } from '../components/ui/Input';
@@ -29,6 +30,7 @@ interface Props { onThemeToggle: () => void; isDark: boolean; }
 const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
   const { state, exportarBackup, importarBackup, estadoNube, sincronizarAhora, sincronizando, reintentarFallidos, lotesEnriquecidos } = useStore();
   const { comercio, miembro, esDueno, esAdminPlataforma, cerrarSesion } = useAuth();
+  const { cajero, cerrarTurno } = useEmpleado();
   const history = useHistory();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -195,7 +197,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
               { Icon: ShoppingCartIcon,   label: 'Qué tengo que comprar',   desc: 'Lista para el proveedor',          path: '/pedido' },
               { Icon: ChartBarIcon,       label: 'Reportes y pérdidas',     desc: 'Cuánto se venció este mes',        path: '/reportes', soloDueno: true },
               { Icon: TagIcon,            label: 'Etiquetas de precio',     desc: 'Para imprimir y pegar',            path: '/etiquetas' },
-              { Icon: UserGroupIcon,      label: 'Empleados',               desc: 'Invitar o dar de baja',            path: '/empleados', soloDueno: true },
+              { Icon: UserGroupIcon,      label: 'Empleados',               desc: 'Nombre y PIN de cada uno',         path: '/ventas/cajeros', soloDueno: true },
               { Icon: BuildingStorefrontIcon, label: 'Locales',             desc: 'Si tenés más de un negocio',       path: '/sucursales', soloDueno: true },
             ].filter(t => esDueno || !('soloDueno' in t)).map((t, i) => (
               <button key={t.path} type="button" onClick={() => history.push(t.path)} className="pressable"
@@ -468,12 +470,22 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           {/* (Sucursales, Empleados, Inventario y Etiquetas ahora están en la
               grilla "Herramientas" de arriba.) */}
 
-          {/* Cerrar sesión */}
+          {/* Turno con PIN: al terminarlo, la tablet vuelve a "¿Quién va a atender?" */}
+          {cajero && (
+            <Button variant="secondary" size="md" fullWidth onClick={cerrarTurno} style={{ marginBottom: 8 }}
+              icon={<ArrowRightOnRectangleIcon width={18} height={18} />}>
+              Terminar mi turno ({cajero.nombre})
+            </Button>
+          )}
+
+          {/* Cerrar sesión: no para cajeros (dejaría la tablet del local sin la cuenta del dueño) */}
+          {!(cajero && !cajero.admin) && (
           <Button variant="ghost" size="md" fullWidth onClick={salir}
             icon={<ArrowRightOnRectangleIcon width={18} height={18} />}
             style={{ color: 'var(--danger)' }}>
             Cerrar sesión
           </Button>
+          )}
 
           <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-3)', marginTop: 20 }}>
             Stockly v1.0 · Datos en la nube

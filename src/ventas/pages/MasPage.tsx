@@ -27,7 +27,7 @@ const PRINCIPALES: Tile[] = [
 const OTRAS: Tile[] = [
   { Icon: SparklesIcon,  label: 'Lo más vendido',    desc: 'Productos y horarios con más venta', path: '/ventas/estadisticas' },
   { Icon: TagIcon,       label: 'Ofertas',           desc: '2x1 y descuentos por cantidad',      path: '/ventas/ofertas' },
-  { Icon: UserGroupIcon, label: 'Empleados de caja', desc: 'Quién puede cobrar',                 path: '/ventas/cajeros' },
+  { Icon: UserGroupIcon, label: 'Empleados',         desc: 'Nombre y PIN de cada uno',           path: '/ventas/cajeros' },
 ];
 
 const MasPage: React.FC = () => {

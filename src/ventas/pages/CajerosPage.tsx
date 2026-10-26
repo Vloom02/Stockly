@@ -72,9 +72,9 @@ const CajerosPage: React.FC = () => {
   return (
     <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
       <div style={{ padding: 'var(--space-4)', maxWidth: 520, margin: '0 auto', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))' }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Empleados de caja</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Empleados</h1>
         <p style={{ fontSize: 16, color: 'var(--text-2)', marginBottom: 14, lineHeight: 1.5 }}>
-          Para empezar a vender, cada uno toca su nombre y pone su clave. Sus ventas quedan a su nombre.
+          Para usar la app, cada uno toca su nombre y pone su clave. Lo que vende queda a su nombre y no ve precios, reportes ni ajustes del dueño.
         </p>
 
         {/* Alta */}

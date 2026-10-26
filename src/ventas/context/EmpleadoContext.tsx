@@ -6,6 +6,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
+import { useAuth as useAuthStockly } from '../../context/AuthContext';
 import { openDB, getLocalSetting, setLocalSetting } from '../lib/outbox';
 import { guardarCredencialOffline, verificarCredencialOffline, clavePorLegajo } from '../lib/authOffline';
 
@@ -103,6 +104,10 @@ export const EmpleadoProvider: React.FC<{ children: ReactNode }> = ({ children }
   }, []);
 
   const cerrarTurno = useCallback(() => { setCajero(null); persistir(null); }, []);
+
+  // Con un cajero en turno, toda la app lo trata como empleado (sin precios, reportes, etc.).
+  const { setCajeroEnTurno } = useAuthStockly();
+  useEffect(() => { setCajeroEnTurno(!!cajero && !cajero.admin); }, [cajero, setCajeroEnTurno]);
 
   const hayEmpleados = empleados.some(e => e.activo !== false);
 

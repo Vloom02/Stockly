@@ -16,7 +16,6 @@ const EtiquetasPage   = lazy(() => import('./pages/EtiquetasPage'));
 const InventarioPage  = lazy(() => import('./pages/InventarioPage'));
 const PreciosPage     = lazy(() => import('./pages/PreciosPage'));
 const PedidoPage      = lazy(() => import('./pages/PedidoPage'));
-const EmpleadosPage   = lazy(() => import('./pages/EmpleadosPage'));
 const ConfigPage      = lazy(() => import('./pages/ConfigPage'));
 const AuthPage        = lazy(() => import('./pages/AuthPage'));
 const SoportePage     = lazy(() => import('./pages/SoportePage'));
@@ -44,10 +43,11 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { StoreProvider, getSetting, setSetting } from './context/StoreContext';
 import { supabase, supabaseConfigurado } from './lib/supabase';
 import { VentasProvider } from './ventas/context/VentasContext';
-import { OwnerProvider } from './ventas/context/OwnerContext';
-import { EmpleadoProvider } from './ventas/context/EmpleadoContext';
+import { OwnerProvider, useOwner } from './ventas/context/OwnerContext';
+import { EmpleadoProvider, useEmpleado } from './ventas/context/EmpleadoContext';
 import OwnerGuard from './ventas/components/OwnerGuard';
 import TurnoGate from './ventas/components/TurnoGate';
+import CajeroGate from './ventas/components/CajeroGate';
 import OnboardingVentas from './ventas/components/OnboardingVentas';
 import { OfertaHuellaPendiente } from './ventas/lib/useHuella';
 
@@ -84,6 +84,16 @@ const enVentas = (pagina: React.ReactNode, tituloDueno?: string) => (
     </Suspense>
   </IonPage>
 );
+
+// Celular del dueño + tablet del local con la misma cuenta: si hay empleados con PIN,
+// nadie usa la app sin iniciar su turno (el dueño entra con su PIN o huella). Necesita
+// el PIN del dueño (si no, no tendría cómo entrar). Sin internet no se bloquea, como en Vender.
+const ConTurno: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { cajero, hayEmpleados, cargando } = useEmpleado();
+  const { hasPin } = useOwner();
+  if (!cargando && hayEmpleados && hasPin && !cajero && navigator.onLine) return <IonPage><CajeroGate /></IonPage>;
+  return <>{children}</>;
+};
 
 // ─── App autenticada (con datos) ──────────────────────────────────────────
 const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; estadoPlan: EstadoPlan }> = ({ isDark, onThemeToggle, estadoPlan }) => {
@@ -133,6 +143,7 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
       <VentasProvider>
       <OwnerProvider>
       <EmpleadoProvider>
+      <ConTurno>
       <IonReactRouter>
         <IonRouterOutlet id="main">
           <Route path="/dashboard" exact><Suspense fallback={<Cargando />}><DashboardPage /></Suspense></Route>
@@ -146,7 +157,6 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
           <Route path="/inventario" exact><Suspense fallback={<Cargando />}><InventarioPage /></Suspense></Route>
           <Route path="/precios" exact><Suspense fallback={<Cargando />}><PreciosPage /></Suspense></Route>
           <Route path="/pedido" exact><Suspense fallback={<Cargando />}><PedidoPage /></Suspense></Route>
-          <Route path="/empleados" exact><Suspense fallback={<Cargando />}><EmpleadosPage /></Suspense></Route>
           <Route path="/soporte" exact><Suspense fallback={<Cargando />}><SoportePage /></Suspense></Route>
           <Route path="/config" exact><Suspense fallback={<Cargando />}><ConfigPage onThemeToggle={onThemeToggle} isDark={isDark} /></Suspense></Route>
           <Route path="/ventas" exact>{enVentas(<><VentaPage /><OnboardingVentas /></>)}</Route>
@@ -155,7 +165,7 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
           <Route path="/ventas/caja" exact>{enVentas(<CierrePage />, 'Caja')}</Route>
           <Route path="/ventas/historial" exact>{enVentas(<HistorialVentasPage />, 'Ventas anteriores')}</Route>
           <Route path="/ventas/fiado" exact>{enVentas(<DeudasPage />, 'Fiado')}</Route>
-          <Route path="/ventas/cajeros" exact>{enVentas(<CajerosPage />, 'Empleados de caja')}</Route>
+          <Route path="/ventas/cajeros" exact>{enVentas(<CajerosPage />, 'Empleados')}</Route>
           <Route path="/ventas/estadisticas" exact>{enVentas(<EstadisticasPage />, 'Lo más vendido')}</Route>
           <Route path="/ventas/ofertas" exact>{enVentas(<PromosPage />, 'Ofertas')}</Route>
           <Route path="/ventas/cerrar-caja" exact>{enVentas(<CajeroCierrePage />)}</Route>
@@ -164,6 +174,7 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
         </IonRouterOutlet>
         <TabBar />
       </IonReactRouter>
+      </ConTurno>
       <OfertaHuellaPendiente />
       </EmpleadoProvider>
       </OwnerProvider>
