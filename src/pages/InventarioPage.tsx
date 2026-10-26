@@ -9,11 +9,13 @@ import { ClipboardDocumentCheckIcon, MagnifyingGlassIcon } from '@heroicons/reac
 import { useStore, formatearFecha } from '../context/StoreContext';
 import EmptyState from '../components/ui/EmptyState';
 import { Header } from './ProductoPage';
+import { useLectorFisico } from '../lib/useLectorFisico';
 
 const InventarioPage: React.FC = () => {
   const { lotesEnriquecidos, updateLote } = useStore();
   const history = useHistory();
   const [q, setQ] = useState('');
+  const lectorRef = useLectorFisico<HTMLIonContentElement>(setQ); // lector físico: busca el producto
   const [conteo, setConteo] = useState<Record<string, string>>({});
   const [guardando, setGuardando] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: '' });
@@ -46,7 +48,7 @@ const InventarioPage: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
+      <IonContent ref={lectorRef} style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
         <div style={{ padding: '20px 16px calc(120px + var(--sab,env(safe-area-inset-bottom))) 16px', maxWidth: 760, margin: '0 auto' }}>
           <Header title="Inventario físico" onBack={() => history.goBack()} />
           <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 14px', lineHeight: 1.5 }}>

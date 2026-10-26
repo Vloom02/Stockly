@@ -10,11 +10,13 @@ import { PrinterIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useStore, formatearMoneda } from '../context/StoreContext';
 import EmptyState from '../components/ui/EmptyState';
 import { Header } from './ProductoPage';
+import { useLectorFisico } from '../lib/useLectorFisico';
 
 const EtiquetasPage: React.FC = () => {
   const { state } = useStore();
   const history = useHistory();
   const [q, setQ] = useState('');
+  const lectorRef = useLectorFisico<HTMLIonContentElement>(setQ); // lector físico: busca el producto
 
   const productos = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -26,7 +28,7 @@ const EtiquetasPage: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
+      <IonContent ref={lectorRef} style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
         {/* Reglas de impresión: ocultar todo menos las etiquetas */}
         <style>{`
           @media print {

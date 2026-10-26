@@ -17,6 +17,7 @@ import EmptyState from '../components/ui/EmptyState';
 import { Input, Opciones } from '../components/ui/Input';
 import ScannerModal from '../components/ScannerModal';
 import { useAuth } from '../context/AuthContext';
+import { useLectorFisico } from '../lib/useLectorFisico';
 
 type Vista = 'productos' | 'lotes';
 
@@ -81,9 +82,17 @@ const StockPage: React.FC = () => {
 
   const filtros: (NivelAlerta | 'todos')[] = ['todos', 'vencido', 'critico', 'urgente', 'aviso', 'ok'];
 
+  // Cámara o lector físico: si el código es de un producto, abrirlo; si no, dejarlo en el buscador.
+  const alEscanear = (codigo: string) => {
+    const prod = buscarProductoPorCodigo(codigo);
+    if (prod) history.push(`/producto/${prod.id}`);
+    else setBusqueda(codigo); // queda en el buscador → "Sin resultados"
+  };
+  const lectorRef = useLectorFisico<HTMLIonContentElement>(alEscanear);
+
   return (
     <IonPage>
-      <IonContent style={{ '--background': 'var(--bg)' } as any}>
+      <IonContent ref={lectorRef} style={{ '--background': 'var(--bg)' } as any}>
         <div className="animate-fade-in" style={{
           padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px',
           maxWidth: 760, margin: '0 auto',
@@ -218,12 +227,7 @@ const StockPage: React.FC = () => {
 
         {showScanner && (
           <ScannerModal
-            onCodigoDetectado={(codigo) => {
-              setShowScanner(false);
-              const prod = buscarProductoPorCodigo(codigo);
-              if (prod) history.push(`/producto/${prod.id}`);
-              else setBusqueda(codigo); // queda en el buscador → "Sin resultados"
-            }}
+            onCodigoDetectado={(codigo) => { setShowScanner(false); alEscanear(codigo); }}
             onCancel={() => setShowScanner(false)}
           />
         )}

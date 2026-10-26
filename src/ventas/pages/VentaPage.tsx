@@ -27,6 +27,7 @@ import { avisoVentaOk, avisoToque } from '../lib/aviso';
 import { useContador } from '../../lib/useContador';
 import CheckDibujo from '../components/CheckDibujo';
 import { BanknotesIcon as IcoBanknotesIcon, CameraIcon as IcoCameraIcon, CreditCardIcon as IcoCreditCardIcon, DevicePhoneMobileIcon as IcoDevicePhoneMobileIcon, QrCodeIcon as IcoQrCodeIcon, UserIcon as IcoUserIcon } from '@heroicons/react/24/outline';
+import { useLectorFisico } from '../../lib/useLectorFisico';
 const payOptions = [
   { key: 'efectivo',     label: 'Efectivo',      Icono: IcoBanknotesIcon },
   { key: 'transferencia',label: 'Transferencia', Icono: IcoDevicePhoneMobileIcon },
@@ -50,6 +51,8 @@ const VentaPage: React.FC = () => {
     return () => mq.removeEventListener('change', f);
   }, []);
   const history = useHistory();
+  // Lector físico: suma al carrito aunque el cursor no esté en "Escaneá el código".
+  const lectorRef = useLectorFisico(codigo => handleScan(codigo));
 
   const pedirMontoLibre = () => presentAlert({
     header: 'Venta rápida',
@@ -221,7 +224,7 @@ const VentaPage: React.FC = () => {
       <SyncBanner queueLen={state.outboxLen} isOnline={state.isOnline} />
 
       {/* En tablet acostada: dos columnas (buscar | carrito), ver ventas.css. */}
-      <div className="venta-layout" style={{ padding: 'var(--space-4)', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))', paddingTop: state.outboxLen > 0 || !state.isOnline ? 44 : 16 }}>
+      <div ref={lectorRef} className="venta-layout" style={{ padding: 'var(--space-4)', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))', paddingTop: state.outboxLen > 0 || !state.isOnline ? 44 : 16 }}>
         {/* Header */}
         <div className="venta-cabecera" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
           <div>

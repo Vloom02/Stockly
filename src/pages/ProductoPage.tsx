@@ -21,6 +21,7 @@ import { supabase } from '../lib/supabase';
 import { formatearMoneda } from '../context/StoreContext';
 
 import { parseMonto } from '../lib/numeros';
+import { useLectorFisico } from '../lib/useLectorFisico';
 interface RouteParams { id?: string; }
 
 // Ionic REUTILIZA la instancia de la página cuando /producto/A y /producto/nuevo
@@ -44,6 +45,7 @@ const ProductoForm: React.FC = () => {
 
   const [nombre, setNombre] = useState(productoExistente?.nombre || '');
   const [codigoBarras, setCodigoBarras] = useState(productoExistente?.codigoBarras || '');
+  const lectorRef = useLectorFisico<HTMLIonContentElement>(setCodigoBarras); // lector físico completa el código
   const [categoria, setCategoria] = useState(productoExistente?.categoria || '');
   const [precio, setPrecio] = useState(productoExistente?.precio.toString() || '0');
   const [proveedor, setProveedor] = useState(productoExistente?.proveedor || '');
@@ -148,7 +150,7 @@ const ProductoForm: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent style={{ '--background': 'var(--bg)' } as any}>
+      <IonContent ref={lectorRef} style={{ '--background': 'var(--bg)' } as any}>
         <div className="animate-fade-in" style={{
           padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px',
           maxWidth: 640, margin: '0 auto',

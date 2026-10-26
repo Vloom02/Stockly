@@ -13,12 +13,14 @@ import { Input } from '../components/ui/Input';
 import { Header } from './ProductoPage';
 
 import { parseMonto } from '../lib/numeros';
+import { useLectorFisico } from '../lib/useLectorFisico';
 const AUMENTOS = [5, 10, 15, 20];
 
 const PreciosPage: React.FC = () => {
   const { state, updateProducto } = useStore();
   const history = useHistory();
   const [q, setQ] = useState('');
+  const lectorRef = useLectorFisico<HTMLIonContentElement>(setQ); // lector físico: busca el producto
   const [abierto, setAbierto] = useState<string | null>(null); // producto en edición
   const [nuevo, setNuevo] = useState('');                      // precio nuevo (texto)
   const [guardando, setGuardando] = useState(false);
@@ -50,7 +52,7 @@ const PreciosPage: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
+      <IonContent ref={lectorRef} style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
         <div style={{ padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px', maxWidth: 760, margin: '0 auto' }}>
           <Header title="Suba de precios" onBack={() => history.goBack()} />
           <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 14px', lineHeight: 1.5 }}>

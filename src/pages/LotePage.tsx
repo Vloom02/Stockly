@@ -17,6 +17,7 @@ import { NivelBadge } from '../components/ui/Badge';
 import { Header } from './ProductoPage';
 import { useAuth } from '../context/AuthContext';
 import { TagIcon as IcoTagIcon } from '@heroicons/react/24/outline';
+import { useLectorFisico } from '../lib/useLectorFisico';
 
 interface RouteParams { id?: string; }
 
@@ -58,6 +59,8 @@ const LoteForm: React.FC = () => {
   const [tipoRetiro, setTipoRetiro] = useState<'retiro_venta' | 'retiro_vencido' | 'retiro_roto'>('retiro_venta');
   const [cantRetirar, setCantRetirar] = useState('');
   const [notasRetiro, setNotasRetiro] = useState('');
+  // Lector físico: en el paso 1 de "Cargar" elige el producto por su código.
+  const lectorRef = useLectorFisico<HTMLIonContentElement>(codigo => { if (esNuevo && paso === 1) elegirPorCodigo(codigo); });
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [procesando, setProcesando] = useState(false); // anti doble-tap (guardar y retirar)
   // Mostrar el override de días de aviso si el lote ya lo tenía seteado.
@@ -112,6 +115,11 @@ const LoteForm: React.FC = () => {
     }
   };
 
+  const elegirPorCodigo = (codigo: string) => {
+    const p = state.productos.find(x => x.codigoBarras === codigo);
+    if (p) { setProductoId(p.id ?? ''); setPaso(2); } else { setBusqueda(codigo); setToast({ show: true, msg: 'No hay un producto con ese código' }); }
+  };
+
   if (esNuevo) {
     const q = busqueda.trim().toLowerCase();
     const lista = state.productos
@@ -125,7 +133,7 @@ const LoteForm: React.FC = () => {
 
     return (
       <IonPage>
-        <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
+        <IonContent ref={lectorRef} style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
           <div style={{ padding: '20px 16px calc(110px + var(--sab,env(safe-area-inset-bottom))) 16px', maxWidth: 640, margin: '0 auto' }}>
             <Header title="Cargar mercadería" onBack={atras} />
 
@@ -245,11 +253,7 @@ const LoteForm: React.FC = () => {
 
           {showScanner && (
             <ScannerModal
-              onCodigoDetectado={(codigo) => {
-                setShowScanner(false);
-                const p = state.productos.find(x => x.codigoBarras === codigo);
-                if (p) { setProductoId(p.id ?? ''); setPaso(2); } else { setBusqueda(codigo); setToast({ show: true, msg: 'No hay un producto con ese código' }); }
-              }}
+              onCodigoDetectado={(codigo) => { setShowScanner(false); elegirPorCodigo(codigo); }}
               onCancel={() => setShowScanner(false)}
             />
           )}
