@@ -210,7 +210,7 @@ const ProductoForm: React.FC = () => {
                   {fotoUrl ? (
                     <img src={fotoUrl} alt={nombre} style={{
                       width: 56, height: 56, objectFit: 'cover',
-                      borderRadius: 'var(--radius)', border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)',
                     }} />
                   ) : (
                     <div style={{
@@ -350,7 +350,7 @@ export const Header: React.FC<{ title: string; onBack: () => void; action?: Reac
       <button type="button" onClick={onBack}
         style={{
           width: 40, height: 40, borderRadius: 'var(--radius)',
-          background: 'var(--surface)', border: '1px solid var(--border)',
+          background: 'var(--surface)', border: 'none', boxShadow: 'var(--shadow-sm)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', color: 'var(--text)', flexShrink: 0,
         }}>

@@ -21,6 +21,7 @@ import { SkeletonDashboard } from '../components/ui/Skeleton';
 import SyncBanner from '../components/SyncBanner';
 
 import { useContador } from '../lib/useContador';
+import { CubeIcon as IcoCubeIcon } from '@heroicons/react/24/outline';
 const DashboardPage: React.FC = () => {
   const { state, resumen, lotesEnriquecidos, productosConLotes } = useStore();
   const history = useHistory();
@@ -215,7 +216,7 @@ const DashboardPage: React.FC = () => {
                 {paraReponer.map(p => (
                   <Card key={p.producto.id} padding="sm" onClick={() => history.push(`/producto/${p.producto.id}`)}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <span style={{ fontSize: 18, flexShrink: 0 }}>📦</span>
+                      <IcoCubeIcon width={22} height={22} style={{ flexShrink: 0 }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {p.producto.nombre}
@@ -357,7 +358,7 @@ export const LoteListItem: React.FC<{ lote: LoteConProducto; onClick: () => void
           </span>
           {liq.aplicar && (
             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--level-ok-fg)', border: '1px solid var(--level-ok-border)', borderRadius: 'var(--radius-full)', padding: '1px 8px', whiteSpace: 'nowrap' }}>
-              💸 Liquidar {formatearMoneda(liq.precioFinal)} −{liq.pct}%
+              Liquidar {formatearMoneda(liq.precioFinal)} −{liq.pct}%
             </span>
           )}
         </div>

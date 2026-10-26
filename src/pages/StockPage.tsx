@@ -102,7 +102,7 @@ const StockPage: React.FC = () => {
                 background: 'var(--brand-50)', color: 'var(--brand-700)',
                 fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', minHeight: 44,
               }}>
-              💲 Subir precios
+              Subir precios
             </button>}
           </div>
 
@@ -129,19 +129,17 @@ const StockPage: React.FC = () => {
                   {busqueda && (
                     <button type="button" onClick={() => setBusqueda('')}
                       style={{
-                        background: 'var(--surface-2)', border: '1px solid var(--border)',
+                        background: 'var(--surface-2)', border: 'none', boxShadow: 'var(--shadow-sm)',
                         borderRadius: 'var(--radius)', padding: '0 10px', cursor: 'pointer',
                         color: 'var(--text-2)', display: 'flex', alignItems: 'center',
                       }}>
                       <XMarkIcon width={16} height={16} />
                     </button>
                   )}
-                  <button type="button" onClick={() => setShowScanner(true)}
+                  <button className="boton-marca" type="button" onClick={() => setShowScanner(true)}
                     title="Escanear código de barras"
-                    style={{
-                      background: 'var(--brand-500)', border: '1px solid var(--brand-500)',
-                      borderRadius: 'var(--radius)', padding: '0 12px', cursor: 'pointer',
-                      color: '#fff', display: 'flex', alignItems: 'center',
+                    style={{ border: '1px solid var(--brand-500)',
+                      borderRadius: 'var(--radius)', padding: '0 12px', cursor: 'pointer', display: 'flex', alignItems: 'center',
                     }}>
                     <QrCodeIcon width={18} height={18} />
                   </button>
@@ -283,7 +281,7 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
       {p.producto.fotoUrl && (
         <img src={p.producto.fotoUrl} alt="" loading="lazy" style={{
           width: 44, height: 44, objectFit: 'cover', flexShrink: 0,
-          borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-sm)', boxShadow: 'var(--shadow-sm)',
         }} />
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -304,7 +302,7 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
               border: '1px solid var(--warning)', borderRadius: 'var(--radius-full)',
               padding: '1px 8px', whiteSpace: 'nowrap',
             }}>
-              📦 Reponer (mín. {p.producto.stockMinimo})
+              Reponer (mín. {p.producto.stockMinimo})
             </span>
           )}
         </div>
@@ -352,7 +350,7 @@ const LoteRow: React.FC<{ lote: LoteConProducto; onClick: () => void }> = ({ lot
                 borderRadius: 'var(--radius-full)', padding: '2px 8px',
                 display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap',
               }}>
-              💸 Liquidar {formatearMoneda(liq.precioFinal)}
+              Liquidar {formatearMoneda(liq.precioFinal)}
               <span style={{ opacity: 0.75, fontWeight: 600 }}>−{liq.pct}%</span>
             </span>
           )}

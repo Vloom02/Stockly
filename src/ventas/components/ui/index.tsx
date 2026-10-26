@@ -141,8 +141,8 @@ interface SelectProps {
 export const Select: React.FC<SelectProps> = ({ label, value, onChange, options, placeholder, style }) => (
   <div style={{ marginBottom: 12 }}>
     {label && <label style={{ display:'block', fontSize:13, fontWeight:500, color:'var(--text-2)', marginBottom:4 }}>{label}</label>}
-    <select value={value} onChange={e => onChange(e.target.value)}
-      style={{ width:'100%', padding:'10px 14px', fontSize:15, fontFamily:'var(--font-sans)', background:'var(--surface)', color: value ? 'var(--text)' : 'var(--text-3)', border:'1.5px solid var(--border)', borderRadius:'var(--radius)', outline:'none', ...style }}>
+    <select className="campo" value={value} onChange={e => onChange(e.target.value)}
+      style={{ width:'100%', padding:'12px 14px', fontSize:17, fontWeight:600, minHeight:52, fontFamily:'var(--font-sans)', color: value ? 'var(--text)' : 'var(--text-3)', borderRadius:'var(--radius)', outline:'none', ...style }}>
       {placeholder && <option value="">{placeholder}</option>}
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
@@ -192,7 +192,7 @@ export const Skeleton: React.FC<{ width?: string|number; height?: number; radius
 );
 
 export const SkeletonCard: React.FC = () => (
-  <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)', padding:14, marginBottom:7 }}>
+  <div style={{ background:'var(--surface)', boxShadow:'var(--shadow-sm)', borderRadius:'var(--radius-lg)', padding:14, marginBottom:7 }}>
     <div style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
       <div style={{ flex:1 }}>
         <Skeleton width="60%" height={16} style={{ marginBottom:8 }} />
@@ -230,14 +230,14 @@ export const Divider: React.FC<{ style?: React.CSSProperties }> = ({ style }) =>
 
 // ─── Section title ────────────────────────────────────────────────────────────
 export const SectionTitle: React.FC<{ children: ReactNode }> = ({ children }) => (
-  <h3 style={{ fontSize: 13, fontWeight:600, color:'var(--text-2)', textTransform:'uppercase', letterSpacing:'.6px', marginBottom:10 }}>
+  <h3 style={{ fontSize: 16, fontWeight:800, color:'var(--text-2)', marginBottom:10 }}>
     {children}
   </h3>
 );
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
 export const StatCard: React.FC<{ label: string; value: ReactNode; color?: string }> = ({ label, value, color }) => (
-  <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius)', padding:'10px 12px' }}>
+  <div style={{ background:'var(--surface)', boxShadow:'var(--shadow-md)', borderRadius:'var(--radius-lg)', padding:'12px 14px' }}>
     <div style={{ fontSize: 13, color:'var(--text-2)', marginBottom:3 }}>{label}</div>
     <div style={{ fontSize:20, fontWeight:700, color: color || 'var(--text)' }}>{value}</div>
   </div>

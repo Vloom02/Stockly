@@ -20,10 +20,12 @@ import PinPad from '../components/PinPad';
 
 import { parseMonto } from '../../lib/numeros';
 import BotonVolver from '../components/BotonVolver';
+import { MoonIcon as IcoMoonIcon, SunIcon as IcoSunIcon } from '@heroicons/react/24/outline';
+import { ClockIcon as IcoClockIcon } from '@heroicons/react/24/outline';
 interface VentaRow { id: string; total: number; metodo_pago: string; fecha: string; fiado: boolean; }
 interface CierreRow { id: string; cajero_nombre: string; hasta: string; total: number; diferencia: number; efectivo_contado: number; }
 type TurnoId = 'manana' | 'tarde' | 'noche';
-interface Turno { id: TurnoId; nombre: string; emoji: string; startHour: number; endHour: number; }
+interface Turno { id: TurnoId; nombre: string; Icono: typeof IcoSunIcon; startHour: number; endHour: number; }
 
 // Horarios de turno CONFIGURABLES (hora de inicio de cada uno; el fin es el
 // inicio del siguiente, y la noche termina donde arranca la mañana del otro día).
@@ -32,9 +34,9 @@ export const HORAS_DEFAULT: HorasTurnos = { manana: 6, tarde: 14, noche: 22 };
 
 export function armarTurnos(h: HorasTurnos): Turno[] {
   return [
-    { id: 'manana', nombre: 'Mañana', emoji: '🌅', startHour: h.manana, endHour: h.tarde },
-    { id: 'tarde',  nombre: 'Tarde',  emoji: '☀️', startHour: h.tarde,  endHour: h.noche },
-    { id: 'noche',  nombre: 'Noche',  emoji: '🌙', startHour: h.noche,  endHour: h.manana },
+    { id: 'manana', nombre: 'Mañana', Icono: IcoSunIcon, startHour: h.manana, endHour: h.tarde },
+    { id: 'tarde',  nombre: 'Tarde',  Icono: IcoSunIcon, startHour: h.tarde,  endHour: h.noche },
+    { id: 'noche',  nombre: 'Noche',  Icono: IcoMoonIcon, startHour: h.noche,  endHour: h.manana },
   ];
 }
 
@@ -68,7 +70,7 @@ export function turnoActual(ahora: Date, hs: HorasTurnos = HORAS_DEFAULT): Turno
 }
 
 const metodoLabel = (k: string) =>
-  ({ efectivo: '💵 Efectivo', transferencia: '📱 Transferencia', tarjeta: '💳 Tarjeta', qr: '📲 QR' } as Record<string, string>)[k] ?? k;
+  ({ efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta', qr: 'QR' } as Record<string, string>)[k] ?? k;
 
 const CierrePage: React.FC = () => {
   const { comercio, sucursalActiva } = useAuth();
@@ -165,7 +167,7 @@ const CierrePage: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <BotonVolver />
           <h1 style={{ fontSize: 20, fontWeight: 700 }}>Cerrar la caja</h1>
-          <button onClick={load} className="pressable" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-full)', padding: 8, cursor: 'pointer', display: 'flex' }}>
+          <button onClick={load} className="pressable" style={{ background: 'var(--surface-2)', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-full)', padding: 8, cursor: 'pointer', display: 'flex' }}>
             <ArrowPathIcon size={16} color="var(--text-2)" />
           </button>
         </div>
@@ -182,12 +184,12 @@ const CierrePage: React.FC = () => {
               <button key={t.id} onClick={() => setSelTurno(t.id)}
                 style={{
                   flex: 1, padding: '8px 4px', borderRadius: 'var(--radius)', cursor: 'pointer', fontFamily: 'inherit',
-                  border: activo ? '1.5px solid var(--color-primary)' : '1px solid var(--border)',
+                  border: activo ? '1.5px solid var(--color-primary)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)',
                   background: activo ? 'var(--color-primary-bg)' : 'var(--surface)',
                   color: activo ? 'var(--color-primary-dark)' : 'var(--text-2)',
                   fontWeight: 600, fontSize: 13, position: 'relative',
                 }}>
-                <div style={{ fontSize: 16 }}>{t.emoji}</div>
+                <div style={{ display: 'flex', justifyContent: 'center' }}><t.Icono width={22} height={22} /></div>
                 <div>{t.nombre}</div>
                 {esActual && <div style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: '50%', background: 'var(--color-primary)' }} />}
               </button>
@@ -198,13 +200,13 @@ const CierrePage: React.FC = () => {
         {/* Horarios configurables */}
         <div style={{ marginBottom: 14 }}>
           <button type="button" onClick={() => setEditHoras(!editHoras)}
-            style={{ background: 'none', border: 'none', fontSize: 13, color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit', padding: 0, fontWeight: 600 }}>
-            ⏰ {editHoras ? 'Cerrar editor de horarios' : 'Editar horarios de turno'}
+            style={{ background: 'none', border: 'none', fontSize: 15, color: 'var(--marca-texto)', cursor: 'pointer', fontFamily: 'inherit', padding: 0, fontWeight: 700, minHeight: 44, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <IcoClockIcon width={20} height={20} /> {editHoras ? 'Cerrar editor de horarios' : 'Editar horarios de turno'}
           </button>
           {editHoras && (
             <Card style={{ marginTop: 8, padding: 12 }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
-                {([['manana', '🌅 Mañana'], ['tarde', '☀️ Tarde'], ['noche', '🌙 Noche']] as [keyof HorasTurnos, string][]).map(([k, lbl]) => (
+                {([['manana', 'Mañana'], ['tarde', 'Tarde'], ['noche', 'Noche']] as [keyof HorasTurnos, string][]).map(([k, lbl]) => (
                   <div key={k}>
                     <label style={{ fontSize: 13, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>{lbl} desde</label>
                     <select
@@ -215,7 +217,7 @@ const CierrePage: React.FC = () => {
                         const next = { ...horas, [k]: v };
                         if (next.manana < next.tarde && next.tarde < next.noche) guardarHoras(next);
                       }}
-                      style={{ width: '100%', padding: 8, fontSize: 14, fontFamily: 'var(--font-mono)', background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)' }}>
+                      style={{ width: '100%', padding: 8, fontSize: 14, fontFamily: 'var(--font-mono)', background: 'var(--surface)', color: 'var(--text)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-sm)' }}>
                       {Array.from({ length: 24 }, (_, h) => (
                         <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
                       ))}
@@ -252,12 +254,12 @@ const CierrePage: React.FC = () => {
               ))}
               {totalFiado > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', color: 'var(--color-warning-dark)' }}>
-                  <span style={{ fontSize: 14 }}>📒 Fiado (no cobrado)</span>
+                  <span style={{ fontSize: 14 }}>Fiado (no cobrado)</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{formatMoney(totalFiado)}</span>
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, marginTop: 4, borderTop: '2px solid var(--border)' }}>
-                <span style={{ fontSize: 15, fontWeight: 700 }}>TOTAL</span>
+                <span style={{ fontSize: 16, fontWeight: 800 }}>Total</span>
                 <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 17, color: 'var(--color-primary-dark)' }}>{formatMoney(total)}</span>
               </div>
             </Card>
@@ -272,9 +274,9 @@ const CierrePage: React.FC = () => {
                 <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{formatMoney(totalEfectivo)}</span>
               </div>
               <label style={{ fontSize: 13, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Efectivo contado en caja</label>
-              <input type="text" inputMode="decimal" value={efectivoContado} onChange={e => setEfectivoContado(e.target.value)}
+              <input className="campo" type="text" inputMode="decimal" value={efectivoContado} onChange={e => setEfectivoContado(e.target.value)}
                 placeholder="0.00"
-                style={{ width: '100%', padding: 12, fontSize: 18, textAlign: 'center', fontFamily: 'var(--font-mono)', background: 'var(--surface)', color: 'var(--text)', border: '1.5px solid var(--border)', borderRadius: 'var(--radius)', outline: 'none' }} />
+                style={{ width: '100%', padding: 12, fontSize: 18, textAlign: 'center', fontFamily: 'var(--font-mono)', color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none' }} />
 
               {diferencia !== null && (
                 <div style={{
@@ -284,7 +286,7 @@ const CierrePage: React.FC = () => {
                   textAlign: 'center',
                 }}>
                   {Math.abs(diferencia) < 0.01 ? (
-                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-primary-dark)' }}>✅ La caja cuadra perfecto</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-primary-dark)' }}>La caja cuadra perfecto</span>
                   ) : diferencia > 0 ? (
                     <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-info-dark)' }}>Sobran {formatMoney(diferencia)} en caja</span>
                   ) : (
@@ -322,15 +324,15 @@ const CierrePage: React.FC = () => {
             type="button"
             onClick={() => setShowPinPad(true)}
             className="pressable"
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
             <LockClosedIcon size={16} color="var(--color-primary)" /> Cambiar PIN de dueño
           </button>
           <button
             type="button"
             onClick={() => history.push('/ventas/cajeros')}
             className="pressable"
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', marginTop: 8, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-            👥 Gestionar cajeros
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', marginTop: 8, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Gestionar cajeros
           </button>
           <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 8, textAlign: 'center' }}>
             El PIN protege Dashboard, Caja, Historial y Deudas. Los cajeros inician turno con legajo + contraseña.

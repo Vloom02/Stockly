@@ -16,6 +16,7 @@ import Card from '../components/ui/Card';
 import EmptyState from '../components/ui/EmptyState';
 import { compartirTexto } from '../lib/compartir';
 import { Header } from './ProductoPage';
+import { StarIcon as IcoStarIcon, UserIcon as IcoUserIcon } from '@heroicons/react/24/outline';
 
 interface MiembroRow { id: string; user_id: string; rol: string; nombre: string | null; creado_en: string; }
 interface InvRow { id: string; codigo: string; expira_en: string; }
@@ -104,8 +105,8 @@ const EmpleadosPage: React.FC = () => {
           ) : (
             <>
               {/* Invitar */}
-              <button type="button" onClick={invitar} disabled={creando} className="pressable"
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px', borderRadius: 'var(--radius)', border: 'none', background: 'var(--brand-500)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 8, opacity: creando ? 0.6 : 1 }}>
+              <button type="button" onClick={invitar} disabled={creando} className="pressable boton-marca"
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px', borderRadius: 'var(--radius)', border: 'none', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 8, opacity: creando ? 0.6 : 1 }}>
                 <UserPlusIcon width={18} height={18} /> {creando ? 'Generando código…' : 'Invitar empleado'}
               </button>
               <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 18px', textAlign: 'center', lineHeight: 1.5 }}>
@@ -121,11 +122,11 @@ const EmpleadosPage: React.FC = () => {
                       <span style={{ fontFamily: 'monospace', fontSize: 17, fontWeight: 700, letterSpacing: '0.12em', flex: 1 }}>{inv.codigo}</span>
                       <span style={{ fontSize: 13, color: 'var(--text-3)' }}>vence {new Date(inv.expira_en).toLocaleDateString('es-AR')}</span>
                       <button type="button" aria-label={`Compartir código ${inv.codigo}`} onClick={() => compartirCodigo(inv.codigo)} className="pressable"
-                        style={{ width: 34, height: 34, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-600)' }}>
+                        style={{ width: 34, height: 34, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-600)' }}>
                         <ShareIcon width={15} height={15} />
                       </button>
                       <button type="button" aria-label={`Anular código ${inv.codigo}`} onClick={() => anularInvitacion(inv.id)} className="pressable"
-                        style={{ width: 34, height: 34, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--level-vencido-fg)' }}>
+                        style={{ width: 34, height: 34, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--level-vencido-fg)' }}>
                         <TrashIcon width={15} height={15} />
                       </button>
                     </div>
@@ -141,7 +142,7 @@ const EmpleadosPage: React.FC = () => {
                 ) : miembros.map((m, i) => (
                   <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: i < miembros.length - 1 ? '1px solid var(--border)' : 'none' }}>
                     <div style={{ width: 36, height: 36, borderRadius: '50%', background: m.rol === 'dueno' ? 'var(--brand-100)' : 'var(--surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
-                      {m.rol === 'dueno' ? '👑' : '🧑'}
+                      {m.rol === 'dueno' ? <IcoStarIcon width={20} height={20} /> : <IcoUserIcon width={20} height={20} />}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 600 }}>{m.nombre ?? '(sin nombre)'}{m.user_id === miembro?.userId ? ' (vos)' : ''}</div>
@@ -149,7 +150,7 @@ const EmpleadosPage: React.FC = () => {
                     </div>
                     {m.rol === 'empleado' && (
                       <button type="button" aria-label={`Quitar a ${m.nombre ?? 'empleado'}`} onClick={() => quitar(m)} className="pressable"
-                        style={{ width: 36, height: 36, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--level-vencido-fg)' }}>
+                        style={{ width: 36, height: 36, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--level-vencido-fg)' }}>
                         <TrashIcon width={16} height={16} />
                       </button>
                     )}

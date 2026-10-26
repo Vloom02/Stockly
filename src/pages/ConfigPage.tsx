@@ -187,7 +187,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
 
           {/* Herramientas — acceso directo a las pantallas más usadas */}
           <SectionTitle icon={<SwatchIcon width={16} height={16} />}>Herramientas</SectionTitle>
-          <div className="lista-animada" style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', background: 'var(--surface)', overflow: 'hidden', marginBottom: 18 }}>
+          <div className="lista-animada" style={{ borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', overflow: 'hidden', marginBottom: 18 }}>
             {[
               { Icon: ClockIcon,          label: 'Historial',               desc: 'Todo lo que entró y salió',        path: '/movimientos' },
               { Icon: CurrencyDollarIcon, label: 'Cambiar precios',         desc: 'Subir precios de a uno',           path: '/precios', soloDueno: true },
@@ -496,7 +496,7 @@ const SectionTitle: React.FC<{ icon: React.ReactNode; children: React.ReactNode 
 const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
   <div style={{ textAlign: 'center' }}>
     <div style={{ fontFamily: 'var(--font-display)', fontSize: 21, fontWeight: 800, letterSpacing: '-0.02em' }}>{value}</div>
-    <div style={{ fontSize: 13, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{label}</div>
+    <div style={{ fontSize: 13, color: 'var(--text-2)', }}>{label}</div>
   </div>
 );
 const UmbralField: React.FC<{ nivel: string; label: string; value: string; onChange: (v: string) => void }> =

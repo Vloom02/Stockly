@@ -73,7 +73,7 @@ const SaleCard: React.FC<{ venta: VentaRow; onChanged: () => void }> = ({ venta,
     <Card variant="bordered" style={{ padding: 0, overflow: 'hidden', marginBottom: 7, opacity: anulada ? 0.6 : 1 }}>
       <div onClick={toggle} className="pressable" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', cursor: 'pointer' }}>
         <div>
-          <div style={{ fontSize: 13, color: 'var(--text-2)' }}>🕐 {time} {venta.usuario && <Badge color="purple" style={{ marginLeft: 4, fontSize: 13 }}>{venta.usuario}</Badge>}
+          <div style={{ fontSize: 13, color: 'var(--text-2)' }}>{time} {venta.usuario && <Badge color="purple" style={{ marginLeft: 4, fontSize: 13 }}>{venta.usuario}</Badge>}
             {anulada && <span style={{ marginLeft: 6, fontSize: 13, fontWeight: 700, color: 'var(--color-danger)', background: 'var(--color-danger-bg)', border: '1px solid var(--color-danger-border)', borderRadius: 'var(--radius-full)', padding: '1px 7px' }}>ANULADA</span>}
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 1 }}>{metodoLabel}{venta.cliente ? ` · ${venta.cliente}` : ''}{venta.fiado ? ' · Fiado' : ''}</div>
@@ -94,8 +94,8 @@ const SaleCard: React.FC<{ venta: VentaRow; onChanged: () => void }> = ({ venta,
           {venta.descuento > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '2px 0', color: 'var(--color-primary-dark)' }}><span>Descuento</span><span style={{ fontFamily: 'var(--font-mono)' }}>-{formatMoney(venta.descuento)}</span></div>}
           {!anulada && (
             <button type="button" onClick={anular} disabled={anulando} className="pressable"
-              style={{ marginTop: 10, width: '100%', padding: '9px', background: 'var(--color-danger-bg)', color: 'var(--color-danger)', border: '1px solid var(--color-danger-border)', borderRadius: 'var(--radius)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: anulando ? 0.6 : 1 }}>
-              {anulando ? 'Anulando…' : '↩ Anular venta / devolución'}
+              style={{ marginTop: 10, width: '100%', padding: '9px', minHeight: 48, background: 'var(--color-danger-bg)', color: 'var(--color-danger)', border: '1px solid var(--color-danger-border)', borderRadius: 'var(--radius)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: anulando ? 0.6 : 1 }}>
+              {anulando ? 'Anulando…' : 'Anular venta / devolución'}
             </button>
           )}
         </div>
@@ -148,7 +148,7 @@ const HistorialPage: React.FC = () => {
   const exportCSV = () => guardarCSV(`ventas-${new Date().toISOString().slice(0, 10)}.csv`, ventasACSV(filtered));
 
   const activeFilters = Object.values(filters).filter(Boolean).length;
-  const inputStyle: React.CSSProperties = { width: '100%', padding: 9, fontSize: 13, background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', outline: 'none' };
+  const inputStyle: React.CSSProperties = { width: '100%', padding: 9, fontSize: 13, color: 'var(--text)', borderRadius: 'var(--radius-sm)', outline: 'none' };
 
   return (
     <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
@@ -174,11 +174,11 @@ const HistorialPage: React.FC = () => {
                 <Opciones etiqueta="Cómo pagó" columnas={3} valor={filters.metodoPago} onChange={v => setFilters(f => ({ ...f, metodoPago: v }))}
                   opciones={[{ valor: '', etiqueta: 'Todos' }, { valor: 'efectivo', etiqueta: 'Efectivo' }, { valor: 'transferencia', etiqueta: 'Transferencia' }, { valor: 'tarjeta', etiqueta: 'Tarjeta' }, { valor: 'qr', etiqueta: 'QR' }]} /></div>
               <div><label style={{ fontSize: 13, color: 'var(--text-2)' }}>Cliente</label>
-                <input value={filters.cliente} onChange={e => setFilters(f => ({ ...f, cliente: e.target.value }))} style={inputStyle} placeholder="Buscar..." /></div>
+                <input className="campo" value={filters.cliente} onChange={e => setFilters(f => ({ ...f, cliente: e.target.value }))} style={inputStyle} placeholder="Buscar..." /></div>
               <div><label style={{ fontSize: 13, color: 'var(--text-2)' }}>Desde</label>
-                <input type="date" value={filters.dateFrom} onChange={e => setFilters(f => ({ ...f, dateFrom: e.target.value }))} style={inputStyle} /></div>
+                <input className="campo" type="date" value={filters.dateFrom} onChange={e => setFilters(f => ({ ...f, dateFrom: e.target.value }))} style={inputStyle} /></div>
               <div><label style={{ fontSize: 13, color: 'var(--text-2)' }}>Hasta</label>
-                <input type="date" value={filters.dateTo} onChange={e => setFilters(f => ({ ...f, dateTo: e.target.value }))} style={inputStyle} /></div>
+                <input className="campo" type="date" value={filters.dateTo} onChange={e => setFilters(f => ({ ...f, dateTo: e.target.value }))} style={inputStyle} /></div>
             </div>
             <Button variant="ghost" size="sm" fullWidth onClick={() => setFilters({ metodoPago: '', cliente: '', dateFrom: '', dateTo: '' })}>Limpiar filtros</Button>
           </Card>
@@ -194,7 +194,7 @@ const HistorialPage: React.FC = () => {
             return (
               <div key={day} style={{ marginBottom: 18 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '.6px' }}>{day}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)', letterSpacing: '.6px' }}>{day}</span>
                   <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                   <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-primary-dark)' }}>{formatMoney(dayTotal)}</span>
                 </div>

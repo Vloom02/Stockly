@@ -3,24 +3,24 @@
 
 :root {
   /* ─── Brand ─────────────────────────────────────────────────────────── */
-  --brand-50:  #eaf5f3;
-  --brand-100: #d3ebe7;
-  --brand-200: #a9d6cf;
-  --brand-300: #7cbfb5;
-  --brand-400: #3f9a8f;
-  --brand-500: #0b6b60;   /* PRINCIPAL (verde azulado "Tacto"): blanco encima 6.3:1 */
-  --brand-600: #08564d;
-  --brand-700: #06463f;
-  --brand-800: #043630;
-  --brand-900: #032a25;
+  --brand-50:  #edf2fd;
+  --brand-100: #dbe5fb;
+  --brand-200: #b8cbf6;
+  --brand-300: #8eabef;
+  --brand-400: #4a72d6;
+  --brand-500: #1f4fbf;   /* PRINCIPAL: azul cobalto profundo, blanco encima 7.2:1 (ver lib/tema.ts) */
+  --brand-600: #1a419e;
+  --brand-700: #15357f;
+  --brand-800: #102863;
+  --brand-900: #0b1c47;
 
   /* ─── Semantic ──────────────────────────────────────────────────────── */
   /* Semánticos suavizados (apagados, pegan con el look cálido) */
-  --success:   #5a9c7d;
-  --warning:   #c8902f;
+  --success:   #1f7a46;   /* verde intenso (no salvia): 5.3:1 como texto */
+  --warning:   #9a5b00;   /* ámbar oscuro: 5.5:1 como texto */
   --danger:    #a33a2e;  /* 5:1 sobre el fondo claro (antes 3.5:1) */
   --critical:  #b34a3f;
-  --info:      #5a7fae;
+  --info:      #2f62a8;
 
   /* ─── Neutrals (Slate) ──────────────────────────────────────────────── */
   --gray-50:   #f8fafc;
@@ -50,25 +50,28 @@
   --text-on-brand: #ffffff;
 
   /* ─── Niveles de alerta (semáforo cálido editorial) ─────────────────── */
-  --level-ok-bg:       #eef0dd;
-  --level-ok-fg:       #4c6b2f;
-  --level-ok-border:   #c4cf95;
+  /* Estados: colores intensos y bien distintos entre sí (a los mayores los tintes
+     pálidos parecidos se les confunden). Siempre van con texto, nunca solos.
+     Contraste del texto sobre su fondo: 5:1 a 6.3:1. */
+  --level-ok-bg:       #dcf3e3;
+  --level-ok-fg:       #17663a;
+  --level-ok-border:   #8fd1a6;
 
-  --level-aviso-bg:    #f6ecc9;
-  --level-aviso-fg:    #856316;
-  --level-aviso-border: #e3c662;
+  --level-aviso-bg:    #fff1bf;
+  --level-aviso-fg:    #7a5600;
+  --level-aviso-border: #f0c94a;
 
-  --level-urgente-bg:  #f6e0cb;
-  --level-urgente-fg:  #9a4d12;
-  --level-urgente-border: #e3a062;
+  --level-urgente-bg:  #ffe0c2;
+  --level-urgente-fg:  #9a4300;
+  --level-urgente-border: #f5a25a;
 
-  --level-critico-bg:  #f6d8c8;
-  --level-critico-fg:  #a33a14;
-  --level-critico-border: #e08760;
+  --level-critico-bg:  #ffd3c4;
+  --level-critico-fg:  #a3300f;
+  --level-critico-border: #f08a65;
 
-  --level-vencido-bg:  #f4d2cc;
-  --level-vencido-fg:  #8f241b;
-  --level-vencido-border: #d97a6e;
+  --level-vencido-bg:  #fbd0d0;
+  --level-vencido-fg:  #a01818;
+  --level-vencido-border: #e57373;
 
   /* ─── Spacing scale ─────────────────────────────────────────────────── */
   --space-1: 4px;
@@ -288,6 +291,8 @@ h1, h2, h3, h4 {
   border-radius: var(--radius-full);
 }
 :root.dark ::-webkit-scrollbar-thumb { background: var(--border-strong); }
+/* Filas que se deslizan de costado (filtros): sin barra, que parecía un elemento más. */
+::-webkit-scrollbar:horizontal { height: 0; }
 
 /* ─── Safe area Android/iOS ─────────────────────────────────────────────── */
 /* Con StatusBar.setOverlaysWebView({ overlay: false }) la barra nativa ya   */

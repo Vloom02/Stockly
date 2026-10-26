@@ -46,7 +46,7 @@ const PlanBloqueado: React.FC<Props> = ({ estado, onReintentar, onCerrarSesion }
           </p>
 
           <div style={{
-            background: 'var(--surface)', border: '1px solid var(--border)',
+            background: 'var(--surface)', boxShadow: 'var(--shadow-sm)',
             borderRadius: 'var(--radius-lg)', padding: 16, maxWidth: 340, width: '100%',
             marginBottom: 8,
           }}>

@@ -13,6 +13,7 @@ import { TagIcon, TrashIcon, MagnifyingGlass } from '../components/ui/icons';
 import { Producto } from '../types';
 
 import BotonVolver from '../components/BotonVolver';
+import { GiftIcon as IcoGiftIcon } from '@heroicons/react/24/outline';
 interface PromoRow {
   id: string; producto_id: string; tipo: '2x1' | 'pct_cantidad';
   min_cant: number; pct: number; activa: boolean; nombre?: string;
@@ -95,11 +96,11 @@ const PromosPage: React.FC = () => {
             <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }}>
               <MagnifyingGlass size={18} color="var(--text-3)" />
             </span>
-            <input value={prodElegido ? prodElegido.nombre : query} onChange={e => buscar(e.target.value)}
+            <input className="campo" value={prodElegido ? prodElegido.nombre : query} onChange={e => buscar(e.target.value)}
               placeholder="Buscar producto..."
-              style={{ width: '100%', padding: '10px 14px 10px 38px', fontSize: 15, background: 'var(--surface)', color: 'var(--text)', border: '1.5px solid var(--border)', borderRadius: 'var(--radius)', outline: 'none' }} />
+              style={{ width: '100%', padding: '10px 14px 10px 38px', fontSize: 15, color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none' }} />
             {results.length > 0 && !prodElegido && (
-              <div style={{ position: 'absolute', top: '105%', left: 0, right: 0, zIndex: 10, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-lg, 0 8px 24px rgba(0,0,0,.18))', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: '105%', left: 0, right: 0, zIndex: 10, background: 'var(--surface)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-lg, 0 8px 24px rgba(0,0,0,.18))', overflow: 'hidden' }}>
                 {results.map(r => (
                   <button key={r.id} type="button" onClick={() => { setProdElegido(r); setResults([]); }}
                     style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -112,11 +113,11 @@ const PromosPage: React.FC = () => {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
             <button type="button" onClick={() => setTipo('2x1')}
-              style={{ padding: 10, borderRadius: 'var(--radius)', fontFamily: 'inherit', fontWeight: 700, fontSize: 14, cursor: 'pointer', border: tipo === '2x1' ? '1.5px solid var(--color-primary)' : '1.5px solid var(--border)', background: tipo === '2x1' ? 'var(--color-primary-bg)' : 'var(--surface)', color: tipo === '2x1' ? 'var(--color-primary-dark)' : 'var(--text-2)' }}>
+              style={{ padding: 10, borderRadius: 'var(--radius)', fontFamily: 'inherit', fontWeight: 700, fontSize: 14, cursor: 'pointer', border: tipo === '2x1' ? '1.5px solid var(--color-primary)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: tipo === '2x1' ? 'var(--color-primary-bg)' : 'var(--surface)', color: tipo === '2x1' ? 'var(--color-primary-dark)' : 'var(--text-2)' }}>
               2x1
             </button>
             <button type="button" onClick={() => setTipo('pct_cantidad')}
-              style={{ padding: 10, borderRadius: 'var(--radius)', fontFamily: 'inherit', fontWeight: 700, fontSize: 14, cursor: 'pointer', border: tipo === 'pct_cantidad' ? '1.5px solid var(--color-primary)' : '1.5px solid var(--border)', background: tipo === 'pct_cantidad' ? 'var(--color-primary-bg)' : 'var(--surface)', color: tipo === 'pct_cantidad' ? 'var(--color-primary-dark)' : 'var(--text-2)' }}>
+              style={{ padding: 10, borderRadius: 'var(--radius)', fontFamily: 'inherit', fontWeight: 700, fontSize: 14, cursor: 'pointer', border: tipo === 'pct_cantidad' ? '1.5px solid var(--color-primary)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: tipo === 'pct_cantidad' ? 'var(--color-primary-bg)' : 'var(--surface)', color: tipo === 'pct_cantidad' ? 'var(--color-primary-dark)' : 'var(--text-2)' }}>
               % por cantidad
             </button>
           </div>
@@ -125,13 +126,13 @@ const PromosPage: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
               <div>
                 <label style={{ fontSize: 13, color: 'var(--text-2)', display: 'block', marginBottom: 3 }}>Llevando al menos</label>
-                <input type="number" value={minCant} onChange={e => setMinCant(e.target.value)}
-                  style={{ width: '100%', padding: 9, fontSize: 15, textAlign: 'center', background: 'var(--surface)', color: 'var(--text)', border: '1.5px solid var(--border)', borderRadius: 'var(--radius)', outline: 'none' }} />
+                <input className="campo" type="number" value={minCant} onChange={e => setMinCant(e.target.value)}
+                  style={{ width: '100%', padding: 9, fontSize: 15, textAlign: 'center', color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none' }} />
               </div>
               <div>
                 <label style={{ fontSize: 13, color: 'var(--text-2)', display: 'block', marginBottom: 3 }}>Descuento (%)</label>
-                <input type="number" value={pct} onChange={e => setPct(e.target.value)}
-                  style={{ width: '100%', padding: 9, fontSize: 15, textAlign: 'center', background: 'var(--surface)', color: 'var(--text)', border: '1.5px solid var(--border)', borderRadius: 'var(--radius)', outline: 'none' }} />
+                <input className="campo" type="number" value={pct} onChange={e => setPct(e.target.value)}
+                  style={{ width: '100%', padding: 9, fontSize: 15, textAlign: 'center', color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none' }} />
               </div>
             </div>
           )}
@@ -149,13 +150,13 @@ const PromosPage: React.FC = () => {
           promos.map(p => (
             <Card key={p.id} variant="bordered" style={{ padding: '12px 14px', marginBottom: 7 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 18 }}>🎁</span>
+                <IcoGiftIcon width={22} height={22} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre}</div>
                   <div style={{ fontSize: 13, color: 'var(--color-primary-dark)', fontWeight: 700 }}>{etiqueta(p)}</div>
                 </div>
                 <button onClick={() => borrar(p)} aria-label="Quitar promo" className="pressable"
-                  style={{ padding: 8, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--color-danger)', cursor: 'pointer' }}>
+                  style={{ padding: 8, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--color-danger)', cursor: 'pointer' }}>
                   <TrashIcon size={16} />
                 </button>
               </div>

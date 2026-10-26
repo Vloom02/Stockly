@@ -15,24 +15,27 @@ export interface ColorMarca {
 // contraste. Un id guardado que ya no existe cae en la primera (aplicarColorMarca).
 export const COLORES_MARCA: ColorMarca[] = [
   {
-    // Verde azulado "Tacto" (antes violeta: un 'violeta' guardado cae acá).
-    id: 'turquesa',
+    // Azul cobalto profundo: el color más preferido también a los 80 años, y en su
+    // versión intensa no se "lava" con el cristalino amarillento (los verdes azulados
+    // claros sí se confunden). Blanco encima 7.2:1. Ids viejos ('violeta',
+    // 'turquesa') caen acá.
+    id: 'cobalto',
     nombre: 'Normal',
-    tonos: ['#3f9a8f', '#0b6b60', '#08564d', '#06463f', '#043630'],
-    claros: ['#eaf5f3', '#d3ebe7', '#a9d6cf', '#7cbfb5'],
+    tonos: ['#4a72d6', '#1f4fbf', '#1a419e', '#15357f', '#102863'],
+    claros: ['#edf2fd', '#dbe5fb', '#b8cbf6', '#8eabef'],
   },
   {
     id: 'contraste',
     nombre: 'Alto contraste',
-    tonos: ['#5b7bd5', '#1f3f99', '#1a3480', '#152a66', '#10204d'],
-    claros: ['#eef2fb', '#dce4f6', '#c2cff0', '#9fb3e6'],
+    tonos: ['#2f4f9f', '#0f2a6b', '#0c2257', '#091a44', '#061232'],
+    claros: ['#e8edf8', '#d0daf0', '#a6b8e0', '#7891cc'],
   },
 ];
 
 const KEY = 'stockly:color-marca';
 
 export function obtenerColorMarcaGuardado(): string {
-  return almacenGet(KEY, 'turquesa') || 'turquesa';
+  return almacenGet(KEY, 'cobalto') || 'cobalto';
 }
 
 export function guardarColorMarca(id: string) {

@@ -16,6 +16,7 @@ import ScannerModal from '../components/ScannerModal';
 import { NivelBadge } from '../components/ui/Badge';
 import { Header } from './ProductoPage';
 import { useAuth } from '../context/AuthContext';
+import { TagIcon as IcoTagIcon } from '@heroicons/react/24/outline';
 
 interface RouteParams { id?: string; }
 
@@ -150,8 +151,8 @@ const LoteForm: React.FC = () => {
                     <div style={{ flex: 1 }}>
                       <Input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Escribí el nombre" aria-label="Buscar producto" />
                     </div>
-                    <button type="button" onClick={() => setShowScanner(true)} className="pressable" aria-label="Escanear el código"
-                      style={{ minWidth: 56, minHeight: 48, borderRadius: 'var(--radius)', border: 'none', background: 'var(--brand-500)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: '0 12px' }}>
+                    <button type="button" onClick={() => setShowScanner(true)} className="pressable boton-marca" aria-label="Escanear el código"
+                      style={{ minWidth: 56, minHeight: 48, borderRadius: 'var(--radius)', border: 'none', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: '0 12px' }}>
                       Escanear
                     </button>
                   </div>
@@ -159,7 +160,7 @@ const LoteForm: React.FC = () => {
                     {lista.map((p, i) => (
                       <button key={p.id} type="button" className="pressable anim-entrar"
                         onClick={() => { setProductoId(p.id ?? ''); setPaso(2); }}
-                        style={{ '--i': Math.min(i, 10), display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minHeight: 62, padding: '10px 16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', color: 'var(--text)' } as React.CSSProperties}>
+                        style={{ '--i': Math.min(i, 10), display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minHeight: 62, padding: '10px 16px', borderRadius: 'var(--radius-lg)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', color: 'var(--text)' } as React.CSSProperties}>
                         <span style={{ fontSize: 18, fontWeight: 700 }}>{p.nombre}</span>
                         <span style={{ fontSize: 14, color: 'var(--text-2)' }}>{p.categoria}</span>
                       </button>
@@ -182,17 +183,17 @@ const LoteForm: React.FC = () => {
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, margin: '18px 0' }}>
                     <button type="button" onClick={() => sumar(-1)} className="pressable" aria-label="Una menos"
-                      style={{ width: 64, height: 64, borderRadius: 'var(--radius-lg)', border: '1.5px solid var(--border)', background: 'var(--surface)', fontSize: 32, fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}>−</button>
-                    <input value={cantidad} onChange={e => setCantidad(e.target.value.replace(/\D/g, ''))} inputMode="numeric" aria-label="Cantidad de unidades"
+                      style={{ width: 64, height: 64, borderRadius: 'var(--radius-lg)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', fontSize: 32, fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}>−</button>
+                    <input className="campo" value={cantidad} onChange={e => setCantidad(e.target.value.replace(/\D/g, ''))} inputMode="numeric" aria-label="Cantidad de unidades"
                       onFocus={e => e.target.select()}
-                      style={{ width: 120, height: 72, textAlign: 'center', fontSize: 40, fontWeight: 800, borderRadius: 'var(--radius-lg)', border: '2px solid var(--brand-500)', background: 'var(--surface)', color: 'var(--text)', fontFamily: 'inherit' }} />
+                      style={{ width: 120, height: 72, textAlign: 'center', fontSize: 40, fontWeight: 800, borderRadius: 'var(--radius-lg)', border: '2px solid var(--brand-500)', color: 'var(--text)', fontFamily: 'inherit' }} />
                     <button type="button" onClick={() => sumar(1)} className="pressable" aria-label="Una más"
-                      style={{ width: 64, height: 64, borderRadius: 'var(--radius-lg)', border: '1.5px solid var(--border)', background: 'var(--surface)', fontSize: 32, fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}>+</button>
+                      style={{ width: 64, height: 64, borderRadius: 'var(--radius-lg)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', fontSize: 32, fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}>+</button>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 20 }}>
                     {[6, 12, 24, 48].map(n => (
                       <button key={n} type="button" onClick={() => setCantidad(String(n))} className="pressable" aria-pressed={cant === n}
-                        style={{ minHeight: 52, borderRadius: 'var(--radius)', border: cant === n ? '3px solid var(--brand-500)' : '1.5px solid var(--border)', background: cant === n ? 'var(--brand-50)' : 'var(--surface)', fontSize: 18, fontWeight: 700, color: 'var(--text)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                        style={{ minHeight: 52, borderRadius: 'var(--radius)', border: cant === n ? '3px solid var(--brand-500)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: cant === n ? 'var(--brand-50)' : 'var(--surface)', fontSize: 18, fontWeight: 700, color: 'var(--text)', cursor: 'pointer', fontFamily: 'inherit' }}>
                         {n}
                       </button>
                     ))}
@@ -209,7 +210,7 @@ const LoteForm: React.FC = () => {
                       const activo = valor === fechaVencimiento;
                       return (
                         <button key={a.label} type="button" onClick={() => setFechaVencimiento(valor)} aria-pressed={activo} className="pressable"
-                          style={{ minHeight: 56, borderRadius: 'var(--radius)', border: activo ? '3px solid var(--brand-500)' : '1.5px solid var(--border)', background: activo ? 'var(--brand-50)' : 'var(--surface)', color: 'var(--text)', fontSize: 17, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          style={{ minHeight: 56, borderRadius: 'var(--radius)', border: activo ? '3px solid var(--brand-500)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: activo ? 'var(--brand-50)' : 'var(--surface)', color: 'var(--text)', fontSize: 17, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                           {a.label}
                         </button>
                       );
@@ -332,7 +333,7 @@ const LoteForm: React.FC = () => {
                   marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)',
                   display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
                 }}>
-                  <span style={{ fontSize: 18 }}>💸</span>
+                  <IcoTagIcon width={22} height={22} />
                   <div style={{ fontSize: 13, lineHeight: 1.4 }}>
                     <strong>Para que no se venza:</strong> vendé a{' '}
                     <strong style={{ color: 'var(--brand-600)' }}>{formatearMoneda(liq.precioFinal)}</strong>{' '}
@@ -379,7 +380,7 @@ const LoteForm: React.FC = () => {
                   const activo = valor === fechaVencimiento;
                   return (
                     <button key={a.label} type="button" onClick={() => setFechaVencimiento(valor)} aria-pressed={activo}
-                      style={{ minHeight: 48, borderRadius: 'var(--radius)', border: activo ? '2px solid var(--brand-500)' : '1px solid var(--border)', background: activo ? 'var(--brand-50)' : 'var(--surface)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      style={{ minHeight: 48, borderRadius: 'var(--radius)', border: activo ? '2px solid var(--brand-500)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: activo ? 'var(--brand-50)' : 'var(--surface)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                       {a.label}
                     </button>
                   );

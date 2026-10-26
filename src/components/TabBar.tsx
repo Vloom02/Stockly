@@ -53,7 +53,9 @@ const TabBar: React.FC = () => {
         position: 'absolute', top: 6, bottom: 6,
         left: `calc(6px + (100% - 12px) * ${desde(Math.max(activa, 0))})`,
         width: `calc((100% - 12px) * ${ANCHOS[Math.max(activa, 0)] / TOTAL})`,
-        borderRadius: 20, background: 'var(--marca-suave)',
+        // Lo elegido se marca por luminosidad (azul lleno, texto blanco), no por un tinte
+        // pálido: a los mayores los tonos claros parecidos se les confunden.
+        borderRadius: 20, background: 'var(--boton-marca)', boxShadow: 'var(--relieve), 0 2px 0 var(--boton-base)',
         opacity: activa < 0 || TABS[activa]?.fab ? 0 : 1,
         transition: 'left var(--mov-base) var(--ease-salida), width var(--mov-base) var(--ease-salida), opacity var(--mov-rapido) ease',
       }} />
@@ -69,7 +71,7 @@ const TabBar: React.FC = () => {
             style={{
               position: 'relative', background: 'none', border: 'none', cursor: 'pointer',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
-              color: active ? 'var(--marca-texto)' : 'var(--text-2)',
+              color: active && !t.fab ? 'var(--text-on-brand)' : active ? 'var(--marca-texto)' : 'var(--text-2)',
               fontFamily: 'inherit', fontSize: 13, letterSpacing: '-0.01em', fontWeight: active ? 800 : 700, minWidth: 0,
             }}
           >

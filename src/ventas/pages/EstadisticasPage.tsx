@@ -89,7 +89,7 @@ const EstadisticasPage: React.FC = () => {
               </Card>
             </div>
 
-            <h2 style={{ fontSize: 15, fontWeight: 700, margin: '18px 0 8px' }}>🏆 Más vendidos</h2>
+            <h2 style={{ fontSize: 15, fontWeight: 700, margin: '18px 0 8px' }}>Más vendidos</h2>
             <Card variant="bordered" style={{ padding: '10px 14px' }}>
               {top.map((t, i) => (
                 <div key={t.nombre} style={{ padding: '6px 0', borderBottom: i < top.length - 1 ? '1px dashed var(--border)' : 'none' }}>
@@ -108,7 +108,7 @@ const EstadisticasPage: React.FC = () => {
               ))}
             </Card>
 
-            <h2 style={{ fontSize: 15, fontWeight: 700, margin: '18px 0 8px' }}>🕐 Horas pico</h2>
+            <h2 style={{ fontSize: 15, fontWeight: 700, margin: '18px 0 8px' }}>Horas pico</h2>
             <Card variant="bordered" style={{ padding: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 90 }}>
                 {porHora.map((n, h) => (

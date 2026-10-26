@@ -72,9 +72,7 @@ const MovimientosPage: React.FC = () => {
             porDia.map(grupo => (
               <div key={grupo.fecha} style={{ marginBottom: 20 }}>
                 <div style={{
-                  fontSize: 13, fontWeight: 700, color: 'var(--text-3)',
-                  textTransform: 'uppercase', marginBottom: 8, paddingLeft: 4,
-                  letterSpacing: '0.04em',
+                  fontSize: 13, fontWeight: 700, color: 'var(--text-3)', marginBottom: 8, paddingLeft: 4,
                 }}>{tituloFecha(grupo.fecha)}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {grupo.items.map(m => {
@@ -117,7 +115,7 @@ const MovItem: React.FC<{ m: Movimiento; nombre: string }> = ({ m, nombre }) => 
             </div>
           )}
           {m.notas && (
-            <div style={{ fontSize: 13, color: 'var(--text-2)', fontStyle: 'italic', marginTop: 2 }}>{m.notas}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 2 }}>{m.notas}</div>
           )}
           <div style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 4 }}>{m.usuario}</div>
         </div>

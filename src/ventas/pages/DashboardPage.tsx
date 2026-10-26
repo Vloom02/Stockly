@@ -11,6 +11,7 @@ import { Card, StatCard, SectionTitle, EmptyState, Skeleton } from '../component
 import { ChartBarIcon, ArrowPathIcon } from '../components/ui/icons';
 
 import BotonVolver from '../components/BotonVolver';
+import { ArrowDownTrayIcon as IcoArrowDownTrayIcon } from '@heroicons/react/24/outline';
 interface VentaRow { id: string; total: number; metodo_pago: string; cliente: string; fecha: string; }
 interface ItemRow  { producto_id: string; cantidad: number; subtotal: number; }
 
@@ -142,7 +143,7 @@ const DashboardPage: React.FC = () => {
     return Object.entries(m).map(([id, d]) => ({ id, ...d })).sort((a, b) => b.qty - a.qty).slice(0, 5);
   }, [items]);
 
-  const metodoLabel = (k: string) => ({ efectivo: '💵 Efectivo', transferencia: '📱 Transferencia', tarjeta: '💳 Tarjeta', qr: '📲 QR' } as Record<string, string>)[k] ?? k;
+  const metodoLabel = (k: string) => ({ efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta', qr: 'QR' } as Record<string, string>)[k] ?? k;
 
   return (
     <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
@@ -152,10 +153,10 @@ const DashboardPage: React.FC = () => {
           <h1 style={{ fontSize: 20, fontWeight: 700 }}>Resumen del día</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button onClick={exportarCSV} disabled={ventas.length === 0} aria-label="Exportar ventas a CSV" className="pressable"
-              style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-full)', padding: '7px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 700, color: 'var(--text-2)', fontFamily: 'inherit', opacity: ventas.length === 0 ? 0.5 : 1 }}>
-              ⬇ CSV
+              style={{ background: 'var(--surface-2)', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-full)', padding: '7px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 700, color: 'var(--text-2)', fontFamily: 'inherit', opacity: ventas.length === 0 ? 0.5 : 1 }}>
+              <IcoArrowDownTrayIcon width={18} height={18} /> CSV
             </button>
-            <button onClick={load} aria-label="Actualizar datos" className="pressable" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-full)', padding: 8, cursor: 'pointer', display: 'flex' }}>
+            <button onClick={load} aria-label="Actualizar datos" className="pressable" style={{ background: 'var(--surface-2)', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-full)', padding: 8, cursor: 'pointer', display: 'flex' }}>
               <ArrowPathIcon size={16} color="var(--text-2)" />
             </button>
           </div>
@@ -165,7 +166,7 @@ const DashboardPage: React.FC = () => {
         <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
           {(['hoy', 'semana'] as const).map(r => (
             <button key={r} onClick={() => setRange(r)}
-              style={{ flex: 1, padding: 8, border: range === r ? '1.5px solid var(--color-primary)' : '1px solid var(--border)', borderRadius: 'var(--radius)', background: range === r ? 'var(--color-primary-bg)' : 'var(--surface)', color: range === r ? 'var(--color-primary-dark)' : 'var(--text-2)', cursor: 'pointer', fontWeight: 600, fontSize: 14, fontFamily: 'inherit' }}>
+              style={{ flex: 1, padding: 8, border: range === r ? '1.5px solid var(--color-primary)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: range === r ? 'var(--color-primary-bg)' : 'var(--surface)', color: range === r ? 'var(--color-primary-dark)' : 'var(--text-2)', cursor: 'pointer', fontWeight: 600, fontSize: 14, fontFamily: 'inherit' }}>
               {r === 'hoy' ? 'Hoy' : 'Últimos 7 días'}
             </button>
           ))}
@@ -187,7 +188,7 @@ const DashboardPage: React.FC = () => {
             {deltaPct !== null && (
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, padding: '10px 12px',
-                borderRadius: 'var(--radius)', background: 'var(--surface)', border: '1px solid var(--border)', fontSize: 13,
+                borderRadius: 'var(--radius)', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)', fontSize: 13,
               }}>
                 <span style={{
                   fontWeight: 700, fontFamily: 'var(--font-mono)',

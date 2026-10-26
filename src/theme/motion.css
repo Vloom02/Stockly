@@ -33,6 +33,9 @@
 .anim-paso    { animation: mov-paso var(--mov-base) var(--ease-salida) both; }
 .anim-subir   { animation: mov-subir var(--mov-base) var(--ease-salida) both; }
 .anim-bajar   { animation: mov-bajar var(--mov-base) var(--ease-salida) both; }   /* avisos que bajan desde arriba */
+@keyframes mov-crecer  { from { transform: scaleX(0); } to { transform: none; } }
+.anim-crecer  { transform-origin: left; animation: mov-crecer var(--mov-lento) var(--ease-salida) both;
+                animation-delay: calc(min(var(--i, 0), 8) * var(--mov-escalon)); }        /* barras que crecen */
 .anim-atencion { animation: mov-latido 1.3s ease-in-out .5s 2; }   /* dos latidos y se queda quieto */
 .anim-rebote  { animation: mov-rebote var(--mov-lento) var(--ease-resorte); }
 .anim-sacudir { animation: mov-sacudir 440ms ease-in-out; }       /* "no era esa clave" */

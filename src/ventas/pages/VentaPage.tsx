@@ -26,11 +26,12 @@ import { parseMonto } from '../../lib/numeros';
 import { avisoVentaOk, avisoToque } from '../lib/aviso';
 import { useContador } from '../../lib/useContador';
 import CheckDibujo from '../components/CheckDibujo';
+import { BanknotesIcon as IcoBanknotesIcon, CameraIcon as IcoCameraIcon, CreditCardIcon as IcoCreditCardIcon, DevicePhoneMobileIcon as IcoDevicePhoneMobileIcon, QrCodeIcon as IcoQrCodeIcon, UserIcon as IcoUserIcon } from '@heroicons/react/24/outline';
 const payOptions = [
-  { key: 'efectivo',     label: '💵 Efectivo' },
-  { key: 'transferencia',label: '📱 Transferencia' },
-  { key: 'tarjeta',      label: '💳 Tarjeta' },
-  { key: 'qr',           label: '📲 QR' },
+  { key: 'efectivo',     label: 'Efectivo',      Icono: IcoBanknotesIcon },
+  { key: 'transferencia',label: 'Transferencia', Icono: IcoDevicePhoneMobileIcon },
+  { key: 'tarjeta',      label: 'Tarjeta',       Icono: IcoCreditCardIcon },
+  { key: 'qr',           label: 'QR',            Icono: IcoQrCodeIcon },
 ];
 
 const VentaPage: React.FC = () => {
@@ -230,7 +231,7 @@ const VentaPage: React.FC = () => {
                 onClick={async () => { if (await confirmar(`¿Cerrar el turno de ${cajero.nombre}?`, { okText: 'Cerrar turno' })) cerrarTurno(); }}
                 className="pressable"
                 style={{ marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 'var(--radius-full)', border: '1px solid var(--color-primary-border)', background: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                👤 {cajero.nombre} · salir
+                <IcoUserIcon width={16} height={16} /> {cajero.nombre} · salir
               </button>
             )}
           </div>
@@ -249,7 +250,7 @@ const VentaPage: React.FC = () => {
             )}
             {/* Caja, fiado, ventas anteriores: antes era la pestaña "Más" de la app de ventas */}
             <button type="button" onClick={() => history.push('/ventas/mas')} className="pressable"
-              style={{ minHeight: 48, padding: '6px 14px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              style={{ minHeight: 48, padding: '6px 14px', borderRadius: 'var(--radius)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
               <BanknotesIcon size={22} /> Caja
             </button>
           </div>
@@ -258,13 +259,13 @@ const VentaPage: React.FC = () => {
         {/* Scanner: lector físico / tipeo + botón de cámara */}
         <Card variant="bordered" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--color-primary)', flexShrink: 0 }} />
-          <input ref={scanRef} value={scan} onChange={e => setScan(e.target.value)}
+          <input className="campo" ref={scanRef} value={scan} onChange={e => setScan(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && scan.trim()) handleScan(scan.trim()); }}
             placeholder="Escaneá el código" autoComplete="off" spellCheck={false} aria-label="Código de barras"
-            style={{ flex: 1, minWidth: 0, minHeight: 44, border: 'none', outline: 'none', fontSize: 18, background: 'transparent', fontFamily: 'var(--font-sans)', color: 'var(--text)' }} />
-          <button onClick={() => setShowScanner(true)} aria-label="Escanear con la cámara" className="pressable"
-            style={{ flexShrink: 0, width: 56, height: 48, borderRadius: 'var(--radius)', border: 'none', background: 'var(--color-primary)', color: 'var(--text-on-brand)', cursor: 'pointer', fontSize: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            📷
+            style={{ flex: 1, minWidth: 0, minHeight: 44, border: 'none', outline: 'none', fontSize: 18, fontFamily: 'var(--font-sans)', color: 'var(--text)' }} />
+          <button onClick={() => setShowScanner(true)} aria-label="Escanear con la cámara" className="pressable boton-marca"
+            style={{ flexShrink: 0, width: 56, height: 48, borderRadius: 'var(--radius)', border: 'none', cursor: 'pointer', fontSize: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <IcoCameraIcon width={26} height={26} />
           </button>
         </Card>
 
@@ -280,11 +281,11 @@ const VentaPage: React.FC = () => {
             <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
               <MagnifyingGlass size={18} color="var(--text-3)" />
             </span>
-            <input value={query} onChange={e => handleSearch(e.target.value)} placeholder="Buscar por nombre..."
-              style={{ width: '100%', padding: '10px 14px 10px 38px', fontSize: 15, background: 'var(--surface)', color: 'var(--text)', border: '1.5px solid var(--border)', borderRadius: 'var(--radius)', outline: 'none' }} />
+            <input className="campo" value={query} onChange={e => handleSearch(e.target.value)} placeholder="Buscar por nombre..."
+              style={{ width: '100%', padding: '10px 14px 10px 38px', fontSize: 15, color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none' }} />
           </div>
           {results.length > 0 && (
-            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 60, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', overflow: 'hidden', marginTop: 4 }}>
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 60, background: 'var(--surface)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', overflow: 'hidden', marginTop: 4 }}>
               {results.map(p => (
                 <button key={p.id} onClick={() => pickProduct(p)} className="pressable"
                   style={{ width: '100%', padding: '10px 14px', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', textAlign: 'left', fontFamily: 'inherit' }}>
@@ -302,11 +303,11 @@ const VentaPage: React.FC = () => {
         {/* Favoritos: acceso rápido a los más vendidos (solo con carrito vacío) */}
         {state.cart.length === 0 && favoritos.length > 0 && (
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)', marginBottom: 8 }}>⭐ Más vendidos</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)', marginBottom: 8 }}>Más vendidos</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
               {favoritos.map(p => (
                 <button key={p.id} onClick={() => pickProduct(p)} className="pressable"
-                  style={{ padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', gap: 3, boxShadow: 'var(--shadow-sm)' }}>
+                  style={{ padding: '10px 12px', border: 'none', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', gap: 3, boxShadow: 'var(--shadow-sm)' }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre}</span>
                   <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-primary-dark)', fontFamily: 'var(--font-mono)' }}>{formatMoney(p.precio)}</span>
                 </button>
@@ -320,7 +321,7 @@ const VentaPage: React.FC = () => {
           <EmptyState icon={<ShoppingCartIcon size={44} color="var(--text-3)" />} title="El carrito está vacío" description="Escaneá o buscá productos para comenzar la venta" />
         ) : (
           <>
-            <div className="lista-animada" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginBottom: 12, boxShadow: 'var(--shadow-sm)' }}>
+            <div className="lista-animada" style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginBottom: 12, boxShadow: 'var(--shadow-sm)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 14px', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}>
                 <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>Carrito</span>
                 <span style={{ fontSize: 15, color: 'var(--text-2)' }}>{totalItems} {totalItems !== 1 ? 'productos' : 'producto'}</span>
@@ -343,10 +344,10 @@ const VentaPage: React.FC = () => {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button aria-label={`Restar uno a ${item.nombre}`} onClick={() => setQty(item.productoId, item.qty - 1)} className="pressable" style={{ width: 48, height: 48, flexShrink: 0, border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)' }}><MinusIcon size={24} /></button>
-                    <input type="number" inputMode="numeric" value={item.qty} aria-label={`Cantidad de ${item.nombre}`}
+                    <input className="campo" type="number" inputMode="numeric" value={item.qty} aria-label={`Cantidad de ${item.nombre}`}
                       onChange={e => { const v = parseInt(e.target.value); setQty(item.productoId, isNaN(v) ? 0 : v); }}
                       onFocus={e => e.target.select()}
-                      style={{ width: 60, height: 48, fontSize: 20, fontWeight: 700, textAlign: 'center', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '4px 2px', background: 'var(--surface)', color: 'var(--text)', outline: 'none' }} />
+                      style={{ width: 60, height: 48, fontSize: 20, fontWeight: 700, textAlign: 'center', borderRadius: 'var(--radius-sm)', padding: '4px 2px', color: 'var(--text)', outline: 'none' }} />
                     <button aria-label={`Sumar uno a ${item.nombre}`} onClick={() => setQty(item.productoId, item.qty + 1)} className="pressable" style={{ width: 48, height: 48, flexShrink: 0, border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary-dark)' }}><PlusIcon size={24} /></button>
                     <span style={{ flex: 1 }} />
                     <button aria-label={`Quitar ${item.nombre} del carrito`} onClick={() => quitar(item.productoId)} className="pressable" style={{ height: 48, padding: '0 14px', flexShrink: 0, border: '1px solid var(--color-danger-border)', borderRadius: 'var(--radius-sm)', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-danger)', fontSize: 16, fontWeight: 600, fontFamily: 'inherit' }}><XMarkIcon size={20} /> Quitar</button>
@@ -388,7 +389,7 @@ const VentaPage: React.FC = () => {
               ))}
               {promosCalc.lineas.map(l => (
                 <div key={l.nombre} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '2px 0', color: 'var(--color-primary-dark)' }}>
-                  <span>🎁 {l.nombre} <span style={{ opacity: 0.7 }}>({l.etiqueta})</span></span>
+                  <span>{l.nombre} <span style={{ opacity: 0.7 }}>({l.etiqueta})</span></span>
                   <span style={{ fontFamily: 'var(--font-mono)' }}>-{formatMoney(l.monto)}</span>
                 </div>
               ))}
@@ -403,8 +404,8 @@ const VentaPage: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10, marginBottom: 16 }}>
               {payOptions.map(o => (
                 <button key={o.key} onClick={() => setMetodo(o.key)} aria-pressed={metodoPago === o.key}
-                  style={{ minHeight: 60, padding: 10, border: metodoPago === o.key ? '3px solid var(--color-primary)' : '1.5px solid var(--border)', borderRadius: 'var(--radius)', background: metodoPago === o.key ? 'var(--color-primary-bg)' : 'var(--surface)', color: metodoPago === o.key ? 'var(--color-primary-dark)' : 'var(--text)', cursor: 'pointer', fontSize: 17, fontWeight: 700, fontFamily: 'inherit' }}>
-                  {o.label}
+                  style={{ minHeight: 60, padding: 10, border: metodoPago === o.key ? '3px solid var(--color-primary)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: metodoPago === o.key ? 'var(--color-primary-bg)' : 'var(--surface)', color: metodoPago === o.key ? 'var(--color-primary-dark)' : 'var(--text)', cursor: 'pointer', fontSize: 17, fontWeight: 700, fontFamily: 'inherit' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><o.Icono width={24} height={24} />{o.label}</span>
                 </button>
               ))}
             </div>
@@ -416,18 +417,18 @@ const VentaPage: React.FC = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 8 }}>
                   {[1000, 2000, 5000, 10000].map(v => (
                     <button key={v} onClick={() => setRecibido(String(v))} aria-pressed={recibido === String(v)}
-                      style={{ minHeight: 52, padding: '8px 6px', border: recibido === String(v) ? '3px solid var(--color-primary)' : '1.5px solid var(--border)', borderRadius: 'var(--radius)', background: recibido === String(v) ? 'var(--color-primary-bg)' : 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontSize: 17, fontWeight: 700, fontFamily: 'inherit' }}>
+                      style={{ minHeight: 52, padding: '8px 6px', border: recibido === String(v) ? '3px solid var(--color-primary)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: recibido === String(v) ? 'var(--color-primary-bg)' : 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontSize: 17, fontWeight: 700, fontFamily: 'inherit' }}>
                       {formatMoney(v)}
                     </button>
                   ))}
                   <button onClick={() => setRecibido(String(total))}
-                    style={{ minHeight: 52, padding: '8px 6px', border: '1.5px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontSize: 17, fontWeight: 700, fontFamily: 'inherit' }}>
+                    style={{ minHeight: 52, padding: '8px 6px', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontSize: 17, fontWeight: 700, fontFamily: 'inherit' }}>
                     Justo
                   </button>
                 </div>
-                <input type="text" inputMode="decimal" value={recibido} onChange={e => setRecibido(e.target.value)} placeholder="Otro monto ($)"
+                <input className="campo" type="text" inputMode="decimal" value={recibido} onChange={e => setRecibido(e.target.value)} placeholder="Otro monto ($)"
                   aria-label="Monto con el que paga"
-                  style={{ width: '100%', padding: 12, fontSize: 20, background: 'var(--surface)', color: 'var(--text)', border: '1.5px solid var(--border)', borderRadius: 'var(--radius)', outline: 'none', textAlign: 'center' }} />
+                  style={{ width: '100%', padding: 12, fontSize: 20, color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none', textAlign: 'center' }} />
                 {/* El vuelto se muestra en el pie fijo, junto al botón de cobrar */}
                 {recibido !== '' && (parseMonto(recibido) || 0) < total && (parseMonto(recibido) || 0) > 0 && (
                   <div style={{ marginTop: 8, fontSize: 17, fontWeight: 700, color: 'var(--color-danger)', textAlign: 'center' }}>
@@ -451,9 +452,9 @@ const VentaPage: React.FC = () => {
                 </label>
 
                 <label style={{ fontSize: 15, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>{fiado ? 'Nombre del cliente (obligatorio)' : 'Nombre del cliente (opcional)'}</label>
-                <input value={cliente} onChange={e => setCliente(e.target.value)} placeholder="Ej: Marta"
+                <input className="campo" value={cliente} onChange={e => setCliente(e.target.value)} placeholder="Ej: Marta"
                   aria-label="Nombre del cliente"
-                  style={{ width: '100%', padding: 12, fontSize: 17, background: 'var(--surface)', color: 'var(--text)', border: `1.5px solid ${fiadoSinCliente ? 'var(--color-danger)' : 'var(--border)'}`, borderRadius: 'var(--radius)', outline: 'none', marginBottom: fiadoSinCliente ? 4 : 12 }} />
+                  style={{ width: '100%', padding: 12, fontSize: 17, color: 'var(--text)', ...(fiadoSinCliente ? { borderColor: 'var(--color-danger)' } : {}), borderRadius: 'var(--radius)', outline: 'none', marginBottom: fiadoSinCliente ? 4 : 12 }} />
                 {fiadoSinCliente && (
                   <div style={{ fontSize: 15, color: 'var(--color-danger)', marginBottom: 12 }}>
                     Escribí el nombre para anotar la deuda.
@@ -461,9 +462,9 @@ const VentaPage: React.FC = () => {
                 )}
 
                 <label style={{ fontSize: 15, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Descuento ($)</label>
-                <input type="text" inputMode="decimal" value={descuento} onChange={e => setDescuento(e.target.value)} placeholder="0"
+                <input className="campo" type="text" inputMode="decimal" value={descuento} onChange={e => setDescuento(e.target.value)} placeholder="0"
                   aria-label="Descuento en pesos"
-                  style={{ width: '100%', padding: 12, fontSize: 17, background: 'var(--surface)', color: 'var(--text)', border: '1.5px solid var(--border)', borderRadius: 'var(--radius)', outline: 'none', textAlign: 'center' }} />
+                  style={{ width: '100%', padding: 12, fontSize: 17, color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none', textAlign: 'center' }} />
               </div>
             )}
 
@@ -492,7 +493,7 @@ const VentaPage: React.FC = () => {
             </div>
             <pre style={{
               fontFamily: 'var(--font-mono)', fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre',
-              background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
+              background: 'var(--surface-2)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)',
               padding: 'var(--space-4)', overflowX: 'auto', color: 'var(--text)', margin: 0, marginBottom: 16,
             }}>{ticket}</pre>
             <Button fullWidth size="lg" onClick={compartirTicket}>Compartir comprobante</Button>
