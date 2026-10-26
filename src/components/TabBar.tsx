@@ -18,6 +18,11 @@ interface TabConfig {
   fab?: boolean;
 }
 
+// Ancho de cada pestaña (fr): "Mercadería" necesita más lugar que "Cargar".
+const ANCHOS = [1, 1, 0.8, 1.3, 1];
+const TOTAL = ANCHOS.reduce((a, b) => a + b, 0);
+const desde = (i: number) => ANCHOS.slice(0, i).reduce((a, b) => a + b, 0) / TOTAL;
+
 const TABS: TabConfig[] = [
   { path: '/dashboard',   Icon: HomeIcon,    IconActive: HomeSolid,  label: 'Inicio' },
   { path: '/ventas',      Icon: ShoppingCartIcon, IconActive: CartSolid, label: 'Vender' },
@@ -27,92 +32,56 @@ const TABS: TabConfig[] = [
   { path: '/config',      Icon: Cog6ToothIcon, IconActive: CogSolid, label: 'Ajustes' },
 ];
 
+const estaActiva = (t: TabConfig, ruta: string) =>
+  t.fab ? ruta.includes('/nuevo') : ruta === t.path || (t.path !== '/dashboard' && ruta.startsWith(t.path));
+
+// Barra flotante "Tacto": una píldora se desliza hasta la pestaña elegida.
 const TabBar: React.FC = () => {
   const history = useHistory();
   const location = useLocation();
+  const activa = TABS.findIndex(t => estaActiva(t, location.pathname));
 
   return (
-    <nav style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0,
-      background: 'var(--surface)',
-      borderTop: '1px solid var(--border)',
-      display: 'flex',
-      justifyContent: 'space-around',
-      alignItems: 'flex-start',
-      padding: '8px 8px calc(8px + var(--sab,env(safe-area-inset-bottom)))',
-      zIndex: 100,
-      backdropFilter: 'blur(12px)',
-      WebkitBackdropFilter: 'blur(12px)',
+    <nav aria-label="Secciones" style={{
+      position: 'fixed', left: 10, right: 10,
+      bottom: 'calc(10px + var(--sab,env(safe-area-inset-bottom)))',
+      height: 72, padding: 6, zIndex: 100,
+      display: 'grid', gridTemplateColumns: ANCHOS.map(a => `minmax(0, ${a}fr)`).join(' '),
+      background: 'var(--surface)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-lg)',
     }}>
+      <span aria-hidden="true" style={{
+        position: 'absolute', top: 6, bottom: 6,
+        left: `calc(6px + (100% - 12px) * ${desde(Math.max(activa, 0))})`,
+        width: `calc((100% - 12px) * ${ANCHOS[Math.max(activa, 0)] / TOTAL})`,
+        borderRadius: 20, background: 'var(--marca-suave)',
+        opacity: activa < 0 || TABS[activa]?.fab ? 0 : 1,
+        transition: 'left var(--mov-base) var(--ease-salida), width var(--mov-base) var(--ease-salida), opacity var(--mov-rapido) ease',
+      }} />
       {TABS.map(t => {
-        const isFab = t.fab;
-        const active = isFab
-          ? location.pathname.includes('/nuevo')
-          : location.pathname === t.path ||
-            (t.path !== '/dashboard' && location.pathname.startsWith(t.path));
-
+        const active = estaActiva(t, location.pathname);
         const Ico = active ? t.IconActive : t.Icon;
-
-        if (isFab) {
-          return (
-            <button
-              key={t.path}
-              type="button"
-              onClick={() => history.push(t.path)}
-              aria-label={t.label}
-              style={{
-                position: 'relative',
-                background: 'var(--brand-500)',
-                border: 'none',
-                cursor: 'pointer',
-                width: 48,
-                height: 48,
-                borderRadius: 'var(--radius-md)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                boxShadow: 'var(--shadow-brand)',
-                transition: 'transform 150ms, box-shadow 200ms',
-                marginTop: -20,
-              }}
-              onMouseDown={(e) => {
-                e.currentTarget.style.transform = 'scale(0.92)';
-                setTimeout(() => { e.currentTarget.style.transform = ''; }, 150);
-              }}
-            >
-              <PlusIcon width={26} height={26} strokeWidth={2.5 as any} />
-              <span style={{ position: 'absolute', top: '100%', marginTop: 4, fontSize: 13, fontWeight: 700, color: 'var(--brand-600)', whiteSpace: 'nowrap' }}>{t.label}</span>
-            </button>
-          );
-        }
-
         return (
           <button
             key={t.path}
             type="button"
             onClick={() => history.push(t.path)}
+            aria-current={active ? 'page' : undefined}
             style={{
-              flex: 1,
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '4px 0',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 4,
-              color: active ? 'var(--brand-600)' : 'var(--text-3)',
-              transition: 'color 150ms',
-              minHeight: 48,
+              position: 'relative', background: 'none', border: 'none', cursor: 'pointer',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
+              color: active ? 'var(--marca-texto)' : 'var(--text-2)',
+              fontFamily: 'inherit', fontSize: 13, letterSpacing: '-0.01em', fontWeight: active ? 800 : 700, minWidth: 0,
             }}
           >
-            <span key={active ? 'on' : 'off'} className={active ? 'anim-rebote' : undefined} style={{ display: 'flex' }}><Ico width={22} height={22} /></span>
-            <span style={{
-              fontSize: 14,
-              fontWeight: active ? 600 : 500,
-              letterSpacing: '-0.005em',
-            }}>{t.label}</span>
+            {t.fab ? (
+              // "Cargar": una tecla en relieve, siempre a mano.
+              <span className="boton-marca" style={{ width: 34, height: 34, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <PlusIcon width={22} height={22} strokeWidth={2.6 as any} />
+              </span>
+            ) : (
+              <span key={active ? 'on' : 'off'} className={active ? 'anim-rebote' : undefined} style={{ display: 'flex', alignItems: 'center', height: 34 }}><Ico width={24} height={24} /></span>
+            )}
+            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{t.label}</span>
           </button>
         );
       })}

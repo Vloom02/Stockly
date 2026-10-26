@@ -38,6 +38,7 @@ import Logo from './components/ui/Logo';
 import PlanBloqueado from './components/PlanBloqueado';
 import { evaluarPlan, EstadoPlan } from './lib/plan';
 import { registrarPush } from './lib/push';
+import { transicionPagina, toastEntra, toastSale, alertEntra, alertSale } from './lib/animaciones';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { StoreProvider, getSetting, setSetting } from './context/StoreContext';
@@ -62,14 +63,18 @@ import '@ionic/react/css/flex-utils.css';
 import '@ionic/react/css/display.css';
 // Fuentes self-hosted (offline-first: no dependen de Google Fonts ni suman
 // round-trip de red al arranque). Variable = un archivo cubre todos los pesos.
-// Atkinson Hyperlegible: diseñada para baja visión (letras que no se confunden: Il1, O0).
-import '@fontsource-variable/atkinson-hyperlegible-next';
-import '@fontsource-variable/atkinson-hyperlegible-mono';
+// Nunito: redondeada y clara en tamaños grandes (diseño "Tacto").
+import '@fontsource-variable/nunito';
 import './theme/variables.css';
 import './theme/motion.css';
 import './ventas/ventas.css';
 
-setupIonicReact();
+setupIonicReact({
+  // Todo se mueve suave: pantallas, avisos y diálogos (ver lib/animaciones.ts).
+  navAnimation: transicionPagina,
+  toastEnter: toastEntra, toastLeave: toastSale,
+  alertEnter: alertEntra, alertLeave: alertSale,
+});
 
 // Pantalla de ventas: turno de cajero + (opcional) PIN del dueño.
 const enVentas = (pagina: React.ReactNode, tituloDueno?: string) => (
@@ -115,7 +120,7 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
     <StoreProvider>
       {showOnboarding && <Onboarding onComplete={completar} />}
       {estadoPlan.tipo === 'trial' && estadoPlan.diasRestantes !== undefined && estadoPlan.diasRestantes <= 5 && (
-        <div style={{
+        <div className="anim-bajar" style={{
           position: 'fixed', top: 'env(safe-area-inset-top)', left: 0, right: 0,
           zIndex: 500, background: 'var(--level-urgente-bg)', color: 'var(--level-urgente-fg)',
           padding: '8px 16px', fontSize: 13, fontWeight: 600, textAlign: 'center',

@@ -15,10 +15,11 @@ export interface ColorMarca {
 // contraste. Un id guardado que ya no existe cae en la primera (aplicarColorMarca).
 export const COLORES_MARCA: ColorMarca[] = [
   {
-    id: 'violeta',
+    // Verde azulado "Tacto" (antes violeta: un 'violeta' guardado cae acá).
+    id: 'turquesa',
     nombre: 'Normal',
-    tonos: ['#b7a8d0', '#7d6aa0', '#6a5889', '#55456c', '#423651'],
-    claros: ['#f5f3f9', '#eae5f1', '#dcd4e8', '#c2b6d8'],
+    tonos: ['#3f9a8f', '#0b6b60', '#08564d', '#06463f', '#043630'],
+    claros: ['#eaf5f3', '#d3ebe7', '#a9d6cf', '#7cbfb5'],
   },
   {
     id: 'contraste',
@@ -31,7 +32,7 @@ export const COLORES_MARCA: ColorMarca[] = [
 const KEY = 'stockly:color-marca';
 
 export function obtenerColorMarcaGuardado(): string {
-  return almacenGet(KEY, 'violeta') || 'violeta';
+  return almacenGet(KEY, 'turquesa') || 'turquesa';
 }
 
 export function guardarColorMarca(id: string) {

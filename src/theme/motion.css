@@ -20,6 +20,7 @@
 @keyframes mov-pop     { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
 @keyframes mov-paso    { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
 @keyframes mov-subir   { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+@keyframes mov-bajar   { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: none; } }
 @keyframes mov-latido  { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
 @keyframes mov-rebote  { 0% { transform: scale(1); } 35% { transform: scale(1.28); } 100% { transform: scale(1); } }
 @keyframes mov-sacudir { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
@@ -31,6 +32,7 @@
 .anim-pop     { animation: mov-pop var(--mov-base) var(--ease-resorte) both; }
 .anim-paso    { animation: mov-paso var(--mov-base) var(--ease-salida) both; }
 .anim-subir   { animation: mov-subir var(--mov-base) var(--ease-salida) both; }
+.anim-bajar   { animation: mov-bajar var(--mov-base) var(--ease-salida) both; }   /* avisos que bajan desde arriba */
 .anim-atencion { animation: mov-latido 1.3s ease-in-out .5s 2; }   /* dos latidos y se queda quieto */
 .anim-rebote  { animation: mov-rebote var(--mov-lento) var(--ease-resorte); }
 .anim-sacudir { animation: mov-sacudir 440ms ease-in-out; }       /* "no era esa clave" */
@@ -46,9 +48,46 @@
 .lista-animada > :nth-child(8)  { animation-delay: calc(7 * var(--mov-escalon)); }
 .lista-animada > :nth-child(n+9) { animation-delay: calc(8 * var(--mov-escalon)); }
 
-/* Respuesta al toque: se hunde apenas y vuelve (no cambia el tamaño de la caja). */
-.pressable { transition: transform var(--mov-rapido) var(--ease-salida), box-shadow var(--mov-rapido) ease, background-color var(--mov-rapido) ease, border-color var(--mov-rapido) ease; }
-.pressable:active { transform: scale(.96); }
+/* Respuesta al toque en TODO lo tocable: se hunde apenas y vuelve, y los cambios de
+   color, borde y sombra se funden. Usa `scale`/`translate` (no `transform`) para no
+   pisar elementos que se posicionan con transform. */
+:where(button, a[href], [role="button"], [role="radio"], [role="tab"], .pressable) {
+  transition: scale var(--mov-rapido) var(--ease-salida), translate var(--mov-rapido) var(--ease-salida),
+    background-color var(--mov-base) var(--ease-salida), color var(--mov-base) var(--ease-salida),
+    border-color var(--mov-base) var(--ease-salida), box-shadow var(--mov-base) var(--ease-salida),
+    opacity var(--mov-base) ease;
+}
+:where(button, a[href], [role="button"], [role="radio"], [role="tab"]):not(:disabled):active { scale: .97; }
+.pressable:active { scale: .96; }
+
+/* ─── Relieve "Tacto" ─────────────────────────────────────────────────────────
+   Botón principal: degradé con luz arriba y una base que se ve; al apretarlo baja
+   como una tecla. Blanco: tarjeta que sobresale. Campo: hundido; al escribir se
+   aclara y aparece un aro del color de marca. */
+.boton-marca   { background: var(--boton-marca); color: var(--text-on-brand); box-shadow: var(--relieve), var(--shadow-brand); }
+.boton-peligro { background: var(--boton-peligro); color: #fff; box-shadow: var(--relieve), 0 3px 0 color-mix(in srgb, var(--danger) 70%, black), 0 10px 20px -10px color-mix(in srgb, var(--danger) 70%, transparent); }
+.boton-blanco  { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+:is(.boton-marca, .boton-peligro):not(:disabled):active { scale: 1; translate: 0 2px; box-shadow: var(--relieve), 0 1px 0 var(--boton-base); }
+.boton-blanco:not(:disabled):active { box-shadow: var(--shadow-xs); }
+
+.tarjeta { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
+.tarjeta-tocable:active { scale: .985; box-shadow: var(--shadow-sm); }
+
+.campo { background: var(--campo-bg); box-shadow: var(--hundido); border: 2px solid transparent;
+  transition: border-color var(--mov-base) var(--ease-salida), box-shadow var(--mov-base) var(--ease-salida), background-color var(--mov-base) var(--ease-salida); }
+.campo:focus, .campo:focus-within { border-color: var(--brand-500); background: var(--surface);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-500) 18%, transparent); }
+
+/* Teclado: aro visible y suave alrededor de lo enfocado. */
+:focus-visible { outline: 3px solid color-mix(in srgb, var(--brand-500) 60%, transparent); outline-offset: 2px; }
+
+/* Avisos y diálogos de Ionic con el mismo lenguaje (la animación está en lib/animaciones.ts). */
+ion-toast { --border-radius: 18px; --box-shadow: var(--shadow-lg); font-weight: 700; }
+/* .md: más peso que el estilo de Ionic, si no gana el suyo (esquinas de 4px y MAYÚSCULAS). */
+ion-alert.md .alert-wrapper { border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); background: var(--surface); }
+ion-alert.md .alert-message { font-size: 18px; color: var(--text); }
+ion-alert.md .alert-button { border-radius: 14px; font-weight: 800; font-size: 17px; text-transform: none; min-height: 48px; color: var(--marca-texto); }
+ion-modal { --border-radius: var(--radius-xl); }
 
 /* Tilde que se dibuja ("¡listo!") */
 .check-dibujo .c { stroke-dasharray: 160; stroke-dashoffset: 160; animation: mov-trazo var(--mov-lento) var(--ease-salida) forwards; }

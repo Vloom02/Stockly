@@ -69,54 +69,38 @@ const DashboardPage: React.FC = () => {
           maxWidth: 760, margin: '0 auto',
         }}>
 
-          {/* ─── Masthead (header editorial) ──────────────────────────── */}
-          <header style={{ position: 'relative', borderBottom: '3px double var(--text)', paddingBottom: 12, marginBottom: 14 }}>
-            <div style={{
-              display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
-              fontSize: 13, letterSpacing: '0.04em', textTransform: 'uppercase',
-              color: 'var(--text-2)', fontWeight: 600,
-            }}>
-              <span>Control de vencimientos</span>
-              <button type="button" onClick={() => history.push('/sucursales')}
+          {/* ─── Encabezado "Tacto": fecha, local y cómo está el stock ─── */}
+          <header style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-2)', textTransform: 'capitalize' }}>{hoy}</span>
+              <button type="button" onClick={() => history.push('/sucursales')} className="boton-blanco"
                 style={{
-                  background: 'var(--surface)', border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-full)', padding: '5px 10px 5px 9px',
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  fontSize: 13, fontWeight: 600, color: 'var(--text)', letterSpacing: 0,
-                  textTransform: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                  border: 'none', borderRadius: 'var(--radius-full)', padding: '8px 12px 8px 10px', minHeight: 44,
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                 }}>
-                <BuildingStorefrontIcon width={13} height={13} />
+                <BuildingStorefrontIcon width={17} height={17} />
                 {sucursalActiva?.nombre || '...'}
-                <ChevronRightIcon width={11} height={11} style={{ color: 'var(--text-3)' }} />
+                <ChevronRightIcon width={13} height={13} style={{ color: 'var(--text-3)' }} />
               </button>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '8px 0 0' }}>
-              <Logo size={34} showText />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <Logo size={38} showText />
               {(() => {
-                // Sello dinámico: refleja el estado real del stock (antes decía
-                // siempre "AL DÍA" aunque hubiera vencidos → engañaba).
-                const nivelSello = res.lotesVencidos > 0
-                  ? { txt: `${res.lotesVencidos} VENCIDO${res.lotesVencidos > 1 ? 'S' : ''}`, color: 'var(--level-vencido-fg)' }
+                // Estado real del stock en un chip (antes un sello torcido estilo libro).
+                const estado = res.lotesVencidos > 0
+                  ? { txt: `${res.lotesVencidos} vencido${res.lotesVencidos > 1 ? 's' : ''}`, nivel: 'vencido' }
                   : (res.lotesCriticos + res.lotesUrgentes) > 0
-                    ? { txt: 'REVISAR', color: 'var(--level-urgente-fg)' }
-                    : { txt: 'AL DÍA', color: 'var(--level-ok-fg)' };
+                    ? { txt: 'Revisar', nivel: 'urgente' }
+                    : { txt: 'Al día', nivel: 'ok' };
                 return (
-                  <span style={{
-                    transform: 'rotate(-8deg)', border: `2px solid ${nivelSello.color}`, color: nivelSello.color,
-                    borderRadius: 5, padding: '3px 8px', textAlign: 'center', opacity: 0.9, lineHeight: 1,
-                    fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, letterSpacing: '0.03em',
-                  }}>{nivelSello.txt}</span>
+                  <span key={estado.txt} className="anim-pop" style={{
+                    background: `var(--level-${estado.nivel}-bg)`, color: `var(--level-${estado.nivel}-fg)`,
+                    borderRadius: 'var(--radius-full)', padding: '7px 14px', fontWeight: 800, fontSize: 15,
+                  }}>{estado.txt}</span>
                 );
               })()}
-            </div>
-
-            <div style={{
-              display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-2)',
-              borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 8, letterSpacing: '0.03em',
-            }}>
-              <span>Libro de almacén</span>
-              <span style={{ textTransform: 'capitalize' }}>{hoy}</span>
             </div>
           </header>
 
@@ -131,15 +115,14 @@ const DashboardPage: React.FC = () => {
             <div style={{
               gridColumn: 'span 2', gridRow: 'span 2', position: 'relative',
               background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: 18,
-              border: '1.5px solid var(--text)', boxShadow: 'var(--shadow-md)',
+              boxShadow: 'var(--shadow-md)',
             }}>
-              <div style={{ position: 'absolute', inset: 4, border: '1px solid var(--border)', borderRadius: 'calc(var(--radius-lg) - 4px)', pointerEvents: 'none' }} />
               <div style={{ position: 'relative' }}>
-                <span style={{ fontSize: 13, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-2)', fontWeight: 700 }}>Valor del inventario</span>
+                <span style={{ fontSize: 15, color: 'var(--text-2)', fontWeight: 700 }}>Valor del inventario</span>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(20px, 6.5vw, 30px)', fontWeight: 800, margin: '6px 0 14px', letterSpacing: '-0.02em', lineHeight: 1.05, color: 'var(--text)', whiteSpace: 'nowrap' }}>
                   {formatearMoneda(valorAnimado)}
                 </div>
-                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', borderTop: '1px dashed var(--border)', paddingTop: 12 }}>
+                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
                   <LedgerStat n={res.productosTotales} l="Productos" />
                   <LedgerStat n={res.lotesTotales} l="Compras" />
                   <LedgerStat n={res.unidadesTotales} l="Unidades" />
@@ -150,10 +133,10 @@ const DashboardPage: React.FC = () => {
             {/* En riesgo (2x1) */}
             <div style={{
               gridColumn: 'span 2', background: 'var(--surface)', borderRadius: 'var(--radius-lg)',
-              padding: 16, border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)',
+              padding: 16, boxShadow: 'var(--shadow-md)',
             }}>
-              <div style={{ fontSize: 13, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--level-vencido-fg)', fontWeight: 700, marginBottom: 10 }}>
-                ● Valor en riesgo
+              <div style={{ fontSize: 15, color: 'var(--level-vencido-fg)', fontWeight: 800, marginBottom: 10 }}>
+                Valor en riesgo
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div>
@@ -262,18 +245,18 @@ const DashboardPage: React.FC = () => {
 
 const LedgerStat: React.FC<{ n: number; l: string }> = ({ n, l }) => (
   <div>
-    <div style={{ fontSize: 13, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{l}</div>
+    <div style={{ fontSize: 14, color: 'var(--text-3)', fontWeight: 600 }}>{l}</div>
     <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{n}</div>
   </div>
 );
 
 const SecHeader: React.FC<{ title: string; tag?: string; onAction?: () => void }> = ({ title, tag, onAction }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-    <h2 style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontWeight: 700, fontSize: 19, margin: 0, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>{title}</h2>
-    <span style={{ flex: 1, height: 0, borderTop: '1px solid var(--border)' }} />
-    {tag && <span style={{ fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-3)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 9px' }}>{tag}</span>}
+    <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, margin: 0, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>{title}</h2>
+    <span style={{ flex: 1 }} />
+    {tag && <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-2)', background: 'var(--surface-3)', borderRadius: 20, padding: '3px 10px' }}>{tag}</span>}
     {onAction && (
-      <button type="button" onClick={onAction} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--brand-600)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 2, fontFamily: 'inherit', padding: 0 }}>
+      <button type="button" onClick={onAction} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: 'var(--marca-texto)', fontWeight: 800, minHeight: 44, display: 'flex', alignItems: 'center', gap: 2, fontFamily: 'inherit', padding: 0 }}>
         Ver todo <ChevronRightIcon width={14} height={14} />
       </button>
     )}
@@ -282,14 +265,14 @@ const SecHeader: React.FC<{ title: string; tag?: string; onAction?: () => void }
 
 const NivelChip: React.FC<{ nivel: NivelAlerta; cantidad: number }> = ({ nivel, cantidad }) => (
   <div style={{
-    background: 'var(--surface)', border: '1px solid var(--border)',
+    background: 'var(--surface)',
     borderRadius: 'var(--radius-lg)', padding: '14px 6px', textAlign: 'center',
-    boxShadow: 'var(--shadow-sm)',
+    boxShadow: 'var(--shadow-md)',
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
   }}>
     <div style={{ width: 9, height: 9, borderRadius: '50%', background: `var(--level-${nivel}-fg)`, marginBottom: 5, boxShadow: `0 0 0 3px var(--level-${nivel}-bg)` }} />
     <div style={{ fontFamily: 'var(--font-display)', fontSize: 21, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1, letterSpacing: '-0.02em' }}>{cantidad}</div>
-    <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 2, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{etiquetaNivel(nivel)}</div>
+    <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 2, fontWeight: 700 }}>{etiquetaNivel(nivel)}</div>
   </div>
 );
 
@@ -305,19 +288,33 @@ const AvisoDeHoy: React.FC<{ vencidos: number; pronto: number; onVer: (nivel: 'v
             titulo: `${pronto} ${pronto === 1 ? 'producto vence' : 'productos vencen'} pronto`,
             texto: 'Vendelos primero o ponelos en oferta.', boton: 'Ver cuáles son' }
         : null;
+    const icono = (fondo: string, color: string, trazo: React.ReactNode) => (
+      <span aria-hidden="true" style={{ width: 52, height: 52, flexShrink: 0, borderRadius: 16, background: fondo, color, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--relieve), 0 4px 10px -4px rgba(0, 0, 0, 0.35)' }}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">{trazo}</svg>
+      </span>
+    );
     if (!caso) {
       return (
-        <div role="status" style={{ background: 'var(--level-ok-bg)', color: 'var(--level-ok-fg)', borderRadius: 'var(--radius-lg)', padding: '16px 18px', marginBottom: 16, fontSize: 18, fontWeight: 700 }}>
-          Todo en orden: no hay nada por vencer.
+        <div role="status" className="tarjeta anim-pop" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', marginBottom: 16 }}>
+          {icono('linear-gradient(160deg, #4cc38a, #1f8f5c)', '#fff', <path d="m5 12 5 5 9-10" />)}
+          <span style={{ fontSize: 19, fontWeight: 800 }}>Todo en orden: no hay nada por vencer.</span>
         </div>
       );
     }
+    const vencido = caso.nivel === 'vencido';
     return (
-      <div role="alert" className="anim-pop" style={{ background: caso.bg, borderRadius: 'var(--radius-lg)', padding: '16px 18px', marginBottom: 16, border: `2px solid ${caso.fg}` }}>
-        <div style={{ fontSize: 22, fontWeight: 800, color: caso.fg, lineHeight: 1.2 }}>{caso.titulo}</div>
-        <div style={{ fontSize: 17, color: 'var(--text)', margin: '6px 0 12px' }}>{caso.texto}</div>
-        <button type="button" className="anim-atencion pressable" onClick={() => onVer(caso.nivel)}
-          style={{ width: '100%', minHeight: 52, borderRadius: 'var(--radius)', border: 'none', background: caso.fg, color: 'var(--bg)', fontSize: 18, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+      <div role="alert" className="tarjeta anim-pop" style={{ padding: 16, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+          {vencido
+            ? icono('linear-gradient(160deg, #e04e3a, #b8301c)', '#fff', <><path d="M12 3 2 20h20z" /><path d="M12 10v4M12 17.5v.5" /></>)
+            : icono('linear-gradient(160deg, #ffd27a, #f29a00)', '#3d2a00', <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>)}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 21, fontWeight: 800, color: caso.fg, lineHeight: 1.2 }}>{caso.titulo}</div>
+            <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-2)', marginTop: 2 }}>{caso.texto}</div>
+          </div>
+        </div>
+        <button type="button" className="boton-marca anim-atencion" onClick={() => onVer(caso.nivel)}
+          style={{ width: '100%', minHeight: 56, borderRadius: 'var(--radius-md)', border: 'none', fontSize: 18, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
           {caso.boton}
         </button>
       </div>
@@ -326,19 +323,14 @@ const AvisoDeHoy: React.FC<{ vencidos: number; pronto: number; onVer: (nivel: 'v
 
 const AccionCard: React.FC<{ icon: React.ReactNode; label: string; onClick: () => void }> =
   ({ icon, label, onClick }) => (
-    <button type="button" onClick={onClick}
+    <button type="button" onClick={onClick} className="boton-blanco"
       style={{
-        background: 'var(--surface)', border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-lg)', padding: '16px 8px',
+        border: 'none', borderRadius: 'var(--radius-lg)', padding: '14px 8px',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-        cursor: 'pointer', color: 'var(--text)', fontFamily: 'inherit',
-        fontWeight: 600, fontSize: 13, letterSpacing: '-0.005em',
-        boxShadow: 'var(--shadow-sm)', transition: 'all 150ms',
+        cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 15,
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--brand-300)'; e.currentTarget.style.color = 'var(--brand-700)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text)'; }}
     >
-      <span style={{ color: 'var(--brand-600)' }}>{icon}</span>
+      <span style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--marca-suave)', color: 'var(--marca-texto)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</span>
       {label}
     </button>
   );

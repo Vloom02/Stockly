@@ -45,6 +45,7 @@ const SyncBanner: React.FC = () => {
   return (
     <div
       role={clickable ? 'button' : 'status'}
+      className="anim-bajar"
       onClick={clickable ? () => sincronizarAhora() : undefined}
       style={{
         display: 'flex', alignItems: 'center', gap: 8,
