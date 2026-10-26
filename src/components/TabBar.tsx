@@ -43,7 +43,8 @@ const TabBar: React.FC = () => {
 
   return (
     <nav aria-label="Secciones" style={{
-      position: 'fixed', left: 10, right: 10,
+      // En tablet no se estira de punta a punta: ancho máximo y centrada.
+      position: 'fixed', left: 0, right: 0, margin: '0 auto', width: 'calc(100% - 20px)', maxWidth: 640,
       bottom: 'calc(10px + var(--sab,env(safe-area-inset-bottom)))',
       height: 72, padding: 6, zIndex: 100,
       display: 'grid', gridTemplateColumns: ANCHOS.map(a => `minmax(0, ${a}fr)`).join(' '),

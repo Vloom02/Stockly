@@ -41,6 +41,14 @@ const VentaPage: React.FC = () => {
   const { isUnlocked, lock } = useOwner();
   const confirmar = useConfirm();
   const [presentAlert] = useIonAlert();
+  // Tablet acostada (o pantalla ancha): hay lugar para dos columnas.
+  const [ancha, setAncha] = useState(() => matchMedia('(min-width: 900px)').matches);
+  useEffect(() => {
+    const mq = matchMedia('(min-width: 900px)');
+    const f = () => setAncha(mq.matches);
+    mq.addEventListener('change', f);
+    return () => mq.removeEventListener('change', f);
+  }, []);
   const history = useHistory();
 
   const pedirMontoLibre = () => presentAlert({
@@ -212,9 +220,10 @@ const VentaPage: React.FC = () => {
     <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
       <SyncBanner queueLen={state.outboxLen} isOnline={state.isOnline} />
 
-      <div style={{ padding: 'var(--space-4)', maxWidth: 520, margin: '0 auto', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))', paddingTop: state.outboxLen > 0 || !state.isOnline ? 44 : 16 }}>
+      {/* En tablet acostada: dos columnas (buscar | carrito), ver ventas.css. */}
+      <div className="venta-layout" style={{ padding: 'var(--space-4)', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))', paddingTop: state.outboxLen > 0 || !state.isOnline ? 44 : 16 }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
+        <div className="venta-cabecera" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 700 }}>{comercio?.nombre ?? 'Almacén'}</h1>
             {sucursales.length > 1 ? (
@@ -256,6 +265,7 @@ const VentaPage: React.FC = () => {
           </div>
         </div>
 
+        <div className="venta-col-buscar">
         {/* Scanner: lector físico / tipeo + botón de cámara */}
         <Card variant="bordered" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--color-primary)', flexShrink: 0 }} />
@@ -300,8 +310,8 @@ const VentaPage: React.FC = () => {
           )}
         </div>
 
-        {/* Favoritos: acceso rápido a los más vendidos (solo con carrito vacío) */}
-        {state.cart.length === 0 && favoritos.length > 0 && (
+        {/* Favoritos: acceso rápido a los más vendidos (con carrito vacío, o siempre si hay lugar al lado) */}
+        {(state.cart.length === 0 || ancha) && favoritos.length > 0 && (
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)', marginBottom: 8 }}>Más vendidos</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
@@ -316,6 +326,9 @@ const VentaPage: React.FC = () => {
           </div>
         )}
 
+        </div>
+
+        <div className="venta-col-carrito">
         {/* Cart */}
         {state.cart.length === 0 ? (
           <EmptyState icon={<ShoppingCartIcon size={44} color="var(--text-3)" />} title="El carrito está vacío" description="Escaneá o buscá productos para comenzar la venta" />
@@ -359,7 +372,7 @@ const VentaPage: React.FC = () => {
             {/* Total bar */}
             <div style={{ background: 'linear-gradient(135deg, var(--brand-500), var(--brand-700))', color: 'var(--text-on-brand)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: 'var(--shadow-md)' }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, opacity: .85, letterSpacing: '.12em' }}>TOTAL</div>
+                <div style={{ fontSize: 16, fontWeight: 800 }}>Total</div>
                 <div style={{ fontSize: 15, opacity: .75 }}>{totalItems} {totalItems !== 1 ? 'productos' : 'producto'}</div>
               </div>
               <div style={{ fontSize: 28, fontWeight: 800, fontFamily: 'var(--font-mono)', letterSpacing: '-0.02em' }}>{formatMoney(subtotalAnimado)}</div>
@@ -371,6 +384,7 @@ const VentaPage: React.FC = () => {
             </div>
           </>
         )}
+        </div>
       </div>
 
       {/* Confirm modal */}
