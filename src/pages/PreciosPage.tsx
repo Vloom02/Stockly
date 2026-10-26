@@ -12,6 +12,7 @@ import EmptyState from '../components/ui/EmptyState';
 import { Input } from '../components/ui/Input';
 import { Header } from './ProductoPage';
 
+import { parseMonto } from '../lib/numeros';
 const AUMENTOS = [5, 10, 15, 20];
 
 const PreciosPage: React.FC = () => {
@@ -38,7 +39,7 @@ const PreciosPage: React.FC = () => {
 
   const guardar = async (id: string) => {
     const p = state.productos.find(x => x.id === id);
-    const precio = Math.round((parseFloat(nuevo.replace(',', '.')) || 0) * 100) / 100;
+    const precio = Math.round((parseMonto(nuevo) || 0) * 100) / 100;
     if (!p || precio <= 0) { setToast({ show: true, msg: 'Ingresá un precio válido' }); return; }
     setGuardando(true);
     await updateProducto({ ...p, precio });
@@ -72,7 +73,7 @@ const PreciosPage: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {productos.map(p => {
                 const enEdicion = abierto === p.id;
-                const precioNuevo = parseFloat(nuevo.replace(',', '.')) || 0;
+                const precioNuevo = parseMonto(nuevo) || 0;
                 const cambio = enEdicion && precioNuevo > 0 && p.precio > 0
                   ? Math.round(((precioNuevo - p.precio) / p.precio) * 100) : null;
                 return (
@@ -99,7 +100,7 @@ const PreciosPage: React.FC = () => {
                         </div>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                           <input
-                            type="number" inputMode="decimal" min={0} step="0.01"
+                            type="text" inputMode="decimal"
                             aria-label={`Nuevo precio de ${p.nombre}`}
                             value={nuevo} onChange={e => setNuevo(e.target.value)}
                             autoFocus
@@ -111,7 +112,7 @@ const PreciosPage: React.FC = () => {
                           </button>
                         </div>
                         {cambio !== null && cambio !== 0 && (
-                          <p style={{ margin: '8px 0 0', fontSize: 12, color: cambio > 0 ? 'var(--brand-600)' : 'var(--level-vencido-fg)', fontWeight: 600 }}>
+                          <p style={{ margin: '8px 0 0', fontSize: 13, color: cambio > 0 ? 'var(--brand-600)' : 'var(--level-vencido-fg)', fontWeight: 600 }}>
                             {cambio > 0 ? '▲' : '▼'} {Math.abs(cambio)}% vs precio actual
                           </p>
                         )}

@@ -40,7 +40,7 @@ export const Field: React.FC<FieldProps> = ({ label, hint, error, required, chil
     {label && (
       <label style={{
         display: 'block',
-        fontSize: 12,
+        fontSize: 15,
         fontWeight: 600,
         color: 'var(--text-2)',
         marginBottom: 6,
@@ -52,10 +52,10 @@ export const Field: React.FC<FieldProps> = ({ label, hint, error, required, chil
     )}
     {children}
     {hint && !error && (
-      <p style={{ fontSize: 11, color: 'var(--text-3)', margin: '4px 0 0' }}>{hint}</p>
+      <p style={{ fontSize: 14, color: 'var(--text-3)', margin: '4px 0 0' }}>{hint}</p>
     )}
     {error && (
-      <p style={{ fontSize: 11, color: 'var(--danger)', margin: '4px 0 0', fontWeight: 500 }}>{error}</p>
+      <p role="alert" className="anim-entrar" style={{ fontSize: 15, color: 'var(--danger)', margin: '6px 0 0', fontWeight: 600 }}>{error}</p>
     )}
   </div>
 );
@@ -140,4 +140,34 @@ export const Textarea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement
     onFocus={(e) => { focusStyle(e); props.onFocus?.(e); }}
     onBlur={(e) => { blurStyle(e); props.onBlur?.(e); }}
   />
+);
+
+// ─── Opciones grandes ────────────────────────────────────────────────
+// Reemplaza al desplegable (<select>): para gente mayor los desplegables y
+// selectores chicos son de lo más difícil en pantallas táctiles (NN/g).
+// Botones de 48 px mínimo, todos a la vista, el elegido bien marcado.
+export interface Opcion { valor: string; etiqueta: string }
+
+export const Opciones: React.FC<{
+  opciones: Opcion[]; valor: string; onChange: (v: string) => void;
+  columnas?: number; etiqueta?: string;
+}> = ({ opciones, valor, onChange, columnas = 2, etiqueta }) => (
+  <div role="radiogroup" aria-label={etiqueta}
+    style={{ display: 'grid', gridTemplateColumns: `repeat(${columnas}, minmax(0, 1fr))`, gap: 8 }}>
+    {opciones.map((o, i) => {
+      const sel = o.valor === valor;
+      return (
+        <button key={o.valor} type="button" role="radio" aria-checked={sel} onClick={() => onChange(o.valor)}
+          className="pressable anim-entrar" style={{
+            '--i': i, minHeight: 48, padding: '8px 10px', borderRadius: 'var(--radius)',
+            border: sel ? '3px solid var(--brand-500)' : '1.5px solid var(--border)',
+            background: sel ? 'var(--brand-50)' : 'var(--surface)', color: 'var(--text)',
+            fontSize: 16, fontWeight: sel ? 700 : 600, cursor: 'pointer', fontFamily: 'inherit',
+            overflowWrap: 'anywhere',
+          } as React.CSSProperties}>
+          {o.etiqueta}
+        </button>
+      );
+    })}
+  </div>
 );

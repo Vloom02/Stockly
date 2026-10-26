@@ -108,7 +108,7 @@ const EmpleadosPage: React.FC = () => {
                 style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px', borderRadius: 'var(--radius)', border: 'none', background: 'var(--brand-500)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 8, opacity: creando ? 0.6 : 1 }}>
                 <UserPlusIcon width={18} height={18} /> {creando ? 'Generando código…' : 'Invitar empleado'}
               </button>
-              <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '0 0 18px', textAlign: 'center', lineHeight: 1.5 }}>
+              <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 18px', textAlign: 'center', lineHeight: 1.5 }}>
                 Genera un código de un solo uso (vence en 7 días). El empleado crea su cuenta con ese código y queda unido a tu comercio.
               </p>
 
@@ -119,7 +119,7 @@ const EmpleadosPage: React.FC = () => {
                   {pendientes.map((inv, i) => (
                     <div key={inv.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: i < pendientes.length - 1 ? '1px solid var(--border)' : 'none' }}>
                       <span style={{ fontFamily: 'monospace', fontSize: 17, fontWeight: 700, letterSpacing: '0.12em', flex: 1 }}>{inv.codigo}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-3)' }}>vence {new Date(inv.expira_en).toLocaleDateString('es-AR')}</span>
+                      <span style={{ fontSize: 13, color: 'var(--text-3)' }}>vence {new Date(inv.expira_en).toLocaleDateString('es-AR')}</span>
                       <button type="button" aria-label={`Compartir código ${inv.codigo}`} onClick={() => compartirCodigo(inv.codigo)} className="pressable"
                         style={{ width: 34, height: 34, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-600)' }}>
                         <ShareIcon width={15} height={15} />
@@ -145,7 +145,7 @@ const EmpleadosPage: React.FC = () => {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 600 }}>{m.nombre ?? '(sin nombre)'}{m.user_id === miembro?.userId ? ' (vos)' : ''}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{m.rol === 'dueno' ? 'Dueño' : 'Empleado'} · desde {new Date(m.creado_en).toLocaleDateString('es-AR')}</div>
+                      <div style={{ fontSize: 13, color: 'var(--text-3)' }}>{m.rol === 'dueno' ? 'Dueño' : 'Empleado'} · desde {new Date(m.creado_en).toLocaleDateString('es-AR')}</div>
                     </div>
                     {m.rol === 'empleado' && (
                       <button type="button" aria-label={`Quitar a ${m.nombre ?? 'empleado'}`} onClick={() => quitar(m)} className="pressable"

@@ -12,6 +12,7 @@ let yaRegistrado = false;
 export async function registrarPush(comercioId: string): Promise<void> {
   // Push real solo en Android. En web no hace nada (ahí ya hay notificaciones locales).
   if (!Capacitor.isNativePlatform() || !comercioId || yaRegistrado) return;
+  if (!__PUSH_DISPONIBLE__) return; // APK sin Firebase: registrar cerraría la app
   yaRegistrado = true;
 
   try {

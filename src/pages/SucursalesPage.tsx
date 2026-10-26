@@ -39,7 +39,7 @@ const SucursalesPage: React.FC = () => {
     try {
       await addSucursal({ nombre, direccion: nuevaDir.trim() || undefined });
       setNuevoNombre(''); setNuevaDir('');
-      setToast({ show: true, msg: 'Sucursal creada' });
+      setToast({ show: true, msg: 'Local creado' });
     } finally {
       setCreando(false);
     }
@@ -56,7 +56,7 @@ const SucursalesPage: React.FC = () => {
 
   const seleccionar = (id: string) => {
     setSucursalActiva(id);
-    setToast({ show: true, msg: 'Sucursal cambiada' });
+    setToast({ show: true, msg: 'Local cambiado' });
     setTimeout(() => history.push('/dashboard'), 700);
   };
 
@@ -70,7 +70,7 @@ const SucursalesPage: React.FC = () => {
       if (otra) setSucursalActiva(otra.id!);
     }
     await updateSucursal({ ...s, activa: false });
-    setToast({ show: true, msg: 'Sucursal borrada' });
+    setToast({ show: true, msg: 'Local borrado' });
   };
 
   return (
@@ -80,7 +80,7 @@ const SucursalesPage: React.FC = () => {
           padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px',
           maxWidth: 640, margin: '0 auto',
         }}>
-          <Header title="Sucursales" onBack={() => history.goBack()} />
+          <Header title="Locales" onBack={() => history.goBack()} />
 
           <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 16 }}>
             El stock se gestiona por sucursal. Cambiá la activa para ver o cargar productos en otra.
@@ -121,7 +121,7 @@ const SucursalesPage: React.FC = () => {
                           <span style={{ fontWeight: 600, fontSize: 15 }}>{s.nombre}</span>
                           {activa && <Badge variant="success" size="sm">Activa</Badge>}
                         </div>
-                        {s.direccion && <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>{s.direccion}</div>}
+                        {s.direccion && <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 2 }}>{s.direccion}</div>}
                       </div>
                       {!activa && (
                         <Button variant="secondary" size="sm" onClick={() => seleccionar(s.id!)}>Usar</Button>
@@ -155,7 +155,7 @@ const SucursalesPage: React.FC = () => {
           <Card padding="md">
             <Field label="Nombre">
               <Input value={nuevoNombre} onChange={e => setNuevoNombre(e.target.value)}
-                placeholder="Ej: Sucursal Norte" />
+                placeholder="Ej: Local de la esquina" />
             </Field>
             <Field label="Dirección">
               <Input value={nuevaDir} onChange={e => setNuevaDir(e.target.value)} placeholder="Opcional" />

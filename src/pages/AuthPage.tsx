@@ -46,13 +46,19 @@ const AuthPage: React.FC = () => {
           setCargando(false);
           return;
         }
+        if (password.length < 8) {
+          setError('La contraseña debe tener al menos 8 caracteres');
+          setCargando(false);
+          return;
+        }
         const { error } = await registrarse(email.trim(), password, nombre.trim(), nombreComercio.trim(), codigoInv.trim() || undefined);
         if (error) {
           setError(error);
           haptic.warning();
         } else {
           haptic.success();
-          setExito('¡Cuenta creada! Revisá tu email si pide confirmación, o ya podés iniciar sesión.');
+          setExito(`¡Cuenta creada! Te mandamos un email a ${email.trim()}. Abrí el link para confirmarla y después iniciá sesión.`);
+          setPassword('');
           setModo('login');
         }
       }
@@ -131,9 +137,9 @@ const AuthPage: React.FC = () => {
               leftIcon={<EnvelopeIcon width={18} height={18} />} />
           </Field>
 
-          <Field label="Contraseña" hint={modo === 'registro' ? 'Mínimo 6 caracteres' : undefined}>
+          <Field label="Contraseña" hint={modo === 'registro' ? 'Mínimo 8 caracteres' : undefined}>
             <Input type="password" value={password} onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder={modo === 'registro' ? 'Elegí una contraseña' : 'Tu contraseña'}
               leftIcon={<LockClosedIcon width={18} height={18} />}
               onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} />
           </Field>
@@ -156,7 +162,7 @@ const AuthPage: React.FC = () => {
             </button>
           </div>
 
-          <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-3)', marginTop: 32 }}>
+          <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-3)', marginTop: 32 }}>
             Stockly · 14 días de prueba gratis
           </p>
         </div>

@@ -24,8 +24,8 @@ const Badge: React.FC<BadgeProps> = ({
   };
 
   const sizes = {
-    sm: { padding: '2px 8px', fontSize: 11, gap: 4 },
-    md: { padding: '4px 10px', fontSize: 12, gap: 6 },
+    sm: { padding: '2px 8px', fontSize: 13, gap: 4 },
+    md: { padding: '4px 10px', fontSize: 13, gap: 6 },
   };
 
   return (

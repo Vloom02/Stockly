@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import {
   obtenerPendientes, quitarDeOutbox, actualizarIntentos, bloquearItem,
-  put, setMeta, getMeta, ItemOutbox, TablaSync,
+  put, getAll, setMeta, getMeta, ItemOutbox, TablaSync,
 } from './localDb';
 
 /**
@@ -262,7 +262,18 @@ export async function bajarCambios(comercioId: string): Promise<void> {
     for (const r of prods.data) await put('productos', mapProductoLocal(r));
   }
   if (lotes.data) {
-    for (const r of lotes.data) await put('lotes', mapLoteLocal(r));
+    // La cantidad del servidor todavía no incluye los ajustes locales sin subir
+    // (pendientes o en cuarentena): se suman encima para no "deshacerlos" en pantalla.
+    const deltaPendiente = deltasPendientesPorLote(await getAll<ItemOutbox>('outbox'));
+    for (const r of lotes.data) {
+      const local = mapLoteLocal(r);
+      const delta = deltaPendiente.get(local.id);
+      if (delta) {
+        local.cantidad = Math.max(0, local.cantidad + delta);
+        local.retirado = local.retirado || local.cantidad <= 0;
+      }
+      await put('lotes', local);
+    }
   }
   if (sucs.data) {
     for (const r of sucs.data) await put('sucursales', mapSucursalLocal(r));
@@ -283,6 +294,16 @@ export async function bajarCambios(comercioId: string): Promise<void> {
   for (const r of sucs.data ?? [])  considerar((r as any).updated_at);
   for (const r of movsData)         considerar((r as any).creado_en);
   if (maxIso !== desdeBase) await setMeta('ultima-sync', maxIso);
+}
+
+/** Suma, por lote, los deltas de stock encolados que el servidor todavía no aplicó. */
+export function deltasPendientesPorLote(items: ItemOutbox[]): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const it of items) {
+    if (it.tabla !== 'ajuste_stock' || !it.payload?.loteId) continue;
+    m.set(it.payload.loteId, (m.get(it.payload.loteId) ?? 0) + Number(it.payload.cantidad || 0));
+  }
+  return m;
 }
 
 // Mappers DB → local (camelCase)

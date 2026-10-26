@@ -29,7 +29,7 @@ export function evaluarPlan(comercio: Comercio | null): EstadoPlan {
 
   // plan === 'trial' (o cualquier valor desconocido → tratamos como trial)
   if (comercio.trialHasta) {
-    const fin = new Date(comercio.trialHasta + 'T23:59:59');
+    const fin = finDelDiaLocal(comercio.trialHasta);
     const hoy = new Date();
     const ms = fin.getTime() - hoy.getTime();
     const dias = Math.ceil(ms / (1000 * 60 * 60 * 24));
@@ -41,4 +41,15 @@ export function evaluarPlan(comercio: Comercio | null): EstadoPlan {
 
   // trial sin fecha definida → permitir (no bloquear por falta de dato)
   return { activo: true, tipo: 'trial' };
+}
+
+/**
+ * Fin (23:59:59 hora local) del día de una fecha. trial_hasta es timestamptz
+ * ("2026-11-06T01:30:00+00:00"): su fecha UTC puede ser el día siguiente al local.
+ * Una fecha sola ("2026-06-16") se toma como día local.
+ */
+export function finDelDiaLocal(s: string): Date {
+  const d = s.length <= 10 ? new Date(s + 'T00:00:00') : new Date(s);
+  d.setHours(23, 59, 59, 999);
+  return d;
 }

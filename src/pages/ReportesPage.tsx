@@ -102,7 +102,7 @@ const ReportesPage: React.FC = () => {
                             <span style={{ fontSize: 13, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {d.categoria}
                             </span>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>
                               {pct.toFixed(0)}%
                             </span>
                           </div>
@@ -121,14 +121,14 @@ const ReportesPage: React.FC = () => {
                   marginBottom: 16,
                 }}>
                   <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                       Total últimos 6 meses
                     </div>
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, color: 'var(--level-vencido-fg)', letterSpacing: '-0.02em' }}>
                       {formatearMoneda(totalPerdido)}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 12, fontSize: 11 }}>
+                  <div style={{ display: 'flex', gap: 12, fontSize: 13 }}>
                     <LegendDot color="var(--level-vencido-fg)" label="Vencido" />
                     <LegendDot color="var(--level-aviso-fg)" label="Roto" />
                   </div>
@@ -177,7 +177,7 @@ const ReportesPage: React.FC = () => {
                       </div>
                     ))}
                     {reposicion.length > 30 && (
-                      <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-3)', paddingTop: 8 }}>…y {reposicion.length - 30} más</div>
+                      <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-3)', paddingTop: 8 }}>…y {reposicion.length - 30} más</div>
                     )}
                   </>
                 )}
@@ -204,7 +204,7 @@ const ReportesPage: React.FC = () => {
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <div>
                             <div style={{ fontWeight: 600, fontSize: 14 }}>{nombre}</div>
-                            <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{lote.cantidad} unid.</div>
+                            <div style={{ fontSize: 13, color: 'var(--text-2)' }}>{lote.cantidad} unid.</div>
                           </div>
                           <BanknotesIcon width={18} height={18} style={{ color: 'var(--text-3)' }} />
                         </div>
@@ -244,7 +244,7 @@ const MotivoBadge: React.FC<{ motivo: MotivoReposicion; cantidad: number }> = ({
   };
   const c = cfg[motivo];
   return (
-    <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: c.fg, background: c.bg, padding: '3px 9px', borderRadius: 'var(--radius-full)', whiteSpace: 'nowrap' }}>
+    <span style={{ flexShrink: 0, fontSize: 13, fontWeight: 600, color: c.fg, background: c.bg, padding: '3px 9px', borderRadius: 'var(--radius-full)', whiteSpace: 'nowrap' }}>
       {c.txt}
     </span>
   );
