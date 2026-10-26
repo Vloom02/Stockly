@@ -69,7 +69,7 @@ const EmpleadosPage: React.FC = () => {
   const compartirCodigo = (codigo: string) => {
     compartirTexto(
       `Te invito a trabajar en ${comercio?.nombre ?? 'mi comercio'} 🛒\n\n` +
-      `1) Descargá la app de ventas.\n` +
+      `1) Descargá la app Stockly.\n` +
       `2) Tocá "Crear cuenta" y poné el código de invitación: *${codigo}*\n\n` +
       `El código vence en 7 días y es de un solo uso.`,
       'Invitación de empleado',

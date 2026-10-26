@@ -1,12 +1,13 @@
 import React from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import {
-  HomeIcon, CubeIcon, PlusIcon, Cog6ToothIcon,
+  HomeIcon, CubeIcon, PlusIcon, Cog6ToothIcon, ShoppingCartIcon,
 } from '@heroicons/react/24/outline';
 import {
   HomeIcon as HomeSolid,
   CubeIcon as CubeSolid,
   Cog6ToothIcon as CogSolid,
+  ShoppingCartIcon as CartSolid,
 } from '@heroicons/react/24/solid';
 
 interface TabConfig {
@@ -19,9 +20,10 @@ interface TabConfig {
 
 const TABS: TabConfig[] = [
   { path: '/dashboard',   Icon: HomeIcon,    IconActive: HomeSolid,  label: 'Inicio' },
+  { path: '/ventas',      Icon: ShoppingCartIcon, IconActive: CartSolid, label: 'Vender' },
   { path: '/stock',       Icon: CubeIcon,    IconActive: CubeSolid,  label: 'Mercadería' },
   { path: '/lote/nuevo',  Icon: PlusIcon,    IconActive: PlusIcon,   label: 'Cargar', fab: true },
-  // Historial se abre desde Ajustes: 4 pestañas en vez de 5 (menos opciones a la vista).
+  // Historial se abre desde Ajustes; caja y fiado, desde Vender.
   { path: '/config',      Icon: Cog6ToothIcon, IconActive: CogSolid, label: 'Ajustes' },
 ];
 

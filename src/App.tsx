@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { IonApp, IonRouterOutlet, setupIonicReact } from '@ionic/react';
+import { IonApp, IonPage, IonRouterOutlet, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import { Route, Redirect } from 'react-router-dom';
 
@@ -20,6 +20,18 @@ const EmpleadosPage   = lazy(() => import('./pages/EmpleadosPage'));
 const ConfigPage      = lazy(() => import('./pages/ConfigPage'));
 const AuthPage        = lazy(() => import('./pages/AuthPage'));
 const SoportePage     = lazy(() => import('./pages/SoportePage'));
+// Ventas (antes una app aparte): mismas cuentas, mismo stock.
+const VentaPage           = lazy(() => import('./ventas/pages/VentaPage'));
+const VentasMasPage       = lazy(() => import('./ventas/pages/MasPage'));
+const VentasResumenPage   = lazy(() => import('./ventas/pages/DashboardPage'));
+const CierrePage          = lazy(() => import('./ventas/pages/CierrePage'));
+const HistorialVentasPage = lazy(() => import('./ventas/pages/HistorialPage'));
+const DeudasPage          = lazy(() => import('./ventas/pages/DeudasPage'));
+const CajerosPage         = lazy(() => import('./ventas/pages/CajerosPage'));
+const EstadisticasPage    = lazy(() => import('./ventas/pages/EstadisticasPage'));
+const PromosPage          = lazy(() => import('./ventas/pages/PromosPage'));
+const CajeroCierrePage    = lazy(() => import('./ventas/pages/CajeroCierrePage'));
+const CajaTurnoPage       = lazy(() => import('./ventas/pages/CajaTurnoPage'));
 import TabBar from './components/TabBar';
 import Onboarding from './components/Onboarding';
 import Logo from './components/ui/Logo';
@@ -30,6 +42,13 @@ import { registrarPush } from './lib/push';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { StoreProvider, getSetting, setSetting } from './context/StoreContext';
 import { supabase, supabaseConfigurado } from './lib/supabase';
+import { VentasProvider } from './ventas/context/VentasContext';
+import { OwnerProvider } from './ventas/context/OwnerContext';
+import { EmpleadoProvider } from './ventas/context/EmpleadoContext';
+import OwnerGuard from './ventas/components/OwnerGuard';
+import TurnoGate from './ventas/components/TurnoGate';
+import OnboardingVentas from './ventas/components/OnboardingVentas';
+import { OfertaHuellaPendiente } from './ventas/lib/useHuella';
 
 import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
@@ -48,8 +67,18 @@ import '@fontsource-variable/atkinson-hyperlegible-next';
 import '@fontsource-variable/atkinson-hyperlegible-mono';
 import './theme/variables.css';
 import './theme/motion.css';
+import './ventas/ventas.css';
 
 setupIonicReact();
+
+// Pantalla de ventas: turno de cajero + (opcional) PIN del dueño.
+const enVentas = (pagina: React.ReactNode, tituloDueno?: string) => (
+  <IonPage>
+    <Suspense fallback={<Cargando />}>
+      <TurnoGate>{tituloDueno ? <OwnerGuard titulo={tituloDueno}>{pagina}</OwnerGuard> : pagina}</TurnoGate>
+    </Suspense>
+  </IonPage>
+);
 
 // ─── App autenticada (con datos) ──────────────────────────────────────────
 const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; estadoPlan: EstadoPlan }> = ({ isDark, onThemeToggle, estadoPlan }) => {
@@ -96,6 +125,9 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
             : `Te ${estadoPlan.diasRestantes === 1 ? 'queda' : 'quedan'} ${estadoPlan.diasRestantes} ${estadoPlan.diasRestantes === 1 ? 'día' : 'días'} de prueba`}
         </div>
       )}
+      <VentasProvider>
+      <OwnerProvider>
+      <EmpleadoProvider>
       <IonReactRouter>
         <IonRouterOutlet id="main">
           <Route path="/dashboard" exact><Suspense fallback={<Cargando />}><DashboardPage /></Suspense></Route>
@@ -112,10 +144,25 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
           <Route path="/empleados" exact><Suspense fallback={<Cargando />}><EmpleadosPage /></Suspense></Route>
           <Route path="/soporte" exact><Suspense fallback={<Cargando />}><SoportePage /></Suspense></Route>
           <Route path="/config" exact><Suspense fallback={<Cargando />}><ConfigPage onThemeToggle={onThemeToggle} isDark={isDark} /></Suspense></Route>
+          <Route path="/ventas" exact>{enVentas(<><VentaPage /><OnboardingVentas /></>)}</Route>
+          <Route path="/ventas/mas" exact>{enVentas(<VentasMasPage />)}</Route>
+          <Route path="/ventas/resumen" exact>{enVentas(<VentasResumenPage />, 'Resumen del día')}</Route>
+          <Route path="/ventas/caja" exact>{enVentas(<CierrePage />, 'Caja')}</Route>
+          <Route path="/ventas/historial" exact>{enVentas(<HistorialVentasPage />, 'Ventas anteriores')}</Route>
+          <Route path="/ventas/fiado" exact>{enVentas(<DeudasPage />, 'Fiado')}</Route>
+          <Route path="/ventas/cajeros" exact>{enVentas(<CajerosPage />, 'Empleados de caja')}</Route>
+          <Route path="/ventas/estadisticas" exact>{enVentas(<EstadisticasPage />, 'Lo más vendido')}</Route>
+          <Route path="/ventas/ofertas" exact>{enVentas(<PromosPage />, 'Ofertas')}</Route>
+          <Route path="/ventas/cerrar-caja" exact>{enVentas(<CajeroCierrePage />)}</Route>
+          <Route path="/ventas/caja-turno" exact>{enVentas(<CajaTurnoPage />)}</Route>
           <Route path="/" exact><Redirect to="/dashboard" /></Route>
         </IonRouterOutlet>
         <TabBar />
       </IonReactRouter>
+      <OfertaHuellaPendiente />
+      </EmpleadoProvider>
+      </OwnerProvider>
+      </VentasProvider>
     </StoreProvider>
   );
 };

@@ -1,6 +1,6 @@
-# 📦 Stockly — Control de vencimientos en la nube
+# 📦 Stockly — Inventario, vencimientos y punto de venta
 
-App multi-tenant de control de vencimientos de stock para comercios. Ionic React + TypeScript + Capacitor + **Supabase**.
+App multi-tenant para almacenes de barrio: control de vencimientos de stock y caja para vender, pensada para gente mayor. Ionic React + TypeScript + Capacitor + **Supabase**. Funciona sin internet (IndexedDB + cola de sincronización).
 
 ## ✨ Qué hace
 
@@ -15,6 +15,9 @@ App multi-tenant de control de vencimientos de stock para comercios. Ionic React
 - 📊 Reportes: distribución por categoría, pérdidas mensuales, calendario
 - 📜 Audit log completo de movimientos
 - 🌙 Tema claro/oscuro
+- 🛒 **Vender**: escaneo o búsqueda, carrito, cobro con vuelto; descuenta stock FEFO en el servidor (RPC atómica)
+- 🧾 Caja por turno, cajeros con clave o huella, fiado, ofertas, ventas del día
+- 🔢 PIN del dueño para las opciones sensibles
 
 ## 🚀 Setup (importante, leé primero)
 
@@ -82,9 +85,11 @@ src/
 │   ├── SucursalesPage.tsx
 │   └── ConfigPage.tsx
 ├── components/ui/           # Design system
+├── ventas/                  # Punto de venta: páginas, contextos, outbox de ventas
 └── theme/variables.css
 
 supabase/
 ├── schema.sql               # Esquema completo (correr en Supabase)
+├── ventas/                  # Migraciones del punto de venta (ventas.sql primero)
 └── SETUP.md                 # Guía paso a paso
 ```

@@ -12,7 +12,9 @@ if (!url || !anonKey) {
   );
 }
 
-export const supabase = createClient(url || '', anonKey || '', {
+// Placeholders si faltan las env (tests/CI): importar este módulo no debe tirar
+// "supabaseUrl is required". El uso real se gatea con supabaseConfigurado.
+export const supabase = createClient(url || 'http://localhost:54321', anonKey || 'placeholder-anon-key', {
   auth: {
     persistSession: true,
     autoRefreshToken: true,

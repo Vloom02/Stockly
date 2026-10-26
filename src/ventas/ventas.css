@@ -1,0 +1,41 @@
+/* ─── Módulo de ventas: tokens propios mapeados a la paleta de Stockly ──────
+   Las pantallas de ventas usan nombres --color-*. Acá apuntan a los colores de
+   Stockly, así el claro/oscuro y el color de marca elegido en Ajustes valen
+   también para vender. Texto sobre el color de marca: --text-on-brand (blanco). */
+:root {
+  --color-primary:        var(--brand-500);
+  --color-primary-dark:   var(--brand-700);   /* como texto sobre papel: alto contraste */
+  --color-primary-bg:     color-mix(in srgb, var(--brand-500) 12%, transparent);
+  --color-primary-border: color-mix(in srgb, var(--brand-500) 42%, transparent);
+
+  --color-danger:         var(--danger);
+  --color-danger-dark:    var(--danger);
+  --color-danger-bg:      color-mix(in srgb, var(--danger) 12%, transparent);
+  --color-danger-border:  color-mix(in srgb, var(--danger) 40%, transparent);
+
+  --color-warning:        var(--warning);
+  --color-warning-dark:   var(--level-aviso-fg);
+  --color-warning-bg:     color-mix(in srgb, var(--warning) 14%, transparent);
+  --color-warning-border: color-mix(in srgb, var(--warning) 40%, transparent);
+
+  --color-info:           var(--info);
+  --color-info-dark:      var(--info);
+  --color-info-bg:        color-mix(in srgb, var(--info) 12%, transparent);
+  --color-info-border:    color-mix(in srgb, var(--info) 36%, transparent);
+
+  --color-success:        var(--success);
+  --color-accent:         var(--level-aviso-fg);
+  --color-accent-bg:      color-mix(in srgb, var(--level-aviso-fg) 12%, transparent);
+  --color-accent-border:  color-mix(in srgb, var(--level-aviso-fg) 32%, transparent);
+
+  --transition-fast: var(--t-fast);
+  --transition:      var(--t-med);
+  --transition-slow: var(--t-slow);
+}
+
+/* En oscuro, el violeta oscuro no se lee como texto: se usa el claro. */
+:root.dark {
+  --color-primary-dark: var(--brand-300);
+}
+
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
