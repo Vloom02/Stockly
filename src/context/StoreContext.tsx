@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode, useCallback, useState, useRef } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, ReactNode, useCallback, useMemo, useState, useRef } from 'react';
 import {
   Producto, Lote, Sucursal, Movimiento,
   NivelAlerta, Resumen, ProductoConLotes, LoteConProducto,
@@ -424,9 +424,24 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
 
   // ─── Vistas calculadas (idénticas a la versión cloud) ─────────────────────
-  const productosConLotes = useCallback((): ProductoConLotes[] =>
+  // Se calculan UNA vez por cambio de datos y las comparten todas las pantallas (Ionic
+  // deja montadas varias). Con índices: antes cada producto recorría todos los lotes y
+  // cada lote buscaba su producto, O(productos × lotes). No mutar los arreglos devueltos.
+  const lotesDeSucursal = useMemo(
+    () => state.lotes.filter(l => l.sucursalId === state.sucursalActivaId),
+    [state.lotes, state.sucursalActivaId]);
+  const lotesPorProducto = useMemo(() => {
+    const m = new Map<string, Lote[]>();
+    for (const l of lotesDeSucursal) {
+      const a = m.get(l.productoId);
+      if (a) a.push(l); else m.set(l.productoId, [l]);
+    }
+    return m;
+  }, [lotesDeSucursal]);
+
+  const productosConLotesCalc = useMemo((): ProductoConLotes[] =>
     state.productos.map(producto => {
-      const lotes = state.lotes.filter(l => l.productoId === producto.id && l.sucursalId === state.sucursalActivaId);
+      const lotes = lotesPorProducto.get(producto.id!) ?? [];
       const cantidadTotal = lotes.reduce((s, l) => s + l.cantidad, 0);
       let nivelPeor: NivelAlerta = 'ok';
       let proxVenc: string | undefined;
@@ -436,19 +451,23 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (!proxVenc || l.fechaVencimiento < proxVenc) proxVenc = l.fechaVencimiento;
       }
       return { producto, lotes, cantidadTotal, valorTotal: cantidadTotal * producto.precio, nivelPeor, proximoVencimiento: proxVenc };
-    }), [state.productos, state.lotes, state.sucursalActivaId]);
+    }), [state.productos, lotesPorProducto]);
+  const productosConLotes = useCallback(() => productosConLotesCalc, [productosConLotesCalc]);
 
-  const lotesEnriquecidos = useCallback((): LoteConProducto[] =>
-    state.lotes.filter(l => l.sucursalId === state.sucursalActivaId).map(l => {
-      const prod = state.productos.find(p => p.id === l.productoId);
-      const suc = state.sucursales.find(s => s.id === l.sucursalId);
+  const lotesEnriquecidosCalc = useMemo((): LoteConProducto[] => {
+    const prodPorId = new Map(state.productos.map(p => [p.id, p]));
+    const suc = state.sucursales.find(s => s.id === state.sucursalActivaId);
+    return lotesDeSucursal.map(l => {
+      const prod = prodPorId.get(l.productoId);
       return {
         ...l, productoNombre: prod?.nombre || '(eliminado)', productoCategoria: prod?.categoria || '',
         productoPrecio: prod?.precio || 0, productoProveedor: prod?.proveedor, sucursalNombre: suc?.nombre || '',
         nivelAlerta: calcularNivelAlerta(l.fechaVencimiento, l.diasAviso),
         diasRestantes: diasRestantes(l.fechaVencimiento), valorLote: l.cantidad * (prod?.precio || 0),
       };
-    }), [state.lotes, state.productos, state.sucursales, state.sucursalActivaId]);
+    });
+  }, [lotesDeSucursal, state.productos, state.sucursales, state.sucursalActivaId]);
+  const lotesEnriquecidos = useCallback(() => lotesEnriquecidosCalc, [lotesEnriquecidosCalc]);
 
   // Reprogramar el aviso de vencimiento cuando cambian los lotes / productos.
   useEffect(() => {
@@ -456,9 +475,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     sincronizarNotificaciones(lotesEnriquecidos());
   }, [state.lotes, state.productos, state.sucursalActivaId, state.loaded, lotesEnriquecidos]);
 
-  const resumen = useCallback((): Resumen => {
-    const e = lotesEnriquecidos();
-    const r: Resumen = { productosTotales: productosConLotes().filter(p => p.cantidadTotal > 0).length, lotesTotales: e.length, unidadesTotales: 0, valorTotal: 0, lotesVencidos: 0, lotesCriticos: 0, lotesUrgentes: 0, lotesAviso: 0, lotesOk: 0, valorVencido: 0, valorEnRiesgo: 0 };
+  const resumenCalc = useMemo((): Resumen => {
+    const e = lotesEnriquecidosCalc;
+    const r: Resumen = { productosTotales: productosConLotesCalc.filter(p => p.cantidadTotal > 0).length, lotesTotales: e.length, unidadesTotales: 0, valorTotal: 0, lotesVencidos: 0, lotesCriticos: 0, lotesUrgentes: 0, lotesAviso: 0, lotesOk: 0, valorVencido: 0, valorEnRiesgo: 0 };
     for (const l of e) {
       r.unidadesTotales += l.cantidad; r.valorTotal += l.valorLote;
       switch (l.nivelAlerta) {
@@ -470,12 +489,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     }
     return r;
-  }, [lotesEnriquecidos, productosConLotes]);
+  }, [lotesEnriquecidosCalc, productosConLotesCalc]);
+  const resumen = useCallback(() => resumenCalc, [resumenCalc]);
 
   const fefoSugeridos = useCallback((productoId: string): Lote[] =>
-    state.lotes.filter(l => l.productoId === productoId && l.sucursalId === state.sucursalActivaId && l.cantidad > 0)
+    (lotesPorProducto.get(productoId) ?? []).filter(l => l.cantidad > 0)
       .sort((a, b) => a.fechaVencimiento.localeCompare(b.fechaVencimiento)),
-    [state.lotes, state.sucursalActivaId]);
+    [lotesPorProducto]);
 
   const perdidasPorMes = useCallback((meses = 6): PerdidaMensual[] => {
     const ET = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
