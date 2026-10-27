@@ -2,6 +2,8 @@
 import type { Worksheet } from 'exceljs';
 import { Rango, ResumenVentas, Perdidas, Fila, fechaCorta } from './resumen';
 import { METODOS } from '../ventas/lib/exportar';
+// La misma letra de la app, metida en la hoja: el visor de impresión de Android no ve las fuentes de la app.
+import nunito from '@fontsource-variable/nunito/files/nunito-latin-wght-normal.woff2?inline';
 
 export interface ProductoStock { nombre: string; categoria: string; cantidad: number; precio: number; valor: number; vence?: string; estado: string; }
 
@@ -199,16 +201,17 @@ export function resumenAHtml(d: DatosResumen): string {
     v && v.productos.length ? `<h2>Lo más vendido</h2>${tablaHtml(['Producto', 'Cantidad', 'Total', '%'], filasPct(v.productos.slice(0, 25)), [1, 2, 3])}` : '',
   ].join('');
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Resumen ${esc(d.rango.titulo)}</title><style>
+    @font-face { font-family: 'Nunito'; src: url('${nunito}') format('woff2'); font-weight: 200 1000; }
     @page { size: A4; margin: 14mm; }
     * { box-sizing: border-box; }
-    body { font-family: Arial, Helvetica, sans-serif; color: #1b1f2a; font-size: 12pt; margin: 0; }
-    h1 { font-size: 20pt; color: #1f4fbf; margin: 0 0 2mm; }
-    .sub { font-size: 13pt; font-weight: bold; margin: 0 0 1mm; }
-    .hecho { color: #5b6170; font-size: 10pt; margin: 0 0 6mm; }
-    h2 { font-size: 14pt; color: #1f4fbf; margin: 6mm 0 2mm; break-after: avoid; }
+    body { font-family: 'Nunito', Arial, sans-serif; color: #1b1f2a; font-size: 14pt; margin: 0; }
+    h1 { font-size: 22pt; color: #1f4fbf; margin: 0 0 2mm; }
+    .sub { font-size: 15pt; font-weight: bold; margin: 0 0 1mm; }
+    .hecho { color: #5b6170; font-size: 12pt; margin: 0 0 6mm; }
+    h2 { font-size: 17pt; color: #1f4fbf; margin: 6mm 0 2mm; break-after: avoid; }
     table { width: 100%; border-collapse: collapse; break-inside: auto; }
     tr { break-inside: avoid; }
-    th { background: #1f4fbf; color: #fff; text-align: left; padding: 2mm 3mm; font-size: 11pt; }
+    th { background: #1f4fbf; color: #fff; text-align: left; padding: 2mm 3mm; font-size: 13pt; }
     td { padding: 2mm 3mm; border-bottom: 1px solid #c9ced8; }
     tbody tr:nth-child(even) td { background: #f7f8fb; }
     .n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
