@@ -94,6 +94,9 @@ export interface Resumen {
   lotesOk: number;
   valorVencido: number;
   valorEnRiesgo: number;
+  /** Vendidos sin stock: productos con el total en negativo y cuántas unidades faltan. */
+  productosEnNegativo: number;
+  unidadesFaltantes: number;
 }
 
 export interface ProductoConLotes {

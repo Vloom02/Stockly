@@ -21,10 +21,13 @@ import { SkeletonDashboard } from '../components/ui/Skeleton';
 import SyncBanner from '../components/SyncBanner';
 
 import { useContador } from '../lib/useContador';
+import { useAuth } from '../context/AuthContext';
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { CubeIcon as IcoCubeIcon } from '@heroicons/react/24/outline';
 const DashboardPage: React.FC = () => {
   const { state, resumen, lotesEnriquecidos, productosConLotes } = useStore();
   const history = useHistory();
+  const { esDueno } = useAuth();
 
   const res = useMemo(() => resumen(), [resumen]);
   const valorAnimado = useContador(res.valorTotal); // el valor "cuenta" al abrir
@@ -108,6 +111,27 @@ const DashboardPage: React.FC = () => {
           <SyncBanner />
           <AvisoDeHoy vencidos={res.lotesVencidos} pronto={res.lotesCriticos + res.lotesUrgentes}
             onVer={(nivel) => history.push(`/stock?nivel=${nivel}&vista=lotes`)} />
+
+          {/* Vendido sin stock: lo ve el dueño para saber si se vende sin cargar la mercadería */}
+          {esDueno && res.productosEnNegativo > 0 && (
+            <button type="button" onClick={() => history.push('/stock?nivel=negativo')} className="pressable tarjeta-tocable anim-bajar"
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', padding: 16, marginBottom: 16,
+                border: 'none', borderRadius: 'var(--radius-lg)', cursor: 'pointer', fontFamily: 'inherit',
+                background: 'var(--level-vencido-bg)', color: 'var(--level-vencido-fg)',
+              }}>
+              <ExclamationTriangleIcon width={28} height={28} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>
+                <span style={{ display: 'block', fontSize: 18, fontWeight: 800 }}>
+                  {res.productosEnNegativo === 1 ? '1 producto se vendió' : `${res.productosEnNegativo} productos se vendieron`} sin stock
+                </span>
+                <span style={{ display: 'block', fontSize: 16, fontWeight: 600 }}>
+                  Faltan {res.unidadesFaltantes} unid. Se descuentan solas cuando cargues mercadería. Tocá para ver cuáles.
+                </span>
+              </span>
+              <ChevronRightIcon width={20} height={20} style={{ flexShrink: 0 }} />
+            </button>
+          )}
 
           {/* ─── BENTO GRID (misma ubicación, look libro) ─────────────── */}
           <div className="lista-animada" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>

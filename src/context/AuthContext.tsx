@@ -11,8 +11,10 @@ interface AuthContextValue {
   /** true salvo para empleados o mientras un cajero tiene el turno en este dispositivo.
    *  Sin miembro cargado (offline) no se recorta nada. */
   esDueno: boolean;
-  /** Lo avisa EmpleadoProvider: un cajero (no el dueño) inició su turno con PIN acá. */
-  setCajeroEnTurno: (v: boolean) => void;
+  /** Cajero (no el dueño) con el turno abierto con PIN en este dispositivo; lo avisa EmpleadoProvider.
+   *  Lo que hace queda a su nombre en el historial. */
+  cajeroEnTurno: string | null;
+  setCajeroEnTurno: (nombre: string | null) => void;
   /** Desarrollador / soporte de la plataforma (tabla plataforma_admins). */
   esAdminPlataforma: boolean;
   cargando: boolean;
@@ -31,7 +33,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [esAdminPlataforma, setEsAdminPlataforma] = useState(false);
   const adminConsultadoPara = useRef<string | null>(null); // es_admin_plataforma: una vez por usuario
   const [cargando, setCargando] = useState(true);
-  const [cajeroEnTurno, setCajeroEnTurno] = useState(false);
+  const [cajeroEnTurno, setCajeroEnTurno] = useState<string | null>(null);
 
   // Cargar comercio + membresía del usuario logueado
   const cargarDatosUsuario = async (userId: string) => {
@@ -190,7 +192,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   return (
     <AuthContext.Provider value={{
-      session, comercio, miembro, esDueno: miembro?.rol !== 'empleado' && !cajeroEnTurno, setCajeroEnTurno,
+      session, comercio, miembro, esDueno: miembro?.rol !== 'empleado' && !cajeroEnTurno, cajeroEnTurno, setCajeroEnTurno,
       esAdminPlataforma, cargando,
       registrarse, iniciarSesion, cerrarSesion, recargarComercio,
     }}>

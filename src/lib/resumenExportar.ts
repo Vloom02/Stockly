@@ -12,7 +12,7 @@ export interface DatosResumen {
   sucursal: string;
   rango: Rango;
   ventas: ResumenVentas | null; // null: sin internet, no se pudieron traer
-  stock: { valorTotal: number; lotesVencidos: number; valorVencido: number; lotesPorVencer: number; valorEnRiesgo: number };
+  stock: { valorTotal: number; lotesVencidos: number; valorVencido: number; lotesPorVencer: number; valorEnRiesgo: number; productosEnNegativo: number; unidadesFaltantes: number };
   perdidas: Perdidas;
   productosStock: ProductoStock[];
 }
@@ -41,6 +41,8 @@ export function cifras(d: DatosResumen): { titulo: string; filas: [string, numbe
     ['Valor de lo que vence pronto', d.stock.valorEnRiesgo, 'plata'],
     ['Tirado por vencido en el período', d.perdidas.vencido.valor, 'plata'],
     ['Tirado por roto en el período', d.perdidas.roto.valor, 'plata'],
+    ['Productos vendidos sin stock (en negativo)', d.stock.productosEnNegativo, 'entero'],
+    ['Unidades que faltan cargar', d.stock.unidadesFaltantes, 'entero'],
   ] });
   return bloques;
 }

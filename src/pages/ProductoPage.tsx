@@ -61,6 +61,10 @@ const ProductoForm: React.FC = () => {
   const [guardando, setGuardando] = useState(false);
 
   const lotes = productoId ? fefoSugeridos(productoId) : [];
+  // Vendido sin stock: lotes en negativo de este producto en el local (el próximo ingreso los cubre).
+  const faltan = productoId
+    ? -state.lotes.filter(l => l.productoId === productoId && l.sucursalId === state.sucursalActivaId && l.cantidad < 0).reduce((s, l) => s + l.cantidad, 0)
+    : 0;
 
   // Historial de precios (lo registra un trigger en la DB; solo lectura, online).
   const [historialPrecios, setHistorialPrecios] = useState<
@@ -250,6 +254,11 @@ const ProductoForm: React.FC = () => {
               <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 12px' }}>
                 Vendé primero las de arriba: son las que vencen antes
               </p>
+              {faltan > 0 && (
+                <p role="status" style={{ fontSize: 16, fontWeight: 700, margin: '0 0 12px', padding: '12px 14px', borderRadius: 'var(--radius)', background: 'var(--level-vencido-bg)', color: 'var(--level-vencido-fg)' }}>
+                  Se vendieron {faltan} sin stock cargado. Cuando cargues mercadería se descuentan solas.
+                </p>
+              )}
 
               {lotes.length === 0 ? (
                 <EmptyState icon={<CubeIcon width={28} height={28} />} title="No hay mercadería cargada"

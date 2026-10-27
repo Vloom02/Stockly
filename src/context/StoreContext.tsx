@@ -158,7 +158,7 @@ interface StoreContextValue {
 const StoreContext = createContext<StoreContextValue | null>(null);
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { comercio, miembro } = useAuth();
+  const { comercio, miembro, cajeroEnTurno } = useAuth();
   const [state, dispatch] = useReducer(reducer, {
     productos: [], lotes: [], sucursales: [], movimientos: [],
     sucursalActivaId: '', loaded: false, pendientesSync: 0, bloqueadosSync: 0,
@@ -176,7 +176,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => { estadoNubeRef.current = estadoNube; }, [estadoNube]);
 
   const comercioId = comercio?.id;
-  const usuario = miembro?.nombre || 'Usuario';
+  const usuario = cajeroEnTurno || miembro?.nombre || 'Usuario'; // en la tablet: quien tiene el turno
 
   const refrescarPendientes = useCallback(async () => {
     const p = await obtenerPendientes();
@@ -442,10 +442,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const productosConLotesCalc = useMemo((): ProductoConLotes[] =>
     state.productos.map(producto => {
       const lotes = lotesPorProducto.get(producto.id!) ?? [];
-      const cantidadTotal = lotes.reduce((s, l) => s + l.cantidad, 0);
+      const cantidadTotal = lotes.reduce((s, l) => s + l.cantidad, 0); // con negativos: vendido sin stock
       let nivelPeor: NivelAlerta = 'ok';
       let proxVenc: string | undefined;
       for (const l of lotes) {
+        if (l.cantidad <= 0) continue; // un lote vacío o en negativo no vence
         const n = calcularNivelAlerta(l.fechaVencimiento, l.diasAviso);
         if (ordenNivel(n) < ordenNivel(nivelPeor)) nivelPeor = n;
         if (!proxVenc || l.fechaVencimiento < proxVenc) proxVenc = l.fechaVencimiento;
@@ -462,7 +463,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return {
         ...l, productoNombre: prod?.nombre || '(eliminado)', productoCategoria: prod?.categoria || '',
         productoPrecio: prod?.precio || 0, productoProveedor: prod?.proveedor, sucursalNombre: suc?.nombre || '',
-        nivelAlerta: calcularNivelAlerta(l.fechaVencimiento, l.diasAviso),
+        nivelAlerta: l.cantidad > 0 ? calcularNivelAlerta(l.fechaVencimiento, l.diasAviso) : 'ok',
         diasRestantes: diasRestantes(l.fechaVencimiento), valorLote: l.cantidad * (prod?.precio || 0),
       };
     });
@@ -477,8 +478,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const resumenCalc = useMemo((): Resumen => {
     const e = lotesEnriquecidosCalc;
-    const r: Resumen = { productosTotales: productosConLotesCalc.filter(p => p.cantidadTotal > 0).length, lotesTotales: e.length, unidadesTotales: 0, valorTotal: 0, lotesVencidos: 0, lotesCriticos: 0, lotesUrgentes: 0, lotesAviso: 0, lotesOk: 0, valorVencido: 0, valorEnRiesgo: 0 };
+    const negativos = productosConLotesCalc.filter(p => p.cantidadTotal < 0);
+    const r: Resumen = { productosTotales: productosConLotesCalc.filter(p => p.cantidadTotal > 0).length, lotesTotales: 0, unidadesTotales: 0, valorTotal: 0, lotesVencidos: 0, lotesCriticos: 0, lotesUrgentes: 0, lotesAviso: 0, lotesOk: 0, valorVencido: 0, valorEnRiesgo: 0,
+      productosEnNegativo: negativos.length, unidadesFaltantes: negativos.reduce((s, p) => s - p.cantidadTotal, 0) };
     for (const l of e) {
+      if (l.cantidad <= 0) continue; // lo que hay en el local: los negativos van aparte
+      r.lotesTotales++;
       r.unidadesTotales += l.cantidad; r.valorTotal += l.valorLote;
       switch (l.nivelAlerta) {
         case 'vencido': r.lotesVencidos++; r.valorVencido += l.valorLote; break;
@@ -521,7 +526,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const distribucionPorCategoria = useCallback((): DistribucionCategoria[] => {
     const mapa = new Map<string, DistribucionCategoria>();
     for (const l of state.lotes) {
-      if (l.sucursalId !== state.sucursalActivaId) continue;
+      if (l.sucursalId !== state.sucursalActivaId || l.cantidad <= 0) continue;
       const prod = state.productos.find(p => p.id === l.productoId);
       if (!prod) continue;
       const cat = prod.categoria || 'Sin categoría';
@@ -537,7 +542,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const mapa = new Map<string, DiaVencimiento>();
     const prefijo = `${anio}-${String(mes + 1).padStart(2, '0')}`;
     for (const l of state.lotes) {
-      if (l.sucursalId !== state.sucursalActivaId) continue;
+      if (l.sucursalId !== state.sucursalActivaId || l.cantidad <= 0) continue;
       if (!l.fechaVencimiento.startsWith(prefijo)) continue;
       const nivel = calcularNivelAlerta(l.fechaVencimiento, l.diasAviso);
       const ex = mapa.get(l.fechaVencimiento);

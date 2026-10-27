@@ -81,10 +81,10 @@ const ResumenesPage: React.FC = () => {
       sucursal,
       rango,
       ventas: ventas === 'cargando' ? null : ventas,
-      stock: { valorTotal: r.valorTotal, lotesVencidos: r.lotesVencidos, valorVencido: r.valorVencido, lotesPorVencer: r.lotesCriticos + r.lotesUrgentes, valorEnRiesgo: r.valorEnRiesgo },
+      stock: { valorTotal: r.valorTotal, lotesVencidos: r.lotesVencidos, valorVencido: r.valorVencido, lotesPorVencer: r.lotesCriticos + r.lotesUrgentes, valorEnRiesgo: r.valorEnRiesgo, productosEnNegativo: r.productosEnNegativo, unidadesFaltantes: r.unidadesFaltantes },
       perdidas: perdidasEntre(state.movimientos, state.productos, rango.desde, rango.hasta),
-      productosStock: productosConLotes().filter(p => p.cantidadTotal > 0)
-        .map(p => ({ nombre: p.producto.nombre, categoria: p.producto.categoria || '', cantidad: p.cantidadTotal, precio: p.producto.precio || 0, valor: p.valorTotal, vence: p.proximoVencimiento, estado: ESTADOS[p.nivelPeor] ?? p.nivelPeor }))
+      productosStock: productosConLotes().filter(p => p.cantidadTotal !== 0)
+        .map(p => ({ nombre: p.producto.nombre, categoria: p.producto.categoria || '', cantidad: p.cantidadTotal, precio: p.producto.precio || 0, valor: p.valorTotal, vence: p.proximoVencimiento, estado: p.cantidadTotal < 0 ? 'Vendido sin stock' : ESTADOS[p.nivelPeor] ?? p.nivelPeor }))
         .sort((a, b) => a.nombre.localeCompare(b.nombre)),
     };
   }, [comercio, sucursal, rango, ventas, resumen, productosConLotes, state.movimientos, state.productos]);

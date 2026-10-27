@@ -20,8 +20,10 @@ import { useAuth } from '../context/AuthContext';
 import { useLectorFisico } from '../lib/useLectorFisico';
 
 type Vista = 'productos' | 'lotes';
+// 'negativo' = vendido sin stock (lo usa el aviso del inicio)
+type Filtro = NivelAlerta | 'todos' | 'pronto' | 'negativo';
 
-function coincideNivel(filtro: NivelAlerta | 'todos' | 'pronto', nivel: NivelAlerta): boolean {
+function coincideNivel(filtro: Filtro, nivel: NivelAlerta): boolean {
   if (filtro === 'todos') return true;
   if (filtro === 'pronto') return nivel === 'critico' || nivel === 'urgente';
   return nivel === filtro;
@@ -36,11 +38,11 @@ const StockPage: React.FC = () => {
   const [busqueda, setBusqueda] = useState('');
   const [showScanner, setShowScanner] = useState(false);
   // 'pronto' = crítico + urgente (lo usa la tarjeta "vencen pronto" del inicio)
-  const [filtro, setFiltro] = useState<NivelAlerta | 'todos' | 'pronto'>('todos');
+  const [filtro, setFiltro] = useState<Filtro>('todos');
   const location = useLocation();
   useEffect(() => {
     const q = new URLSearchParams(location.search);
-    const nivel = q.get('nivel') as NivelAlerta | 'pronto' | null;
+    const nivel = q.get('nivel') as Filtro | null;
     if (nivel) setFiltro(nivel);
     else setFiltro(f => (f === 'pronto' ? 'todos' : f)); // 'pronto' no tiene chip: no dejarlo invisible
     if (q.get('vista') === 'lotes') setVista('lotes');
@@ -61,7 +63,7 @@ const StockPage: React.FC = () => {
     const q = busqueda.trim().toLowerCase();
     return productos.filter(p => {
       const mb = !q || p.producto.nombre.toLowerCase().includes(q) || (p.producto.codigoBarras?.includes(busqueda.trim()));
-      const mf = coincideNivel(filtro, p.nivelPeor);
+      const mf = filtro === 'negativo' ? p.cantidadTotal < 0 : coincideNivel(filtro, p.nivelPeor);
       const mp = filtroProveedor === 'todos' || (p.producto.proveedor?.trim() ?? '') === filtroProveedor;
       return mb && mf && mp;
     }).sort((a, b) => ordenNivel(a.nivelPeor) - ordenNivel(b.nivelPeor));
@@ -71,7 +73,7 @@ const StockPage: React.FC = () => {
     const q = busqueda.trim().toLowerCase();
     return lotes.filter(l => {
       const mb = !q || l.productoNombre.toLowerCase().includes(q) || (l.numeroLote?.toLowerCase().includes(q));
-      const mf = coincideNivel(filtro, l.nivelAlerta);
+      const mf = filtro === 'negativo' ? l.cantidad < 0 : l.cantidad > 0 && coincideNivel(filtro, l.nivelAlerta);
       const mp = filtroProveedor === 'todos' || (l.productoProveedor?.trim() ?? '') === filtroProveedor;
       return mb && mf && mp;
     }).sort((a, b) => {
@@ -81,6 +83,7 @@ const StockPage: React.FC = () => {
   }, [lotes, busqueda, filtro, filtroProveedor]);
 
   const filtros: (NivelAlerta | 'todos')[] = ['todos', 'vencido', 'critico', 'urgente', 'aviso', 'ok'];
+  const enNegativo = useMemo(() => productos.filter(p => p.cantidadTotal < 0).length, [productos]);
 
   // Cámara o lector físico: si el código es de un producto, abrirlo; si no, dejarlo en el buscador.
   const alEscanear = (codigo: string) => {
@@ -177,6 +180,11 @@ const StockPage: React.FC = () => {
                 {f === 'todos' ? 'Todos' : etiquetaNivel(f)}
               </FilterChip>
             ))}
+            {(enNegativo > 0 || filtro === 'negativo') && (
+              <FilterChip activo={filtro === 'negativo'} nivel="vencido" onClick={() => setFiltro('negativo')}>
+                Vendido sin stock ({enNegativo})
+              </FilterChip>
+            )}
           </div>
 
           {/* Lista */}
@@ -281,7 +289,7 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
   return (
   <Card padding="sm" onClick={onClick}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      <div style={{ width: 4, height: 52, background: colorNivel(p.nivelPeor), borderRadius: 2, flexShrink: 0 }} />
+      <div style={{ width: 4, height: 52, background: p.cantidadTotal < 0 ? 'var(--danger)' : colorNivel(p.nivelPeor), borderRadius: 2, flexShrink: 0 }} />
       {p.producto.fotoUrl && (
         <img src={p.producto.fotoUrl} alt="" loading="lazy" style={{
           width: 44, height: 44, objectFit: 'cover', flexShrink: 0,
@@ -296,10 +304,16 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
           {p.producto.categoria} · {formatearMoneda(p.producto.precio)} c/u
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <NivelBadge nivel={p.nivelPeor} />
-          <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>
-            {p.cantidadTotal} unid · {p.lotes.length} lote{p.lotes.length !== 1 ? 's' : ''}
-          </span>
+          {p.cantidadTotal > 0 && <NivelBadge nivel={p.nivelPeor} />}
+          {p.cantidadTotal < 0 ? (
+            <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--danger)' }}>
+              {p.cantidadTotal} unid · se vendió sin stock
+            </span>
+          ) : (
+            <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>
+              {p.cantidadTotal} unid · {p.lotes.length} lote{p.lotes.length !== 1 ? 's' : ''}
+            </span>
+          )}
           {reponer && (
             <span style={{
               fontSize: 13, fontWeight: 700, color: 'var(--warning)',
@@ -313,7 +327,7 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 800, letterSpacing: '-0.02em' }}>
-          {formatearMoneda(p.valorTotal)}
+          {p.valorTotal > 0 ? formatearMoneda(p.valorTotal) : ''}
         </div>
         {p.proximoVencimiento && (
           <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 2 }}>
@@ -338,12 +352,12 @@ const LoteRow: React.FC<{ lote: LoteConProducto; onClick: () => void }> = ({ lot
           {lote.productoNombre}
         </div>
         <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 6 }}>
-          {lote.cantidad} unid.{lote.numeroLote ? ` · Lote ${lote.numeroLote}` : ''}{lote.productoProveedor ? ` · ${lote.productoProveedor}` : ''}
+          <span style={lote.cantidad < 0 ? { color: 'var(--danger)', fontWeight: 800 } : undefined}>{lote.cantidad} unid.</span>{lote.numeroLote ? ` · Lote ${lote.numeroLote}` : ''}{lote.productoProveedor ? ` · ${lote.productoProveedor}` : ''}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <NivelBadge nivel={lote.nivelAlerta} />
           <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>
-            {textoEstado(lote.fechaVencimiento)}
+            {lote.cantidad < 0 ? 'Se vendió sin stock: el próximo ingreso lo descuenta' : textoEstado(lote.fechaVencimiento)}
           </span>
           {liq.aplicar && (
             <span title={`Sugerencia: liquidá a ${formatearMoneda(liq.precioFinal)} (precio normal ${formatearMoneda(liq.precioOriginal)}) para venderlo antes de que venza`}

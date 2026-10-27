@@ -266,7 +266,15 @@ const LoteForm: React.FC = () => {
 
   const bloqueRetiros = (
         <>
-          {loteExistente && (
+          {loteExistente && loteExistente.cantidad < 0 && (
+            <Card padding="md" style={{ marginBottom: 12, border: '2px solid var(--level-vencido-fg)' }}>
+              <h2 style={{ fontSize: 19, fontWeight: 700, marginBottom: 4, color: 'var(--level-vencido-fg)' }}>Se vendió sin stock</h2>
+              <p style={{ fontSize: 16, color: 'var(--text-2)', margin: 0 }}>
+                Faltan {-loteExistente.cantidad} unid. que se vendieron antes de cargarlas. Cuando cargues mercadería de este producto se descuentan solas. En Historial está quién las vendió.
+              </p>
+            </Card>
+          )}
+          {loteExistente && loteExistente.cantidad > 0 && (
             <Card padding="md" style={{ marginBottom: 12, border: vencidaPrimero ? '2px solid var(--level-vencido-fg)' : undefined }}>
               <h2 style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>{vencidaPrimero ? 'Esta mercadería está vencida' : 'Sacar mercadería'}</h2>
               <p style={{ fontSize: 16, color: 'var(--text-2)', margin: '0 0 12px' }}>

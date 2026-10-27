@@ -107,7 +107,7 @@ export const EmpleadoProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   // Con un cajero en turno, toda la app lo trata como empleado (sin precios, reportes, etc.).
   const { setCajeroEnTurno } = useAuthStockly();
-  useEffect(() => { setCajeroEnTurno(!!cajero && !cajero.admin); }, [cajero, setCajeroEnTurno]);
+  useEffect(() => { setCajeroEnTurno(cajero && !cajero.admin ? cajero.nombre : null); }, [cajero, setCajeroEnTurno]);
 
   const hayEmpleados = empleados.some(e => e.activo !== false);
 
