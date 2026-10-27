@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Etiquetas de precio imprimibles (nombre + precio + código).
 // Impresión confiable con visibility en @media print: solo se imprime la grilla.
-// En Android, window.print() abre el servicio de impresión del sistema (o PDF).
+// En la app usa el diálogo de impresión del sistema (también "Guardar como PDF"): ver lib/imprimir.
 // ═══════════════════════════════════════════════════════════════════════════
 import React, { useMemo, useState } from 'react';
 import { IonContent, IonPage } from '@ionic/react';
@@ -11,6 +11,7 @@ import { useStore, formatearMoneda } from '../context/StoreContext';
 import EmptyState from '../components/ui/EmptyState';
 import { Header } from './ProductoPage';
 import { useLectorFisico } from '../lib/useLectorFisico';
+import { imprimirPantalla } from '../lib/imprimir';
 
 const EtiquetasPage: React.FC = () => {
   const { state } = useStore();
@@ -54,7 +55,7 @@ const EtiquetasPage: React.FC = () => {
                 />
               </div>
               <button
-                type="button" onClick={() => window.print()} disabled={productos.length === 0}
+                type="button" onClick={() => imprimirPantalla('Etiquetas de precio')} disabled={productos.length === 0}
                 className="pressable boton-marca"
                 style={{ display: 'flex', alignItems: 'center', gap: 7, border: 'none', borderRadius: 'var(--radius)', padding: '0 16px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: productos.length === 0 ? 0.5 : 1 }}>
                 <PrinterIcon width={17} height={17} /> Imprimir

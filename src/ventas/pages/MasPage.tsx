@@ -18,7 +18,7 @@ interface Tile { Icon: React.FC<{ size?: number; color?: string }>; label: strin
 
 // Lo de todos los días: 4 opciones grandes, con palabras simples (público mayor).
 const PRINCIPALES: Tile[] = [
-  { Icon: ChartBarIcon,  label: 'Resumen del día',   desc: 'Cuánto se vendió hoy',     path: '/ventas/resumen' },
+  { Icon: ChartBarIcon,  label: 'Resúmenes',         desc: 'Ventas y mercadería, Excel', path: '/resumenes' },
   { Icon: BanknotesIcon, label: 'Caja',              desc: 'Contar la plata y cerrar', path: '/ventas/caja' },
   { Icon: BookOpenIcon,  label: 'Fiado',             desc: 'Quién debe y cuánto',      path: '/ventas/fiado' },
   { Icon: ClipboardIcon, label: 'Ventas anteriores', desc: 'Ver o anular una venta',   path: '/ventas/historial' },

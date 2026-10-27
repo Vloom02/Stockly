@@ -7,6 +7,7 @@ import {
   BuildingStorefrontIcon, ArrowRightOnRectangleIcon, PrinterIcon, ClipboardDocumentCheckIcon, UserGroupIcon,
   InformationCircleIcon, ChevronRightIcon, UserCircleIcon,
   ArrowDownTrayIcon, ArrowUpTrayIcon, SwatchIcon, CloudIcon, BanknotesIcon, ClockIcon, CurrencyDollarIcon, ClipboardDocumentListIcon, ShoppingCartIcon, ChartBarIcon,
+  DocumentChartBarIcon,
 } from '@heroicons/react/24/outline';
 import {
   useStore, setSetting,
@@ -191,6 +192,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           <SectionTitle icon={<SwatchIcon width={16} height={16} />}>Herramientas</SectionTitle>
           <div className="lista-animada" style={{ borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', overflow: 'hidden', marginBottom: 18 }}>
             {[
+              { Icon: DocumentChartBarIcon, label: 'Resúmenes',             desc: 'Ventas y mercadería, Excel e imprimir', path: '/resumenes', soloDueno: true },
               { Icon: ClockIcon,          label: 'Historial',               desc: 'Todo lo que entró y salió',        path: '/movimientos' },
               { Icon: CurrencyDollarIcon, label: 'Cambiar precios',         desc: 'Subir precios de a uno',           path: '/precios', soloDueno: true },
               { Icon: ClipboardDocumentListIcon, label: 'Contar la mercadería', desc: 'Corregir lo que hay en góndola', path: '/inventario' },
