@@ -9,6 +9,7 @@ import { aplicarEscalaFont, obtenerEscalaFont, calcularEscalaSugerida } from './
 import { aplicarMovimiento, movimientoActivo } from './lib/movimiento';
 import { hidratarAlmacenamiento } from './lib/almacen';
 import { initSentry } from './lib/sentry';
+import { marcarArranqueOk, buscarActualizacion } from './lib/actualizacion';
 
 // Cargar el almacenamiento persistente a memoria ANTES de renderizar,
 // así las lecturas síncronas (config, sucursal activa, etc.) tienen los datos.
@@ -54,6 +55,8 @@ async function arrancar() {
       </Sentry.ErrorBoundary>
     </React.StrictMode>
   );
+  // Arrancó bien: confirmarlo (si no, Capgo vuelve a la versión anterior) y buscar una nueva.
+  setTimeout(() => { marcarArranqueOk().then(() => buscarActualizacion()).catch(() => {}); }, 3000);
 }
 
 arrancar();
