@@ -45,6 +45,32 @@ export const idbClear = (s: string): Promise<void> =>
 
 export async function enqueueOutbox(kind: OutboxItem['kind'], payload: unknown): Promise<void> {
   await idbAdd('outbox', { kind, payload, createdAt: Date.now(), retries: 0 });
+  if (kind === 'venta') window.dispatchEvent(new Event(EVENTO_VENTA_PENDIENTE));
+}
+
+// ─── Stock único sin internet ─────────────────────────────────────────────────
+// Mercadería (StoreContext) descuenta lo vendido que todavía no llegó al servidor. Al subir
+// la venta, la cola y los lotes se releen juntos en el mismo sync: nunca cuenta dos veces.
+export const EVENTO_VENTA_PENDIENTE = 'stockly:venta-pendiente';
+
+/** Unidades por producto de las ventas encoladas (sin internet o en cuarentena) de una sucursal. */
+export function unidadesPendientes(items: OutboxItem[], sucursalId: string): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const it of items) {
+    if (it.kind !== 'venta') continue;
+    const v = it.payload as OfflineVentaPayload;
+    if (v.sucursalId !== sucursalId) continue;
+    for (const c of v.cart) {
+      if (c.productoId.startsWith('libre-')) continue; // monto suelto: sin stock
+      m.set(c.productoId, (m.get(c.productoId) ?? 0) + c.qty);
+    }
+  }
+  return m;
+}
+
+export async function leerUnidadesPendientes(sucursalId: string): Promise<Map<string, number>> {
+  await openDB();
+  return unidadesPendientes(await idbGetAll<OutboxItem>('outbox'), sucursalId);
 }
 
 export interface OfflineVentaPayload {

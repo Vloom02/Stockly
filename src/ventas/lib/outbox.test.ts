@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { esErrorPermanente, ventasLocalesDeHoy, descontarLotesLocales } from './outbox';
-import type { Lote, CartItem } from '../types';
+import { esErrorPermanente, ventasLocalesDeHoy, descontarLotesLocales, unidadesPendientes } from './outbox';
+import type { Lote, CartItem, OutboxItem } from '../types';
 
 describe('esErrorPermanente (clasificación para cuarentena)', () => {
   it('marca como permanentes los errores de validación/RLS/constraint', () => {
@@ -69,5 +69,24 @@ describe('descontarLotesLocales (stock local tras vender offline)', () => {
     const lotes = [lote('a', 'p1', 1, null)];
     const cambiados = descontarLotesLocales(lotes, [item('p1', 5), item('libre-1', 1)]);
     expect(cambiados.map(l => l.cantidad)).toEqual([0]);
+  });
+});
+
+describe('unidadesPendientes (Mercadería descuenta lo vendido sin internet)', () => {
+  const venta = (sucursalId: string, cart: Partial<CartItem>[], extra: Partial<OutboxItem> = {}): OutboxItem =>
+    ({ kind: 'venta', createdAt: 0, retries: 0, payload: { sucursalId, cart }, ...extra }) as OutboxItem;
+
+  it('suma por producto las ventas de la sucursal, también las en cuarentena', () => {
+    const m = unidadesPendientes([
+      venta('s1', [{ productoId: 'polenta', qty: 2 }, { productoId: 'leche', qty: 1 }]),
+      venta('s1', [{ productoId: 'polenta', qty: 3 }], { bloqueado: true }),
+      venta('s2', [{ productoId: 'polenta', qty: 9 }]),             // otra sucursal
+      { kind: 'pago_fiado', createdAt: 0, retries: 0, payload: {} }, // no es venta
+    ], 's1');
+    expect(Object.fromEntries(m)).toEqual({ polenta: 5, leche: 1 });
+  });
+
+  it('los montos sueltos no descuentan stock', () => {
+    expect(unidadesPendientes([venta('s1', [{ productoId: 'libre-123', qty: 1 }])], 's1').size).toBe(0);
   });
 });

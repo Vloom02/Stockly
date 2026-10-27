@@ -126,7 +126,7 @@ const CajeroCierrePage: React.FC = () => {
                 </div>
               ))}
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, marginTop: 6, borderTop: '2px solid var(--border)' }}>
-                <span style={{ fontWeight: 700 }}>TOTAL</span>
+                <span style={{ fontWeight: 700 }}>Total</span>
                 <span style={{ fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--color-primary-dark)' }}>{formatMoney(total)}</span>
               </div>
             </Card>

@@ -412,7 +412,7 @@ const VentaPage: React.FC = () => {
               ))}
               {desc > promosCalc.monto && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '3px 0', color: 'var(--color-primary-dark)' }}><span>Descuento manual</span><span style={{ fontFamily: 'var(--font-mono)' }}>-{formatMoney(desc - promosCalc.monto)}</span></div>}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 17, paddingTop: 8, marginTop: 6, borderTop: '1px dashed var(--border)' }}>
-                <span>TOTAL</span><span style={{ fontFamily: 'var(--font-mono)' }}>{formatMoney(total)}</span>
+                <span>Total</span><span style={{ fontFamily: 'var(--font-mono)' }}>{formatMoney(total)}</span>
               </div>
             </Card>
 
