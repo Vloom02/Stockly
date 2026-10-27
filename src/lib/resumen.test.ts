@@ -69,10 +69,21 @@ describe('resumirVentas', () => {
     expect(res.porMetodo.map(f => [f.nombre, f.total])).toEqual([['Efectivo', 1000], ['Transferencia', 500], ['Fiado', 200]]);
     expect(res.porEmpleado.map(f => f.nombre)).toEqual(['Rosa', 'Juan']);
     expect(res.productos).toEqual([
-      { nombre: 'Leche 1L', cantidad: 2, total: 1000 },
-      { nombre: 'Pan', cantidad: 1, total: 500 },
-      { nombre: 'Venta sin producto', cantidad: 1, total: 200 },
+      { nombre: 'Leche 1L', cantidad: 2, total: 1000, ganancia: null },
+      { nombre: 'Pan', cantidad: 1, total: 500, ganancia: null },
+      { nombre: 'Venta sin producto', cantidad: 1, total: 200, ganancia: null },
     ]);
+  });
+
+  it('ganancia con el costo de cada venta, menos descuentos; avisa lo que no tiene costo', () => {
+    const g = resumirVentas(ventas, [
+      { venta_id: 'a', producto_id: 'p1', nombre_producto: 'Leche', cantidad: 2, subtotal: 1000, costo_unit: 300 },
+      { venta_id: 'b', producto_id: 'p2', nombre_producto: 'Pan', cantidad: 1, subtotal: 500, costo_unit: null },
+      { venta_id: 'd', producto_id: null, nombre_producto: null, cantidad: 1, subtotal: 200 }, // monto suelto
+    ], { p1: 'Leche 1L' }, r);
+    // (1000 - 2×300) - 50 de descuento de la venta b
+    expect(g.ganancia).toEqual({ total: 350, vendidoConCosto: 1000, margen: 0.35, unidadesSinCosto: 1 });
+    expect(g.productos.map(f => [f.nombre, f.ganancia])).toEqual([['Leche 1L', 400], ['Pan', null], ['Venta sin producto', null]]);
   });
 
   it('un renglón por día del rango, aunque no haya ventas', () => {

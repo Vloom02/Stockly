@@ -71,9 +71,9 @@ export interface VentaRes {
   id: string; fecha: string; total: number; descuento: number;
   metodo_pago: string | null; usuario: string | null; fiado: boolean; anulada?: boolean;
 }
-export interface ItemRes { venta_id: string; producto_id: string | null; nombre_producto: string | null; cantidad: number; subtotal: number; }
+export interface ItemRes { venta_id: string; producto_id: string | null; nombre_producto: string | null; cantidad: number; subtotal: number; costo_unit?: number | null; }
 
-export interface Fila { nombre: string; cantidad: number; total: number; }
+export interface Fila { nombre: string; cantidad: number; total: number; ganancia?: number | null; }
 
 export interface ResumenVentas {
   cantidad: number;
@@ -85,7 +85,9 @@ export interface ResumenVentas {
   porMetodo: Fila[];
   porEmpleado: Fila[];
   porDia: Fila[];      // por turno si el rango es de un día
-  productos: Fila[];   // todos, de mayor a menor total
+  productos: Fila[];   // todos, de mayor a menor total (ganancia: null si no tiene costo cargado)
+  /** Con el costo del día de cada venta, menos los descuentos. Solo cuenta lo que tiene costo. */
+  ganancia: { total: number; vendidoConCosto: number; margen: number; unidadesSinCosto: number };
   ventas: VentaRes[];  // detalle (sin anuladas), en orden de hora
 }
 
@@ -128,21 +130,35 @@ export function resumirVentas(ventas: VentaRes[], items: ItemRes[], nombres: Rec
     for (const v of validas) { const f = idx.get(fechaCorta(new Date(v.fecha))); if (f) { f.cantidad++; f.total += Number(v.total); } }
   }
 
+  const delPeriodoItems = items.filter(i => ids.has(i.venta_id));
+  const nombreItem = (i: ItemRes) => (i.producto_id && nombres[i.producto_id]) || i.nombre_producto || 'Venta sin producto';
+  const productos = agrupar(delPeriodoItems, nombreItem, i => Number(i.subtotal), i => Number(i.cantidad));
+  const gananciaPorNombre = new Map<string, number | null>();
+  let ganancia = 0, vendidoConCosto = 0, unidadesSinCosto = 0;
+  for (const i of delPeriodoItems) {
+    if (!i.producto_id) continue; // monto suelto: no tiene costo
+    const g = i.costo_unit == null ? null : Number(i.subtotal) - Number(i.costo_unit) * Number(i.cantidad);
+    if (g === null) unidadesSinCosto += Number(i.cantidad);
+    else { ganancia += g; vendidoConCosto += Number(i.subtotal); }
+    const ant = gananciaPorNombre.get(nombreItem(i));
+    gananciaPorNombre.set(nombreItem(i), g === null || ant === null ? null : (ant ?? 0) + g);
+  }
+  for (const f of productos) f.ganancia = gananciaPorNombre.get(f.nombre) ?? null;
+  const descuentos = validas.reduce((s, v) => s + Number(v.descuento || 0), 0);
+  ganancia -= descuentos;
+
   return {
+    ganancia: { total: ganancia, vendidoConCosto, margen: vendidoConCosto > 0 ? ganancia / vendidoConCosto : 0, unidadesSinCosto },
     cantidad: validas.length,
     total,
-    descuentos: validas.reduce((s, v) => s + Number(v.descuento || 0), 0),
+    descuentos,
     ticketPromedio: validas.length ? total / validas.length : 0,
     anuladas: delPeriodo.length - validas.length,
     totalAnterior: ventas.filter(v => !v.anulada && enRango(v, r.anterior.desde, r.anterior.hasta)).reduce((s, v) => s + Number(v.total), 0),
     porMetodo: agrupar(validas, nombreMetodo, v => Number(v.total)),
     porEmpleado: agrupar(validas, v => v.usuario || 'Sin nombre', v => Number(v.total)),
     porDia,
-    productos: agrupar(
-      items.filter(i => ids.has(i.venta_id)),
-      i => (i.producto_id && nombres[i.producto_id]) || i.nombre_producto || 'Venta sin producto',
-      i => Number(i.subtotal), i => Number(i.cantidad),
-    ),
+    productos,
     ventas: validas,
   };
 }

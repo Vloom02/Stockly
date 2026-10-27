@@ -50,6 +50,7 @@ const ProductoForm: React.FC = () => {
   const [precio, setPrecio] = useState(productoExistente?.precio.toString() || '0');
   const [proveedor, setProveedor] = useState(productoExistente?.proveedor || '');
   const [stockMinimo, setStockMinimo] = useState((productoExistente?.stockMinimo ?? 0).toString());
+  const [costo, setCosto] = useState(productoExistente?.costo?.toString() ?? '');
   const [fotoUrl, setFotoUrl] = useState(productoExistente?.fotoUrl);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [diasAviso, setDiasAviso] = useState(
@@ -98,6 +99,7 @@ const ProductoForm: React.FC = () => {
       if (repetido) err.nombre = `Ya existe "${repetido.nombre}". Buscalo en Mercadería para cambiarlo.`;
     }
     if (precio.trim() && Number.isNaN(parseMonto(precio))) err.precio = 'Escribí solo el número, por ejemplo 1.500';
+    if (costo.trim() && Number.isNaN(parseMonto(costo))) err.costo = 'Escribí solo el número, por ejemplo 900';
     setErrores(err);
     if (Object.keys(err).length) return;
     const datos = {
@@ -107,6 +109,7 @@ const ProductoForm: React.FC = () => {
       precio: parseMonto(precio) || 0,
       proveedor: proveedor.trim() || undefined,
       stockMinimo: Math.max(0, parseInt(stockMinimo, 10) || 0),
+      costo: costo.trim() ? Math.max(0, parseMonto(costo)) : undefined,
       diasAvisoDefault: parseInt(diasAviso, 10) || 7,
     };
     setGuardando(true);
@@ -205,6 +208,20 @@ const ProductoForm: React.FC = () => {
                 <Input value={diasAviso} onChange={e => setDiasAviso(e.target.value)} inputMode="numeric" />
               </Field>
             </div>
+
+            {esDueno && (() => {
+              // Ganancia por unidad a la vista mientras se escribe (solo el dueño ve el costo).
+              const pv = parseMonto(precio), pc = parseMonto(costo);
+              const gana = costo.trim() && pv > 0 && !Number.isNaN(pc) ? pv - pc : null;
+              return (
+                <Field label="Precio de costo ($)" error={errores.costo}
+                  hint={gana === null ? 'Lo que te cuesta a vos. Opcional: con esto ves cuánto ganás.'
+                    : gana >= 0 ? `Ganás ${formatearMoneda(gana)} por unidad (${Math.round(gana / pv * 100)} %)`
+                    : `Ojo: lo vendés ${formatearMoneda(-gana)} por debajo del costo`}>
+                  <Input value={costo} onChange={e => { setCosto(e.target.value); setErrores(x => ({ ...x, costo: '' })); }} inputMode="decimal" placeholder="Opcional" />
+                </Field>
+              );
+            })()}
 
             <Field label="Stock mínimo" hint="Avisa para reponer si el total queda por debajo (0 = sin aviso)">
               <Input value={stockMinimo} onChange={e => setStockMinimo(e.target.value)} inputMode="numeric" />

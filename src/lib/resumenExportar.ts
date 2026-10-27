@@ -12,7 +12,7 @@ export interface DatosResumen {
   sucursal: string;
   rango: Rango;
   ventas: ResumenVentas | null; // null: sin internet, no se pudieron traer
-  stock: { valorTotal: number; lotesVencidos: number; valorVencido: number; lotesPorVencer: number; valorEnRiesgo: number; productosEnNegativo: number; unidadesFaltantes: number };
+  stock: { valorTotal: number; lotesVencidos: number; valorVencido: number; lotesPorVencer: number; valorEnRiesgo: number; productosEnNegativo: number; unidadesFaltantes: number; valorCosto: number };
   perdidas: Perdidas;
   productosStock: ProductoStock[];
 }
@@ -32,9 +32,12 @@ export function cifras(d: DatosResumen): { titulo: string; filas: [string, numbe
     ['Descuentos hechos', v.descuentos, 'plata'],
     ['Ventas anuladas', v.anuladas, 'entero'],
     [`Para comparar: lo vendido ${d.rango.anterior.frase}`, v.totalAnterior, 'plata'],
+    ['Ganancia (de lo que tiene costo cargado, menos descuentos)', v.ganancia.total, 'plata'],
+    ['Unidades vendidas sin costo cargado', v.ganancia.unidadesSinCosto, 'entero'],
   ] });
   bloques.push({ titulo: 'Mercadería', filas: [
     ['Valor del stock (a precio de venta)', d.stock.valorTotal, 'plata'],
+    ['Valor del stock (a precio de costo)', d.stock.valorCosto, 'plata'],
     ['Lotes vencidos en el local', d.stock.lotesVencidos, 'entero'],
     ['Valor de lo vencido', d.stock.valorVencido, 'plata'],
     ['Lotes que vencen pronto', d.stock.lotesPorVencer, 'entero'],
@@ -164,10 +167,10 @@ export async function resumenAExcel(d: DatosResumen): Promise<Uint8Array> {
       ['Fecha', 'Hora', 'Empleado', 'Medio de pago', 'Descuento', 'Total'],
       v.ventas.map(x => [fechaExcel(x.fecha), fechaExcel(x.fecha), x.usuario || '', x.fiado ? 'Fiado' : METODOS[x.metodo_pago ?? ''] ?? (x.metodo_pago || ''), Number(x.descuento || 0), Number(x.total)]),
       ['fecha', 'hora', undefined, undefined, 'plata', 'plata'], [4, 5]);
-    hojaDetalle(wb, 'Productos vendidos', [40, 12, 16, 12],
-      ['Producto', 'Cantidad', 'Total', '% de lo vendido'],
-      v.productos.map(p => [p.nombre, p.cantidad, p.total, pct(p.total, v.total)]),
-      [undefined, 'entero', 'plata', 'pct'], [1, 2]);
+    hojaDetalle(wb, 'Productos vendidos', [40, 12, 16, 12, 16, 12],
+      ['Producto', 'Cantidad', 'Total', '% de lo vendido', 'Ganancia', 'Margen'],
+      v.productos.map(p => [p.nombre, p.cantidad, p.total, pct(p.total, v.total), p.ganancia ?? null, p.ganancia == null ? null : pct(p.ganancia, p.total)]),
+      [undefined, 'entero', 'plata', 'pct', 'plata', 'pct'], [1, 2, 4]);
     hojaDetalle(wb, d.rango.porTurno ? 'Por turno' : 'Por día', [20, 10, 16],
       [d.rango.porTurno ? 'Turno' : 'Día', 'Ventas', 'Total'],
       v.porDia.map(p => [p.nombre, p.cantidad, p.total]),

@@ -58,7 +58,7 @@ const ResumenesPage: React.FC = () => {
             .eq('comercio_id', comercio.id).eq('sucursal_id', sucursalId)
             .gte('fecha', desde).lt('fecha', hasta).order('fecha').order('id').range(a, b)),
           todas<ItemRes>((a, b) => supabase.from('ventas_items')
-            .select('venta_id, producto_id, nombre_producto, cantidad, subtotal, ventas_ventas!inner(fecha, sucursal_id)')
+            .select('venta_id, producto_id, nombre_producto, cantidad, subtotal, costo_unit, ventas_ventas!inner(fecha, sucursal_id)')
             .eq('comercio_id', comercio.id).eq('ventas_ventas.sucursal_id', sucursalId)
             .gte('ventas_ventas.fecha', rango.desde.toISOString()).lt('ventas_ventas.fecha', hasta)
             .order('id').range(a, b)),
@@ -81,7 +81,8 @@ const ResumenesPage: React.FC = () => {
       sucursal,
       rango,
       ventas: ventas === 'cargando' ? null : ventas,
-      stock: { valorTotal: r.valorTotal, lotesVencidos: r.lotesVencidos, valorVencido: r.valorVencido, lotesPorVencer: r.lotesCriticos + r.lotesUrgentes, valorEnRiesgo: r.valorEnRiesgo, productosEnNegativo: r.productosEnNegativo, unidadesFaltantes: r.unidadesFaltantes },
+      stock: { valorTotal: r.valorTotal, lotesVencidos: r.lotesVencidos, valorVencido: r.valorVencido, lotesPorVencer: r.lotesCriticos + r.lotesUrgentes, valorEnRiesgo: r.valorEnRiesgo, productosEnNegativo: r.productosEnNegativo, unidadesFaltantes: r.unidadesFaltantes,
+        valorCosto: productosConLotes().reduce((t, p) => t + (p.cantidadTotal > 0 && p.producto.costo ? p.cantidadTotal * p.producto.costo : 0), 0) },
       perdidas: perdidasEntre(state.movimientos, state.productos, rango.desde, rango.hasta),
       productosStock: productosConLotes().filter(p => p.cantidadTotal !== 0)
         .map(p => ({ nombre: p.producto.nombre, categoria: p.producto.categoria || '', cantidad: p.cantidadTotal, precio: p.producto.precio || 0, valor: p.valorTotal, vence: p.proximoVencimiento, estado: p.cantidadTotal < 0 ? 'Vendido sin stock' : ESTADOS[p.nivelPeor] ?? p.nivelPeor }))
@@ -167,6 +168,30 @@ const ResumenesPage: React.FC = () => {
                 {v.cantidad > 0 && <p style={{ fontSize: 17, color: 'var(--text-2)', margin: 0 }}>Cada venta, en promedio: <b style={{ color: 'var(--text)' }}>{formatMoney(Math.round(v.ticketPromedio))}</b></p>}
                 {v.descuentos > 0 && <p style={{ fontSize: 17, color: 'var(--text-2)', margin: '4px 0 0' }}>Descuentos hechos: <b style={{ color: 'var(--text)' }}>{formatMoney(Math.round(v.descuentos))}</b></p>}
                 <Comparacion total={v.total} anterior={v.totalAnterior} frase={rango.anterior.frase} />
+              </Tarjeta>
+
+              <Tarjeta titulo="Ganancia">
+                {v.ganancia.vendidoConCosto === 0 ? (
+                  <Vacio texto="Cargá el precio de costo en la ficha de cada producto y acá vas a ver cuánto ganás." />
+                ) : (
+                  <>
+                    <div style={{ fontSize: 40, fontWeight: 800, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums', color: v.ganancia.total >= 0 ? 'var(--success)' : 'var(--danger)' }}>{formatMoney(Math.round(v.ganancia.total))}</div>
+                    <p style={{ fontSize: 18, margin: '8px 0 4px' }}>Margen: <b>{Math.round(v.ganancia.margen * 100)} %</b> de lo vendido</p>
+                    {(() => {
+                      const poco = v.productos.filter(p => p.ganancia != null && p.total > 0 && p.ganancia / p.total < 0.1).slice(0, 5);
+                      return poco.length > 0 && (
+                        <p style={{ fontSize: 16, color: 'var(--text-2)', margin: '8px 0 0' }}>
+                          Dejan poco (menos de 10 %): <b style={{ color: 'var(--text)' }}>{poco.map(p => `${p.nombre} (${Math.round(p.ganancia! / p.total * 100)} %)`).join(', ')}</b>
+                        </p>
+                      );
+                    })()}
+                  </>
+                )}
+                {v.ganancia.unidadesSinCosto > 0 && (
+                  <p style={{ fontSize: 16, color: 'var(--text-2)', margin: '10px 0 0' }}>
+                    {v.ganancia.unidadesSinCosto} unid. vendidas no tienen costo cargado y no suman a la ganancia.
+                  </p>
+                )}
               </Tarjeta>
 
               <Tarjeta titulo="Cómo te pagaron">
