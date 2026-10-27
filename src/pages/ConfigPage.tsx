@@ -490,7 +490,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           )}
 
           <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-3)', marginTop: 20 }}>
-            Stockly v1.0 · Datos en la nube
+            Stockly v{__APP_VERSION__} · Datos en la nube
           </p>
         </div>
 

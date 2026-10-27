@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rangoDe, resumirVentas, perdidasEntre, VentaRes } from './resumen';
+import { rangoDe, resumirVentas, perdidasEntre, controlEmpleados, VentaRes } from './resumen';
 import { Movimiento, Producto } from '../types';
 
 const ahora = new Date(2026, 9, 26, 15, 30); // lunes 26/10/2026, 15:30 (hora local)
@@ -69,10 +69,21 @@ describe('resumirVentas', () => {
     expect(res.porMetodo.map(f => [f.nombre, f.total])).toEqual([['Efectivo', 1000], ['Transferencia', 500], ['Fiado', 200]]);
     expect(res.porEmpleado.map(f => f.nombre)).toEqual(['Rosa', 'Juan']);
     expect(res.productos).toEqual([
-      { nombre: 'Leche 1L', cantidad: 2, total: 1000 },
-      { nombre: 'Pan', cantidad: 1, total: 500 },
-      { nombre: 'Venta sin producto', cantidad: 1, total: 200 },
+      { nombre: 'Leche 1L', cantidad: 2, total: 1000, ganancia: null },
+      { nombre: 'Pan', cantidad: 1, total: 500, ganancia: null },
+      { nombre: 'Venta sin producto', cantidad: 1, total: 200, ganancia: null },
     ]);
+  });
+
+  it('ganancia con el costo de cada venta, menos descuentos; avisa lo que no tiene costo', () => {
+    const g = resumirVentas(ventas, [
+      { venta_id: 'a', producto_id: 'p1', nombre_producto: 'Leche', cantidad: 2, subtotal: 1000, costo_unit: 300 },
+      { venta_id: 'b', producto_id: 'p2', nombre_producto: 'Pan', cantidad: 1, subtotal: 500, costo_unit: null },
+      { venta_id: 'd', producto_id: null, nombre_producto: null, cantidad: 1, subtotal: 200 }, // monto suelto
+    ], { p1: 'Leche 1L' }, r);
+    // (1000 - 2×300) - 50 de descuento de la venta b
+    expect(g.ganancia).toEqual({ total: 350, vendidoConCosto: 1000, margen: 0.35, unidadesSinCosto: 1 });
+    expect(g.productos.map(f => [f.nombre, f.ganancia])).toEqual([['Leche 1L', 400], ['Pan', null], ['Venta sin producto', null]]);
   });
 
   it('un renglón por día del rango, aunque no haya ventas', () => {
@@ -93,5 +104,23 @@ describe('perdidasEntre', () => {
       mov('retiro_vencido', -9, iso(2026, 8, 1)), // fuera del rango
     ], prods, new Date(2026, 9, 1), new Date(2026, 10, 1));
     expect(p).toEqual({ vencido: { unidades: 3, valor: 300 }, roto: { unidades: 1, valor: 100 } });
+  });
+});
+
+describe('controlEmpleados', () => {
+  it('junta ventas, vendido sin stock y diferencias de caja por persona, dentro del período', () => {
+    const desde = new Date(2026, 9, 1), hasta = new Date(2026, 10, 1);
+    const mov = (usuario: string, cantidad: number, notas: string, fecha = iso(2026, 9, 20)) =>
+      ({ usuario, cantidad, notas, fecha, tipo: 'retiro_venta', productoId: 'p' }) as unknown as Movimiento;
+    const r = controlEmpleados(
+      [{ nombre: 'Rosa', cantidad: 10, total: 5000 }],
+      [mov('Rosa', 2, 'Venta sin stock ab12'), mov('Rosa', 3, 'Venta ab13'), mov('Juan', 1, 'Venta sin stock cd'), mov('Juan', 4, 'Venta sin stock', iso(2026, 8, 1))],
+      [{ cajero_nombre: 'Rosa', diferencia: -500, hasta: iso(2026, 9, 20), creado_en: iso(2026, 9, 20) },
+       { cajero_nombre: 'Rosa', diferencia: 200, hasta: iso(2026, 9, 21), creado_en: iso(2026, 9, 21) }],
+      desde, hasta);
+    expect(r).toEqual([
+      { nombre: 'Rosa', ventas: 10, vendido: 5000, unidadesSinStock: 2, cierres: 2, diferenciaCaja: -300 },
+      { nombre: 'Juan', ventas: 0, vendido: 0, unidadesSinStock: 1, cierres: 0, diferenciaCaja: 0 },
+    ]);
   });
 });

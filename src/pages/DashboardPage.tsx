@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { IonContent, IonPage } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import {
@@ -22,12 +22,15 @@ import SyncBanner from '../components/SyncBanner';
 
 import { useContador } from '../lib/useContador';
 import { useAuth } from '../context/AuthContext';
-import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { ExclamationTriangleIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { buscarActualizacion, Actualizacion } from '../lib/actualizacion';
 import { CubeIcon as IcoCubeIcon } from '@heroicons/react/24/outline';
 const DashboardPage: React.FC = () => {
   const { state, resumen, lotesEnriquecidos, productosConLotes } = useStore();
   const history = useHistory();
   const { esDueno } = useAuth();
+  const [nueva, setNueva] = useState<Actualizacion | null>(null);
+  useEffect(() => { buscarActualizacion().then(setNueva); }, []);
 
   const res = useMemo(() => resumen(), [resumen]);
   const valorAnimado = useContador(res.valorTotal); // el valor "cuenta" al abrir
@@ -111,6 +114,22 @@ const DashboardPage: React.FC = () => {
           <SyncBanner />
           <AvisoDeHoy vencidos={res.lotesVencidos} pronto={res.lotesCriticos + res.lotesUrgentes}
             onVer={(nivel) => history.push(`/stock?nivel=${nivel}&vista=lotes`)} />
+
+          {/* Versión nueva publicada: se baja con el navegador y Android la instala encima */}
+          {esDueno && nueva && (
+            <button type="button" onClick={() => { window.location.href = nueva.url; }} className="pressable tarjeta-tocable anim-bajar"
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', padding: 16, marginBottom: 16,
+                border: 'none', borderRadius: 'var(--radius-lg)', cursor: 'pointer', fontFamily: 'inherit',
+                background: 'var(--marca-suave)', color: 'var(--marca-texto)',
+              }}>
+              <ArrowDownTrayIcon width={28} height={28} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>
+                <span style={{ display: 'block', fontSize: 18, fontWeight: 800 }}>Hay una versión nueva de Stockly ({nueva.version})</span>
+                <span style={{ display: 'block', fontSize: 16, fontWeight: 600 }}>Tocá para bajarla. Después abrila desde Descargas para instalarla.</span>
+              </span>
+            </button>
+          )}
 
           {/* Vendido sin stock: lo ve el dueño para saber si se vende sin cargar la mercadería */}
           {esDueno && res.productosEnNegativo > 0 && (

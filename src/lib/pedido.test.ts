@@ -1,0 +1,23 @@
+import { describe, it, expect } from 'vitest';
+import { pedidoSugerido } from './pedido';
+import { ProductoConLotes } from '../types';
+
+const prod = (id: string, cantidadTotal: number, extra: { stockMinimo?: number; proveedor?: string } = {}) =>
+  ({ producto: { id, nombre: id, ...extra }, cantidadTotal }) as unknown as ProductoConLotes;
+
+describe('pedidoSugerido', () => {
+  it('pide para cubrir los días según lo vendido, contando los negativos', () => {
+    // yerba: 28 vendidas en 28 días = 1 por día; para 15 días hacen falta 15; tengo -2 → pedir 17
+    const r = pedidoSugerido([prod('yerba', -2, { proveedor: 'Distri' })], new Map([['yerba', 28]]), 28, 15);
+    expect(r.get('Distri')).toEqual([{ nombre: 'yerba', sugerido: 17, tenes: -2, porSemana: 7 }]);
+  });
+
+  it('sin ventas usa el stock mínimo (reponer hasta el doble); si alcanza, no pide', () => {
+    const r = pedidoSugerido([prod('arroz', 1, { stockMinimo: 4 }), prod('fideos', 10), prod('sal', 3, { stockMinimo: 2 })], new Map(), 28, 15);
+    expect([...r.entries()]).toEqual([['Sin proveedor', [{ nombre: 'arroz', sugerido: 7, tenes: 1, porSemana: 0 }]]]);
+  });
+
+  it('si lo que hay alcanza para los días, no aparece', () => {
+    expect(pedidoSugerido([prod('leche', 30)], new Map([['leche', 28]]), 28, 15).size).toBe(0);
+  });
+});

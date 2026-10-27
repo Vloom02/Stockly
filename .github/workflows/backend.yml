@@ -1,0 +1,20 @@
+name: Backend
+
+# Base nueva con todas las migraciones + pruebas de seguridad y negocio (RLS, ventas,
+# stock negativo, costo…) contra un Supabase local en Docker.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths: ['supabase/**', 'tests/backend/**', 'scripts/pruebas-backend.sh', '.github/workflows/backend.yml']
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.0
+      - name: Supabase local + migraciones + pruebas
+        run: bash scripts/pruebas-backend.sh --cerrar

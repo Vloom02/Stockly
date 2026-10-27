@@ -7,6 +7,7 @@ interface ImportMetaEnv {
 
 /** true si el build incluye android/app/google-services.json (ver vite.config.ts). */
 declare const __PUSH_DISPONIBLE__: boolean;
+declare const __APP_VERSION__: string;
 
 interface ImportMeta {
   readonly env: ImportMetaEnv;

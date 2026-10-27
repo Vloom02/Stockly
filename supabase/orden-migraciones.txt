@@ -1,0 +1,23 @@
+# Orden en que se aplican las migraciones sobre una base nueva (pruebas del backend).
+supabase/schema.sql
+supabase/ventas/ventas.sql
+supabase/migracion-3-invitaciones.sql
+supabase/migracion-4-proveedor-producto.sql
+supabase/ventas/ventas-migracion-2.sql
+supabase/ventas/ventas-migracion-3-pin.sql
+supabase/ventas/ventas-migracion-4-cajeros.sql
+supabase/ventas/ventas-migracion-5-cierres.sql
+supabase/ventas/ventas-migracion-6-caja-mov.sql
+supabase/ventas/ventas-migracion-7-auth-hardening.sql
+supabase/migracion-5-perf.sql
+supabase/migracion-6-mejoras.sql
+supabase/ventas/ventas-migracion-8-promos.sql
+supabase/ventas/ventas-migracion-9-venta-rapida.sql
+supabase/migracion-7-auditoria-2026-10.sql
+supabase/ventas/ventas-migracion-10-validacion-venta.sql
+supabase/migracion-8-soporte.sql
+supabase/ventas/ventas-migracion-11-configurar-pin-sin-anon.sql
+supabase/migracion-9-rendimiento.sql
+supabase/migracion-10-sin-invitaciones.sql
+supabase/migracion-11-stock-negativo.sql
+supabase/migracion-12-costo-ganancia.sql

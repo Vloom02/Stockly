@@ -1,5 +1,5 @@
 /// <reference types="vitest" />
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -10,6 +10,8 @@ export default defineConfig({
     // ("Default FirebaseApp is not initialized") que cierra la app y JS no puede atajar.
     // Se decide al compilar: solo se registra push si el APK lleva la config de Firebase.
     __PUSH_DISPONIBLE__: JSON.stringify(existsSync('android/app/google-services.json')),
+    // Versión instalada, para el aviso de versión nueva (lib/actualizacion.ts).
+    __APP_VERSION__: JSON.stringify(JSON.parse(readFileSync('package.json', 'utf8')).version),
   },
   build: {
     // Sin manualChunks: agrupar react/ionic a mano causó un error de inicialización

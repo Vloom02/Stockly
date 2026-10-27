@@ -30,6 +30,7 @@ function aSnake(tabla: TablaSync, payload: any, comercioId: string, esUpdate = f
         precio: payload.precio, dias_aviso_default: payload.diasAvisoDefault,
         proveedor: payload.proveedor ?? null,
         stock_minimo: payload.stockMinimo ?? 0,
+        costo: payload.costo ?? null,
         foto_url: payload.fotoUrl ?? null,
         activo: payload.activo ?? true,
       };
@@ -313,6 +314,7 @@ const mapProductoLocal = (r: any) => ({
   precio: Number(r.precio), diasAvisoDefault: r.dias_aviso_default,
   proveedor: r.proveedor ?? undefined,
   stockMinimo: r.stock_minimo ?? 0,
+  costo: r.costo == null ? undefined : Number(r.costo),
   fotoUrl: r.foto_url ?? undefined,
   activo: r.activo, fechaCreacion: r.creado_en,
 });

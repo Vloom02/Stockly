@@ -18,7 +18,8 @@ const ventas = resumirVentas(
 );
 const datos: DatosResumen = {
   comercio: 'Almacén Don Juan', sucursal: 'Principal', rango, ventas,
-  stock: { valorTotal: 50000, lotesVencidos: 1, valorVencido: 1200, lotesPorVencer: 2, valorEnRiesgo: 3000, productosEnNegativo: 1, unidadesFaltantes: 2 },
+  stock: { valorTotal: 50000, lotesVencidos: 1, valorVencido: 1200, lotesPorVencer: 2, valorEnRiesgo: 3000, productosEnNegativo: 1, unidadesFaltantes: 2, valorCosto: 30000 },
+  empleados: [{ nombre: 'Rosa', ventas: 10, vendido: 5000, unidadesSinStock: 2, cierres: 3, diferenciaCaja: -500 }],
   perdidas: { vencido: { unidades: 2, valor: 400 }, roto: { unidades: 0, valor: 0 } },
   productosStock: [{ nombre: 'Leche 1L', categoria: 'Lácteos', cantidad: 10, precio: 1200, valor: 12000, vence: '2026-11-02', estado: 'Bien' }],
 };
@@ -27,7 +28,7 @@ describe('resumenAExcel', () => {
   it('arma un Excel con hojas, formato de plata, totales y textos que no son fórmulas', async () => {
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load((await resumenAExcel(datos)).buffer as ArrayBuffer);
-    expect(wb.worksheets.map(w => w.name)).toEqual(['Resumen', 'Ventas', 'Productos vendidos', 'Por día', 'Mercadería']);
+    expect(wb.worksheets.map(w => w.name)).toEqual(['Resumen', 'Ventas', 'Productos vendidos', 'Por día', 'Empleados', 'Mercadería']);
 
     const res = wb.getWorksheet('Resumen')!;
     expect(res.getCell('A1').value).toBe('Almacén Don Juan · Principal');
@@ -53,6 +54,6 @@ describe('resumenAHtml', () => {
     const html = resumenAHtml(datos);
     expect(html).toContain('Pan &lt;casero&gt;');
     expect(html).not.toContain('<casero>');
-    for (const t of ['Ventas', 'Mercadería', 'Cómo te pagaron', 'Por día', 'Lo más vendido']) expect(html).toContain(`<h2>${t}</h2>`);
+    for (const t of ['Ventas', 'Mercadería', 'Cómo te pagaron', 'Control de empleados', 'Por día', 'Lo más vendido']) expect(html).toContain(`<h2>${t}</h2>`);
   });
 });
