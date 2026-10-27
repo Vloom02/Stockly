@@ -10,6 +10,7 @@ import { ArrowDownTrayIcon, PrinterIcon, ArrowTrendingUpIcon, ArrowTrendingDownI
 import { useStore } from '../context/StoreContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import { todas } from '../lib/todas';
 import { Periodo, PERIODOS, rangoDe, resumirVentas, perdidasEntre, controlEmpleados, fechaCorta, ResumenVentas, VentaRes, ItemRes, Fila, CierreRes } from '../lib/resumen';
 import { DatosResumen, cifras, resumenAExcel, resumenAHtml } from '../lib/resumenExportar';
 import { guardarYCompartir } from '../lib/archivos';
@@ -18,18 +19,6 @@ import { formatMoney } from '../ventas/context/VentasContext';
 import { Header } from './ProductoPage';
 
 const ESTADOS: Record<string, string> = { vencido: 'Vencido', critico: 'Crítico', urgente: 'Urgente', aviso: 'Aviso', ok: 'Bien' };
-
-/** PostgREST devuelve de a 1.000 filas: se pide en páginas hasta traer todo. */
-async function todas<T>(pedir: (desde: number, hasta: number) => PromiseLike<{ data: unknown; error: unknown }>): Promise<T[]> {
-  const out: T[] = [];
-  for (let i = 0; ; i += 1000) {
-    const { data, error } = await pedir(i, i + 999);
-    if (error) throw error;
-    const filas = (data ?? []) as T[];
-    out.push(...filas);
-    if (filas.length < 1000) return out;
-  }
-}
 
 const ResumenesPage: React.FC = () => {
   const history = useHistory();
