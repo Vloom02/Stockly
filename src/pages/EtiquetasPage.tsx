@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Etiquetas de precio imprimibles (nombre + precio + código).
 // Impresión confiable con visibility en @media print: solo se imprime la grilla.
-// En Android, window.print() abre el servicio de impresión del sistema (o PDF).
+// En la app usa el diálogo de impresión del sistema (también "Guardar como PDF"): ver lib/imprimir.
 // ═══════════════════════════════════════════════════════════════════════════
 import React, { useMemo, useState } from 'react';
 import { IonContent, IonPage } from '@ionic/react';
@@ -10,11 +10,14 @@ import { PrinterIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useStore, formatearMoneda } from '../context/StoreContext';
 import EmptyState from '../components/ui/EmptyState';
 import { Header } from './ProductoPage';
+import { useLectorFisico } from '../lib/useLectorFisico';
+import { imprimirPantalla } from '../lib/imprimir';
 
 const EtiquetasPage: React.FC = () => {
   const { state } = useStore();
   const history = useHistory();
   const [q, setQ] = useState('');
+  const lectorRef = useLectorFisico<HTMLIonContentElement>(setQ); // lector físico: busca el producto
 
   const productos = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -26,7 +29,7 @@ const EtiquetasPage: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
+      <IonContent ref={lectorRef} style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
         {/* Reglas de impresión: ocultar todo menos las etiquetas */}
         <style>{`
           @media print {
@@ -45,16 +48,16 @@ const EtiquetasPage: React.FC = () => {
             <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
               <div style={{ position: 'relative', flex: 1 }}>
                 <MagnifyingGlassIcon width={16} height={16} style={{ position: 'absolute', left: 10, top: 11, color: 'var(--text-3)' }} />
-                <input
+                <input className="campo"
                   value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar producto…"
                   aria-label="Buscar producto"
-                  style={{ width: '100%', padding: '9px 12px 9px 32px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontFamily: 'inherit', fontSize: 14 }}
+                  style={{ width: '100%', padding: '9px 12px 9px 32px', borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'inherit', fontSize: 14 }}
                 />
               </div>
               <button
-                type="button" onClick={() => window.print()} disabled={productos.length === 0}
-                className="pressable"
-                style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'var(--brand-500)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', padding: '0 16px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: productos.length === 0 ? 0.5 : 1 }}>
+                type="button" onClick={() => imprimirPantalla('Etiquetas de precio')} disabled={productos.length === 0}
+                className="pressable boton-marca"
+                style={{ display: 'flex', alignItems: 'center', gap: 7, border: 'none', borderRadius: 'var(--radius)', padding: '0 16px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: productos.length === 0 ? 0.5 : 1 }}>
                 <PrinterIcon width={17} height={17} /> Imprimir
               </button>
             </div>
@@ -68,7 +71,7 @@ const EtiquetasPage: React.FC = () => {
           ) : (
             <div id="etiquetas-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
               {productos.map(p => (
-                <div key={p.id} className="etiqueta" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', padding: '12px 12px 14px', textAlign: 'center' }}>
+                <div key={p.id} className="etiqueta" style={{ background: '#fff', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', padding: '12px 12px 14px', textAlign: 'center' }}>
                   <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.25, minHeight: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#111' }}>
                     {p.nombre}
                   </div>

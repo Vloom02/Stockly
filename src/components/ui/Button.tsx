@@ -25,17 +25,14 @@ const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const styles = getButtonStyles(variant, size, fullWidth, disabled || loading);
+  // El relieve y el "apretado" viven en CSS (theme/motion.css): .boton-marca baja como una tecla.
+  const clase = CLASE[variant];
   return (
     <button
       {...props}
+      className={[clase, props.className].filter(Boolean).join(' ') || undefined}
       disabled={disabled || loading}
       style={{ ...styles, ...style }}
-      onMouseDown={(e) => {
-        const target = e.currentTarget;
-        target.style.transform = 'scale(0.97)';
-        setTimeout(() => { target.style.transform = ''; }, 150);
-        props.onMouseDown?.(e);
-      }}
     >
       {loading ? <Spinner /> : icon}
       {children && <span>{children}</span>}
@@ -57,6 +54,12 @@ const Spinner = () => (
   />
 );
 
+const CLASE: Partial<Record<Variant, string>> = {
+  primary: 'boton-marca',
+  danger: 'boton-peligro',
+  secondary: 'boton-blanco',
+};
+
 function getButtonStyles(variant: Variant, size: Size, fullWidth?: boolean, disabled?: boolean): React.CSSProperties {
   const base: React.CSSProperties = {
     display: 'inline-flex',
@@ -65,10 +68,9 @@ function getButtonStyles(variant: Variant, size: Size, fullWidth?: boolean, disa
     gap: 8,
     border: 'none',
     fontFamily: 'inherit',
-    fontWeight: 600,
-    letterSpacing: '-0.011em',
+    fontWeight: 700,
+    letterSpacing: '-0.005em',
     cursor: disabled ? 'not-allowed' : 'pointer',
-    transition: 'transform 150ms cubic-bezier(0.4, 0, 0.2, 1), background-color 150ms, box-shadow 150ms, opacity 150ms',
     opacity: disabled ? 0.5 : 1,
     width: fullWidth ? '100%' : undefined,
     whiteSpace: 'nowrap',
@@ -84,26 +86,13 @@ function getButtonStyles(variant: Variant, size: Size, fullWidth?: boolean, disa
 
   // Variants
   const variants: Record<Variant, React.CSSProperties> = {
-    primary: {
-      background: 'var(--brand-500)',
-      color: 'var(--text-on-brand)',
-      boxShadow: 'var(--shadow-sm)',
-    },
-    secondary: {
-      background: 'var(--surface)',
-      color: 'var(--text)',
-      border: '1px solid var(--border)',
-      boxShadow: 'var(--shadow-xs)',
-    },
+    primary: {},     // .boton-marca
+    secondary: {},   // .boton-blanco
     ghost: {
       background: 'transparent',
       color: 'var(--text-2)',
     },
-    danger: {
-      background: 'var(--danger)',
-      color: '#fff',
-      boxShadow: 'var(--shadow-sm)',
-    },
+    danger: {},      // .boton-peligro
     success: {
       background: 'var(--surface)',
       color: 'var(--brand-700)',

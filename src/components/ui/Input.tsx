@@ -1,30 +1,19 @@
 import React from 'react';
 
 // ─── Base styles ─────────────────────────────────────────────────────────
+// Fondo, borde hundido y el aro al enfocar viven en la clase .campo (theme/motion.css).
 const baseFieldStyle: React.CSSProperties = {
   width: '100%',
-  padding: '10px 12px',
-  fontSize: 14,
-  border: '1px solid var(--border)',
+  padding: '12px 14px',
+  fontSize: 17,
   borderRadius: 'var(--radius)',
-  background: 'var(--surface)',
   color: 'var(--text)',
   outline: 'none',
   fontFamily: 'inherit',
-  letterSpacing: '-0.011em',
-  transition: 'border-color 150ms, box-shadow 150ms',
-  minHeight: 40,
+  fontWeight: 600,
+  minHeight: 52,
 };
-
-const focusStyle = (e: React.FocusEvent<HTMLElement>) => {
-  e.currentTarget.style.borderColor = 'var(--brand-500)';
-  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.12)';
-};
-
-const blurStyle = (e: React.FocusEvent<HTMLElement>) => {
-  e.currentTarget.style.borderColor = 'var(--border)';
-  e.currentTarget.style.boxShadow = 'none';
-};
+const conCampo = (c?: string) => ['campo', c].filter(Boolean).join(' ');
 
 // ─── Field wrapper (con label, hint, error) ───────────────────────────
 interface FieldProps {
@@ -71,9 +60,8 @@ export const Input: React.FC<InputProps> = ({ leftIcon, rightAddon, style, ...pr
     return (
       <input
         {...props}
+        className={conCampo(props.className)}
         style={{ ...baseFieldStyle, ...style }}
-        onFocus={(e) => { focusStyle(e); props.onFocus?.(e); }}
-        onBlur={(e) => { blurStyle(e); props.onBlur?.(e); }}
       />
     );
   }
@@ -90,9 +78,8 @@ export const Input: React.FC<InputProps> = ({ leftIcon, rightAddon, style, ...pr
         )}
         <input
           {...props}
+          className={conCampo(props.className)}
           style={{ ...baseFieldStyle, paddingLeft: leftIcon ? 38 : 12, ...style }}
-          onFocus={(e) => { focusStyle(e); props.onFocus?.(e); }}
-          onBlur={(e) => { blurStyle(e); props.onBlur?.(e); }}
         />
       </div>
       {rightAddon}
@@ -108,6 +95,7 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
 export const Select: React.FC<SelectProps> = ({ children, style, ...props }) => (
   <select
     {...props}
+    className={conCampo(props.className)}
     style={{
       ...baseFieldStyle,
       paddingRight: 32,
@@ -118,8 +106,6 @@ export const Select: React.FC<SelectProps> = ({ children, style, ...props }) => 
       cursor: 'pointer',
       ...style,
     }}
-    onFocus={(e) => { focusStyle(e); props.onFocus?.(e); }}
-    onBlur={(e) => { blurStyle(e); props.onBlur?.(e); }}
   >
     {children}
   </select>
@@ -129,6 +115,7 @@ export const Select: React.FC<SelectProps> = ({ children, style, ...props }) => 
 export const Textarea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement>> = ({ style, ...props }) => (
   <textarea
     {...props}
+    className={conCampo(props.className)}
     style={{
       ...baseFieldStyle,
       minHeight: 100,
@@ -137,8 +124,6 @@ export const Textarea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement
       fontFamily: 'var(--font-mono)',
       ...style,
     }}
-    onFocus={(e) => { focusStyle(e); props.onFocus?.(e); }}
-    onBlur={(e) => { blurStyle(e); props.onBlur?.(e); }}
   />
 );
 
@@ -152,17 +137,20 @@ export const Opciones: React.FC<{
   opciones: Opcion[]; valor: string; onChange: (v: string) => void;
   columnas?: number; etiqueta?: string;
 }> = ({ opciones, valor, onChange, columnas = 2, etiqueta }) => (
+  // "Tacto": riel hundido; la opción elegida se levanta (blanca, con sombra y borde de marca).
   <div role="radiogroup" aria-label={etiqueta}
-    style={{ display: 'grid', gridTemplateColumns: `repeat(${columnas}, minmax(0, 1fr))`, gap: 8 }}>
+    style={{ display: 'grid', gridTemplateColumns: `repeat(${columnas}, minmax(0, 1fr))`, gap: 5,
+      padding: 5, borderRadius: 'var(--radius-lg)', background: 'var(--campo-bg)', boxShadow: 'var(--hundido)' }}>
     {opciones.map((o, i) => {
       const sel = o.valor === valor;
       return (
         <button key={o.valor} type="button" role="radio" aria-checked={sel} onClick={() => onChange(o.valor)}
           className="pressable anim-entrar" style={{
             '--i': i, minHeight: 48, padding: '8px 10px', borderRadius: 'var(--radius)',
-            border: sel ? '3px solid var(--brand-500)' : '1.5px solid var(--border)',
-            background: sel ? 'var(--brand-50)' : 'var(--surface)', color: 'var(--text)',
-            fontSize: 16, fontWeight: sel ? 700 : 600, cursor: 'pointer', fontFamily: 'inherit',
+            border: sel ? '2px solid var(--brand-500)' : '2px solid transparent',
+            background: sel ? 'var(--surface)' : 'transparent', boxShadow: sel ? 'var(--shadow-sm)' : 'none',
+            color: sel ? 'var(--brand-700)' : 'var(--text-2)',
+            fontSize: 16, fontWeight: sel ? 800 : 700, cursor: 'pointer', fontFamily: 'inherit',
             overflowWrap: 'anywhere',
           } as React.CSSProperties}>
           {o.etiqueta}

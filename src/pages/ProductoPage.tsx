@@ -21,6 +21,7 @@ import { supabase } from '../lib/supabase';
 import { formatearMoneda } from '../context/StoreContext';
 
 import { parseMonto } from '../lib/numeros';
+import { useLectorFisico } from '../lib/useLectorFisico';
 interface RouteParams { id?: string; }
 
 // Ionic REUTILIZA la instancia de la página cuando /producto/A y /producto/nuevo
@@ -44,6 +45,7 @@ const ProductoForm: React.FC = () => {
 
   const [nombre, setNombre] = useState(productoExistente?.nombre || '');
   const [codigoBarras, setCodigoBarras] = useState(productoExistente?.codigoBarras || '');
+  const lectorRef = useLectorFisico<HTMLIonContentElement>(setCodigoBarras); // lector físico completa el código
   const [categoria, setCategoria] = useState(productoExistente?.categoria || '');
   const [precio, setPrecio] = useState(productoExistente?.precio.toString() || '0');
   const [proveedor, setProveedor] = useState(productoExistente?.proveedor || '');
@@ -59,6 +61,10 @@ const ProductoForm: React.FC = () => {
   const [guardando, setGuardando] = useState(false);
 
   const lotes = productoId ? fefoSugeridos(productoId) : [];
+  // Vendido sin stock: lotes en negativo de este producto en el local (el próximo ingreso los cubre).
+  const faltan = productoId
+    ? -state.lotes.filter(l => l.productoId === productoId && l.sucursalId === state.sucursalActivaId && l.cantidad < 0).reduce((s, l) => s + l.cantidad, 0)
+    : 0;
 
   // Historial de precios (lo registra un trigger en la DB; solo lectura, online).
   const [historialPrecios, setHistorialPrecios] = useState<
@@ -148,7 +154,7 @@ const ProductoForm: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent style={{ '--background': 'var(--bg)' } as any}>
+      <IonContent ref={lectorRef} style={{ '--background': 'var(--bg)' } as any}>
         <div className="animate-fade-in" style={{
           padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px',
           maxWidth: 640, margin: '0 auto',
@@ -210,7 +216,7 @@ const ProductoForm: React.FC = () => {
                   {fotoUrl ? (
                     <img src={fotoUrl} alt={nombre} style={{
                       width: 56, height: 56, objectFit: 'cover',
-                      borderRadius: 'var(--radius)', border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)',
                     }} />
                   ) : (
                     <div style={{
@@ -248,6 +254,11 @@ const ProductoForm: React.FC = () => {
               <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 12px' }}>
                 Vendé primero las de arriba: son las que vencen antes
               </p>
+              {faltan > 0 && (
+                <p role="status" style={{ fontSize: 16, fontWeight: 700, margin: '0 0 12px', padding: '12px 14px', borderRadius: 'var(--radius)', background: 'var(--level-vencido-bg)', color: 'var(--level-vencido-fg)' }}>
+                  Se vendieron {faltan} sin stock cargado. Cuando cargues mercadería se descuentan solas.
+                </p>
+              )}
 
               {lotes.length === 0 ? (
                 <EmptyState icon={<CubeIcon width={28} height={28} />} title="No hay mercadería cargada"
@@ -350,7 +361,7 @@ export const Header: React.FC<{ title: string; onBack: () => void; action?: Reac
       <button type="button" onClick={onBack}
         style={{
           width: 40, height: 40, borderRadius: 'var(--radius)',
-          background: 'var(--surface)', border: '1px solid var(--border)',
+          background: 'var(--surface)', border: 'none', boxShadow: 'var(--shadow-sm)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', color: 'var(--text)', flexShrink: 0,
         }}>

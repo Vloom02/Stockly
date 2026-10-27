@@ -6,7 +6,7 @@
   límite de intentos, un miembro podía probar todos los PINs de 4-6 dígitos vía
   RPC. Fix: lockout de 15 min tras 5 fallos (tabla `auth_intentos`, RLS sin
   policies — acceso solo por funciones). Migración:
-  `almacen-ventas-final/src/lib/ventas-migracion-4-auth-hardening.sql`.
+  `supabase/ventas/ventas-migracion-7-auth-hardening.sql`.
 - **Hashes sin sal (SHA-256)** en `pin_hash` y `pass_hash`: migrados a bcrypt
   (`crypt`/`gen_salt('bf')`) con upgrade perezoso — el hash legado se acepta y
   se re-hashea en el primer login OK. Altas nuevas nacen en bcrypt
@@ -34,7 +34,7 @@ secretos, permisos Android, dependencias). Resultado y decisiones:
   permitía que cualquier miembro (empleado) leyera el `pin_hash`; un PIN de 4-6
   dígitos en SHA-256 se crackea offline al instante. Fix: verificación
   server-side (`verificar_pin` / `tiene_pin`), el hash ya no es legible por
-  miembros. Migración: `almacen-ventas-final/src/lib/ventas-migracion-3-pin.sql`.
+  miembros. Migración: `supabase/ventas/ventas-migracion-3-pin.sql`.
 - **`comercios_del_usuario()` ejecutable por `anon`**: revocado (higiene; con
   `auth.uid()` nulo devolvía vacío, pero no tenía por qué estar expuesta).
 

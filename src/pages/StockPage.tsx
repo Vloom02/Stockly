@@ -17,10 +17,13 @@ import EmptyState from '../components/ui/EmptyState';
 import { Input, Opciones } from '../components/ui/Input';
 import ScannerModal from '../components/ScannerModal';
 import { useAuth } from '../context/AuthContext';
+import { useLectorFisico } from '../lib/useLectorFisico';
 
 type Vista = 'productos' | 'lotes';
+// 'negativo' = vendido sin stock (lo usa el aviso del inicio)
+type Filtro = NivelAlerta | 'todos' | 'pronto' | 'negativo';
 
-function coincideNivel(filtro: NivelAlerta | 'todos' | 'pronto', nivel: NivelAlerta): boolean {
+function coincideNivel(filtro: Filtro, nivel: NivelAlerta): boolean {
   if (filtro === 'todos') return true;
   if (filtro === 'pronto') return nivel === 'critico' || nivel === 'urgente';
   return nivel === filtro;
@@ -35,11 +38,11 @@ const StockPage: React.FC = () => {
   const [busqueda, setBusqueda] = useState('');
   const [showScanner, setShowScanner] = useState(false);
   // 'pronto' = crítico + urgente (lo usa la tarjeta "vencen pronto" del inicio)
-  const [filtro, setFiltro] = useState<NivelAlerta | 'todos' | 'pronto'>('todos');
+  const [filtro, setFiltro] = useState<Filtro>('todos');
   const location = useLocation();
   useEffect(() => {
     const q = new URLSearchParams(location.search);
-    const nivel = q.get('nivel') as NivelAlerta | 'pronto' | null;
+    const nivel = q.get('nivel') as Filtro | null;
     if (nivel) setFiltro(nivel);
     else setFiltro(f => (f === 'pronto' ? 'todos' : f)); // 'pronto' no tiene chip: no dejarlo invisible
     if (q.get('vista') === 'lotes') setVista('lotes');
@@ -60,7 +63,7 @@ const StockPage: React.FC = () => {
     const q = busqueda.trim().toLowerCase();
     return productos.filter(p => {
       const mb = !q || p.producto.nombre.toLowerCase().includes(q) || (p.producto.codigoBarras?.includes(busqueda.trim()));
-      const mf = coincideNivel(filtro, p.nivelPeor);
+      const mf = filtro === 'negativo' ? p.cantidadTotal < 0 : coincideNivel(filtro, p.nivelPeor);
       const mp = filtroProveedor === 'todos' || (p.producto.proveedor?.trim() ?? '') === filtroProveedor;
       return mb && mf && mp;
     }).sort((a, b) => ordenNivel(a.nivelPeor) - ordenNivel(b.nivelPeor));
@@ -70,7 +73,7 @@ const StockPage: React.FC = () => {
     const q = busqueda.trim().toLowerCase();
     return lotes.filter(l => {
       const mb = !q || l.productoNombre.toLowerCase().includes(q) || (l.numeroLote?.toLowerCase().includes(q));
-      const mf = coincideNivel(filtro, l.nivelAlerta);
+      const mf = filtro === 'negativo' ? l.cantidad < 0 : l.cantidad > 0 && coincideNivel(filtro, l.nivelAlerta);
       const mp = filtroProveedor === 'todos' || (l.productoProveedor?.trim() ?? '') === filtroProveedor;
       return mb && mf && mp;
     }).sort((a, b) => {
@@ -80,10 +83,19 @@ const StockPage: React.FC = () => {
   }, [lotes, busqueda, filtro, filtroProveedor]);
 
   const filtros: (NivelAlerta | 'todos')[] = ['todos', 'vencido', 'critico', 'urgente', 'aviso', 'ok'];
+  const enNegativo = useMemo(() => productos.filter(p => p.cantidadTotal < 0).length, [productos]);
+
+  // Cámara o lector físico: si el código es de un producto, abrirlo; si no, dejarlo en el buscador.
+  const alEscanear = (codigo: string) => {
+    const prod = buscarProductoPorCodigo(codigo);
+    if (prod) history.push(`/producto/${prod.id}`);
+    else setBusqueda(codigo); // queda en el buscador → "Sin resultados"
+  };
+  const lectorRef = useLectorFisico<HTMLIonContentElement>(alEscanear);
 
   return (
     <IonPage>
-      <IonContent style={{ '--background': 'var(--bg)' } as any}>
+      <IonContent ref={lectorRef} style={{ '--background': 'var(--bg)' } as any}>
         <div className="animate-fade-in" style={{
           padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px',
           maxWidth: 760, margin: '0 auto',
@@ -102,7 +114,7 @@ const StockPage: React.FC = () => {
                 background: 'var(--brand-50)', color: 'var(--brand-700)',
                 fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', minHeight: 44,
               }}>
-              💲 Subir precios
+              Subir precios
             </button>}
           </div>
 
@@ -129,19 +141,17 @@ const StockPage: React.FC = () => {
                   {busqueda && (
                     <button type="button" onClick={() => setBusqueda('')}
                       style={{
-                        background: 'var(--surface-2)', border: '1px solid var(--border)',
+                        background: 'var(--surface-2)', border: 'none', boxShadow: 'var(--shadow-sm)',
                         borderRadius: 'var(--radius)', padding: '0 10px', cursor: 'pointer',
                         color: 'var(--text-2)', display: 'flex', alignItems: 'center',
                       }}>
                       <XMarkIcon width={16} height={16} />
                     </button>
                   )}
-                  <button type="button" onClick={() => setShowScanner(true)}
+                  <button className="boton-marca" type="button" onClick={() => setShowScanner(true)}
                     title="Escanear código de barras"
-                    style={{
-                      background: 'var(--brand-500)', border: '1px solid var(--brand-500)',
-                      borderRadius: 'var(--radius)', padding: '0 12px', cursor: 'pointer',
-                      color: '#fff', display: 'flex', alignItems: 'center',
+                    style={{ border: '1px solid var(--brand-500)',
+                      borderRadius: 'var(--radius)', padding: '0 12px', cursor: 'pointer', display: 'flex', alignItems: 'center',
                     }}>
                     <QrCodeIcon width={18} height={18} />
                   </button>
@@ -170,6 +180,11 @@ const StockPage: React.FC = () => {
                 {f === 'todos' ? 'Todos' : etiquetaNivel(f)}
               </FilterChip>
             ))}
+            {(enNegativo > 0 || filtro === 'negativo') && (
+              <FilterChip activo={filtro === 'negativo'} nivel="vencido" onClick={() => setFiltro('negativo')}>
+                Vendido sin stock ({enNegativo})
+              </FilterChip>
+            )}
           </div>
 
           {/* Lista */}
@@ -220,12 +235,7 @@ const StockPage: React.FC = () => {
 
         {showScanner && (
           <ScannerModal
-            onCodigoDetectado={(codigo) => {
-              setShowScanner(false);
-              const prod = buscarProductoPorCodigo(codigo);
-              if (prod) history.push(`/producto/${prod.id}`);
-              else setBusqueda(codigo); // queda en el buscador → "Sin resultados"
-            }}
+            onCodigoDetectado={(codigo) => { setShowScanner(false); alEscanear(codigo); }}
             onCancel={() => setShowScanner(false)}
           />
         )}
@@ -239,10 +249,10 @@ const SegBtn: React.FC<{ activa: boolean; onClick: () => void; icon: React.React
   ({ activa, onClick, icon, children }) => (
     <button type="button" onClick={onClick}
       style={{
-        flex: 1, padding: '9px 12px', border: 'none',
+        flex: 1, padding: '9px 12px', minHeight: 48, border: 'none',
         background: activa ? 'var(--surface)' : 'transparent',
         color: activa ? 'var(--text)' : 'var(--text-2)',
-        borderRadius: 'var(--radius-sm)', fontWeight: 600, fontSize: 13,
+        borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 15,
         cursor: 'pointer', fontFamily: 'inherit',
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         boxShadow: activa ? 'var(--shadow-xs)' : 'none',
@@ -256,7 +266,7 @@ const FilterChip: React.FC<{ activo: boolean; nivel?: NivelAlerta; onClick: () =
   ({ activo, nivel, onClick, children }) => (
     <button type="button" onClick={onClick}
       style={{
-        padding: '6px 14px', fontSize: 13, borderRadius: 'var(--radius-full)',
+        padding: '6px 16px', minHeight: 44, fontSize: 15, borderRadius: 'var(--radius-full)',
         border: '1px solid ' + (activo ? 'var(--brand-500)' : 'var(--border)'),
         background: activo ? 'var(--brand-500)' : 'var(--surface)',
         color: activo ? '#fff' : 'var(--text-2)',
@@ -279,11 +289,11 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
   return (
   <Card padding="sm" onClick={onClick}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      <div style={{ width: 4, height: 52, background: colorNivel(p.nivelPeor), borderRadius: 2, flexShrink: 0 }} />
+      <div style={{ width: 4, height: 52, background: p.cantidadTotal < 0 ? 'var(--danger)' : colorNivel(p.nivelPeor), borderRadius: 2, flexShrink: 0 }} />
       {p.producto.fotoUrl && (
         <img src={p.producto.fotoUrl} alt="" loading="lazy" style={{
           width: 44, height: 44, objectFit: 'cover', flexShrink: 0,
-          borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-sm)', boxShadow: 'var(--shadow-sm)',
         }} />
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -294,24 +304,30 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
           {p.producto.categoria} · {formatearMoneda(p.producto.precio)} c/u
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <NivelBadge nivel={p.nivelPeor} />
-          <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>
-            {p.cantidadTotal} unid · {p.lotes.length} lote{p.lotes.length !== 1 ? 's' : ''}
-          </span>
+          {p.cantidadTotal > 0 && <NivelBadge nivel={p.nivelPeor} />}
+          {p.cantidadTotal < 0 ? (
+            <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--danger)' }}>
+              {p.cantidadTotal} unid · se vendió sin stock
+            </span>
+          ) : (
+            <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>
+              {p.cantidadTotal} unid · {p.lotes.length} lote{p.lotes.length !== 1 ? 's' : ''}
+            </span>
+          )}
           {reponer && (
             <span style={{
               fontSize: 13, fontWeight: 700, color: 'var(--warning)',
               border: '1px solid var(--warning)', borderRadius: 'var(--radius-full)',
               padding: '1px 8px', whiteSpace: 'nowrap',
             }}>
-              📦 Reponer (mín. {p.producto.stockMinimo})
+              Reponer (mín. {p.producto.stockMinimo})
             </span>
           )}
         </div>
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 800, letterSpacing: '-0.02em' }}>
-          {formatearMoneda(p.valorTotal)}
+          {p.valorTotal > 0 ? formatearMoneda(p.valorTotal) : ''}
         </div>
         {p.proximoVencimiento && (
           <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 2 }}>
@@ -336,12 +352,12 @@ const LoteRow: React.FC<{ lote: LoteConProducto; onClick: () => void }> = ({ lot
           {lote.productoNombre}
         </div>
         <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 6 }}>
-          {lote.cantidad} unid.{lote.numeroLote ? ` · Lote ${lote.numeroLote}` : ''}{lote.productoProveedor ? ` · ${lote.productoProveedor}` : ''}
+          <span style={lote.cantidad < 0 ? { color: 'var(--danger)', fontWeight: 800 } : undefined}>{lote.cantidad} unid.</span>{lote.numeroLote ? ` · Lote ${lote.numeroLote}` : ''}{lote.productoProveedor ? ` · ${lote.productoProveedor}` : ''}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <NivelBadge nivel={lote.nivelAlerta} />
           <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>
-            {textoEstado(lote.fechaVencimiento)}
+            {lote.cantidad < 0 ? 'Se vendió sin stock: el próximo ingreso lo descuenta' : textoEstado(lote.fechaVencimiento)}
           </span>
           {liq.aplicar && (
             <span title={`Sugerencia: liquidá a ${formatearMoneda(liq.precioFinal)} (precio normal ${formatearMoneda(liq.precioOriginal)}) para venderlo antes de que venza`}
@@ -352,7 +368,7 @@ const LoteRow: React.FC<{ lote: LoteConProducto; onClick: () => void }> = ({ lot
                 borderRadius: 'var(--radius-full)', padding: '2px 8px',
                 display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap',
               }}>
-              💸 Liquidar {formatearMoneda(liq.precioFinal)}
+              Liquidar {formatearMoneda(liq.precioFinal)}
               <span style={{ opacity: 0.75, fontWeight: 600 }}>−{liq.pct}%</span>
             </span>
           )}

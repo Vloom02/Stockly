@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { IonApp, IonRouterOutlet, setupIonicReact } from '@ionic/react';
+import { IonApp, IonPage, IonRouterOutlet, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import { Route, Redirect } from 'react-router-dom';
 
@@ -16,20 +16,40 @@ const EtiquetasPage   = lazy(() => import('./pages/EtiquetasPage'));
 const InventarioPage  = lazy(() => import('./pages/InventarioPage'));
 const PreciosPage     = lazy(() => import('./pages/PreciosPage'));
 const PedidoPage      = lazy(() => import('./pages/PedidoPage'));
-const EmpleadosPage   = lazy(() => import('./pages/EmpleadosPage'));
 const ConfigPage      = lazy(() => import('./pages/ConfigPage'));
 const AuthPage        = lazy(() => import('./pages/AuthPage'));
 const SoportePage     = lazy(() => import('./pages/SoportePage'));
+// Ventas (antes una app aparte): mismas cuentas, mismo stock.
+const VentaPage           = lazy(() => import('./ventas/pages/VentaPage'));
+const VentasMasPage       = lazy(() => import('./ventas/pages/MasPage'));
+const ResumenesPage       = lazy(() => import('./pages/ResumenesPage'));
+const CierrePage          = lazy(() => import('./ventas/pages/CierrePage'));
+const HistorialVentasPage = lazy(() => import('./ventas/pages/HistorialPage'));
+const DeudasPage          = lazy(() => import('./ventas/pages/DeudasPage'));
+const CajerosPage         = lazy(() => import('./ventas/pages/CajerosPage'));
+const EstadisticasPage    = lazy(() => import('./ventas/pages/EstadisticasPage'));
+const PromosPage          = lazy(() => import('./ventas/pages/PromosPage'));
+const CajeroCierrePage    = lazy(() => import('./ventas/pages/CajeroCierrePage'));
+const CajaTurnoPage       = lazy(() => import('./ventas/pages/CajaTurnoPage'));
 import TabBar from './components/TabBar';
 import Onboarding from './components/Onboarding';
 import Logo from './components/ui/Logo';
 import PlanBloqueado from './components/PlanBloqueado';
 import { evaluarPlan, EstadoPlan } from './lib/plan';
 import { registrarPush } from './lib/push';
+import { transicionPagina, toastEntra, toastSale, alertEntra, alertSale } from './lib/animaciones';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { StoreProvider, getSetting, setSetting } from './context/StoreContext';
 import { supabase, supabaseConfigurado } from './lib/supabase';
+import { VentasProvider } from './ventas/context/VentasContext';
+import { OwnerProvider, useOwner } from './ventas/context/OwnerContext';
+import { EmpleadoProvider, useEmpleado } from './ventas/context/EmpleadoContext';
+import OwnerGuard from './ventas/components/OwnerGuard';
+import TurnoGate from './ventas/components/TurnoGate';
+import CajeroGate from './ventas/components/CajeroGate';
+import OnboardingVentas from './ventas/components/OnboardingVentas';
+import { OfertaHuellaPendiente } from './ventas/lib/useHuella';
 
 import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
@@ -43,13 +63,37 @@ import '@ionic/react/css/flex-utils.css';
 import '@ionic/react/css/display.css';
 // Fuentes self-hosted (offline-first: no dependen de Google Fonts ni suman
 // round-trip de red al arranque). Variable = un archivo cubre todos los pesos.
-// Atkinson Hyperlegible: diseñada para baja visión (letras que no se confunden: Il1, O0).
-import '@fontsource-variable/atkinson-hyperlegible-next';
-import '@fontsource-variable/atkinson-hyperlegible-mono';
+// Nunito: redondeada y clara en tamaños grandes (diseño "Tacto").
+import '@fontsource-variable/nunito';
 import './theme/variables.css';
 import './theme/motion.css';
+import './ventas/ventas.css';
 
-setupIonicReact();
+setupIonicReact({
+  // Todo se mueve suave: pantallas, avisos y diálogos (ver lib/animaciones.ts).
+  navAnimation: transicionPagina,
+  toastEnter: toastEntra, toastLeave: toastSale,
+  alertEnter: alertEntra, alertLeave: alertSale,
+});
+
+// Pantalla de ventas: turno de cajero + (opcional) PIN del dueño.
+const enVentas = (pagina: React.ReactNode, tituloDueno?: string) => (
+  <IonPage>
+    <Suspense fallback={<Cargando />}>
+      <TurnoGate>{tituloDueno ? <OwnerGuard titulo={tituloDueno}>{pagina}</OwnerGuard> : pagina}</TurnoGate>
+    </Suspense>
+  </IonPage>
+);
+
+// Celular del dueño + tablet del local con la misma cuenta: si hay empleados con PIN,
+// nadie usa la app sin iniciar su turno (el dueño entra con su PIN o huella). Necesita
+// el PIN del dueño (si no, no tendría cómo entrar). Sin internet no se bloquea, como en Vender.
+const ConTurno: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { cajero, hayEmpleados, cargando } = useEmpleado();
+  const { hasPin } = useOwner();
+  if (!cargando && hayEmpleados && hasPin && !cajero && navigator.onLine) return <IonPage><CajeroGate /></IonPage>;
+  return <>{children}</>;
+};
 
 // ─── App autenticada (con datos) ──────────────────────────────────────────
 const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; estadoPlan: EstadoPlan }> = ({ isDark, onThemeToggle, estadoPlan }) => {
@@ -86,7 +130,7 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
     <StoreProvider>
       {showOnboarding && <Onboarding onComplete={completar} />}
       {estadoPlan.tipo === 'trial' && estadoPlan.diasRestantes !== undefined && estadoPlan.diasRestantes <= 5 && (
-        <div style={{
+        <div className="anim-bajar" style={{
           position: 'fixed', top: 'env(safe-area-inset-top)', left: 0, right: 0,
           zIndex: 500, background: 'var(--level-urgente-bg)', color: 'var(--level-urgente-fg)',
           padding: '8px 16px', fontSize: 13, fontWeight: 600, textAlign: 'center',
@@ -96,6 +140,10 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
             : `Te ${estadoPlan.diasRestantes === 1 ? 'queda' : 'quedan'} ${estadoPlan.diasRestantes} ${estadoPlan.diasRestantes === 1 ? 'día' : 'días'} de prueba`}
         </div>
       )}
+      <VentasProvider>
+      <OwnerProvider>
+      <EmpleadoProvider>
+      <ConTurno>
       <IonReactRouter>
         <IonRouterOutlet id="main">
           <Route path="/dashboard" exact><Suspense fallback={<Cargando />}><DashboardPage /></Suspense></Route>
@@ -109,13 +157,28 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
           <Route path="/inventario" exact><Suspense fallback={<Cargando />}><InventarioPage /></Suspense></Route>
           <Route path="/precios" exact><Suspense fallback={<Cargando />}><PreciosPage /></Suspense></Route>
           <Route path="/pedido" exact><Suspense fallback={<Cargando />}><PedidoPage /></Suspense></Route>
-          <Route path="/empleados" exact><Suspense fallback={<Cargando />}><EmpleadosPage /></Suspense></Route>
           <Route path="/soporte" exact><Suspense fallback={<Cargando />}><SoportePage /></Suspense></Route>
           <Route path="/config" exact><Suspense fallback={<Cargando />}><ConfigPage onThemeToggle={onThemeToggle} isDark={isDark} /></Suspense></Route>
+          <Route path="/ventas" exact>{enVentas(<><VentaPage /><OnboardingVentas /></>)}</Route>
+          <Route path="/ventas/mas" exact>{enVentas(<VentasMasPage />)}</Route>
+          <Route path="/resumenes" exact>{enVentas(<ResumenesPage />, 'Resúmenes')}</Route>
+          <Route path="/ventas/caja" exact>{enVentas(<CierrePage />, 'Caja')}</Route>
+          <Route path="/ventas/historial" exact>{enVentas(<HistorialVentasPage />, 'Ventas anteriores')}</Route>
+          <Route path="/ventas/fiado" exact>{enVentas(<DeudasPage />, 'Fiado')}</Route>
+          <Route path="/ventas/cajeros" exact>{enVentas(<CajerosPage />, 'Empleados')}</Route>
+          <Route path="/ventas/estadisticas" exact>{enVentas(<EstadisticasPage />, 'Lo más vendido')}</Route>
+          <Route path="/ventas/ofertas" exact>{enVentas(<PromosPage />, 'Ofertas')}</Route>
+          <Route path="/ventas/cerrar-caja" exact>{enVentas(<CajeroCierrePage />)}</Route>
+          <Route path="/ventas/caja-turno" exact>{enVentas(<CajaTurnoPage />)}</Route>
           <Route path="/" exact><Redirect to="/dashboard" /></Route>
         </IonRouterOutlet>
         <TabBar />
       </IonReactRouter>
+      </ConTurno>
+      <OfertaHuellaPendiente />
+      </EmpleadoProvider>
+      </OwnerProvider>
+      </VentasProvider>
     </StoreProvider>
   );
 };

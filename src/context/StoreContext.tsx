@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode, useCallback, useState, useRef } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, ReactNode, useCallback, useMemo, useState, useRef } from 'react';
 import {
   Producto, Lote, Sucursal, Movimiento,
   NivelAlerta, Resumen, ProductoConLotes, LoteConProducto,
@@ -158,7 +158,7 @@ interface StoreContextValue {
 const StoreContext = createContext<StoreContextValue | null>(null);
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { comercio, miembro } = useAuth();
+  const { comercio, miembro, cajeroEnTurno } = useAuth();
   const [state, dispatch] = useReducer(reducer, {
     productos: [], lotes: [], sucursales: [], movimientos: [],
     sucursalActivaId: '', loaded: false, pendientesSync: 0, bloqueadosSync: 0,
@@ -176,7 +176,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => { estadoNubeRef.current = estadoNube; }, [estadoNube]);
 
   const comercioId = comercio?.id;
-  const usuario = miembro?.nombre || 'Usuario';
+  const usuario = cajeroEnTurno || miembro?.nombre || 'Usuario'; // en la tablet: quien tiene el turno
 
   const refrescarPendientes = useCallback(async () => {
     const p = await obtenerPendientes();
@@ -424,31 +424,51 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
 
   // ─── Vistas calculadas (idénticas a la versión cloud) ─────────────────────
-  const productosConLotes = useCallback((): ProductoConLotes[] =>
+  // Se calculan UNA vez por cambio de datos y las comparten todas las pantallas (Ionic
+  // deja montadas varias). Con índices: antes cada producto recorría todos los lotes y
+  // cada lote buscaba su producto, O(productos × lotes). No mutar los arreglos devueltos.
+  const lotesDeSucursal = useMemo(
+    () => state.lotes.filter(l => l.sucursalId === state.sucursalActivaId),
+    [state.lotes, state.sucursalActivaId]);
+  const lotesPorProducto = useMemo(() => {
+    const m = new Map<string, Lote[]>();
+    for (const l of lotesDeSucursal) {
+      const a = m.get(l.productoId);
+      if (a) a.push(l); else m.set(l.productoId, [l]);
+    }
+    return m;
+  }, [lotesDeSucursal]);
+
+  const productosConLotesCalc = useMemo((): ProductoConLotes[] =>
     state.productos.map(producto => {
-      const lotes = state.lotes.filter(l => l.productoId === producto.id && l.sucursalId === state.sucursalActivaId);
-      const cantidadTotal = lotes.reduce((s, l) => s + l.cantidad, 0);
+      const lotes = lotesPorProducto.get(producto.id!) ?? [];
+      const cantidadTotal = lotes.reduce((s, l) => s + l.cantidad, 0); // con negativos: vendido sin stock
       let nivelPeor: NivelAlerta = 'ok';
       let proxVenc: string | undefined;
       for (const l of lotes) {
+        if (l.cantidad <= 0) continue; // un lote vacío o en negativo no vence
         const n = calcularNivelAlerta(l.fechaVencimiento, l.diasAviso);
         if (ordenNivel(n) < ordenNivel(nivelPeor)) nivelPeor = n;
         if (!proxVenc || l.fechaVencimiento < proxVenc) proxVenc = l.fechaVencimiento;
       }
       return { producto, lotes, cantidadTotal, valorTotal: cantidadTotal * producto.precio, nivelPeor, proximoVencimiento: proxVenc };
-    }), [state.productos, state.lotes, state.sucursalActivaId]);
+    }), [state.productos, lotesPorProducto]);
+  const productosConLotes = useCallback(() => productosConLotesCalc, [productosConLotesCalc]);
 
-  const lotesEnriquecidos = useCallback((): LoteConProducto[] =>
-    state.lotes.filter(l => l.sucursalId === state.sucursalActivaId).map(l => {
-      const prod = state.productos.find(p => p.id === l.productoId);
-      const suc = state.sucursales.find(s => s.id === l.sucursalId);
+  const lotesEnriquecidosCalc = useMemo((): LoteConProducto[] => {
+    const prodPorId = new Map(state.productos.map(p => [p.id, p]));
+    const suc = state.sucursales.find(s => s.id === state.sucursalActivaId);
+    return lotesDeSucursal.map(l => {
+      const prod = prodPorId.get(l.productoId);
       return {
         ...l, productoNombre: prod?.nombre || '(eliminado)', productoCategoria: prod?.categoria || '',
         productoPrecio: prod?.precio || 0, productoProveedor: prod?.proveedor, sucursalNombre: suc?.nombre || '',
-        nivelAlerta: calcularNivelAlerta(l.fechaVencimiento, l.diasAviso),
+        nivelAlerta: l.cantidad > 0 ? calcularNivelAlerta(l.fechaVencimiento, l.diasAviso) : 'ok',
         diasRestantes: diasRestantes(l.fechaVencimiento), valorLote: l.cantidad * (prod?.precio || 0),
       };
-    }), [state.lotes, state.productos, state.sucursales, state.sucursalActivaId]);
+    });
+  }, [lotesDeSucursal, state.productos, state.sucursales, state.sucursalActivaId]);
+  const lotesEnriquecidos = useCallback(() => lotesEnriquecidosCalc, [lotesEnriquecidosCalc]);
 
   // Reprogramar el aviso de vencimiento cuando cambian los lotes / productos.
   useEffect(() => {
@@ -456,10 +476,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     sincronizarNotificaciones(lotesEnriquecidos());
   }, [state.lotes, state.productos, state.sucursalActivaId, state.loaded, lotesEnriquecidos]);
 
-  const resumen = useCallback((): Resumen => {
-    const e = lotesEnriquecidos();
-    const r: Resumen = { productosTotales: productosConLotes().filter(p => p.cantidadTotal > 0).length, lotesTotales: e.length, unidadesTotales: 0, valorTotal: 0, lotesVencidos: 0, lotesCriticos: 0, lotesUrgentes: 0, lotesAviso: 0, lotesOk: 0, valorVencido: 0, valorEnRiesgo: 0 };
+  const resumenCalc = useMemo((): Resumen => {
+    const e = lotesEnriquecidosCalc;
+    const negativos = productosConLotesCalc.filter(p => p.cantidadTotal < 0);
+    const r: Resumen = { productosTotales: productosConLotesCalc.filter(p => p.cantidadTotal > 0).length, lotesTotales: 0, unidadesTotales: 0, valorTotal: 0, lotesVencidos: 0, lotesCriticos: 0, lotesUrgentes: 0, lotesAviso: 0, lotesOk: 0, valorVencido: 0, valorEnRiesgo: 0,
+      productosEnNegativo: negativos.length, unidadesFaltantes: negativos.reduce((s, p) => s - p.cantidadTotal, 0) };
     for (const l of e) {
+      if (l.cantidad <= 0) continue; // lo que hay en el local: los negativos van aparte
+      r.lotesTotales++;
       r.unidadesTotales += l.cantidad; r.valorTotal += l.valorLote;
       switch (l.nivelAlerta) {
         case 'vencido': r.lotesVencidos++; r.valorVencido += l.valorLote; break;
@@ -470,12 +494,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     }
     return r;
-  }, [lotesEnriquecidos, productosConLotes]);
+  }, [lotesEnriquecidosCalc, productosConLotesCalc]);
+  const resumen = useCallback(() => resumenCalc, [resumenCalc]);
 
   const fefoSugeridos = useCallback((productoId: string): Lote[] =>
-    state.lotes.filter(l => l.productoId === productoId && l.sucursalId === state.sucursalActivaId && l.cantidad > 0)
+    (lotesPorProducto.get(productoId) ?? []).filter(l => l.cantidad > 0)
       .sort((a, b) => a.fechaVencimiento.localeCompare(b.fechaVencimiento)),
-    [state.lotes, state.sucursalActivaId]);
+    [lotesPorProducto]);
 
   const perdidasPorMes = useCallback((meses = 6): PerdidaMensual[] => {
     const ET = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -501,7 +526,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const distribucionPorCategoria = useCallback((): DistribucionCategoria[] => {
     const mapa = new Map<string, DistribucionCategoria>();
     for (const l of state.lotes) {
-      if (l.sucursalId !== state.sucursalActivaId) continue;
+      if (l.sucursalId !== state.sucursalActivaId || l.cantidad <= 0) continue;
       const prod = state.productos.find(p => p.id === l.productoId);
       if (!prod) continue;
       const cat = prod.categoria || 'Sin categoría';
@@ -517,7 +542,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const mapa = new Map<string, DiaVencimiento>();
     const prefijo = `${anio}-${String(mes + 1).padStart(2, '0')}`;
     for (const l of state.lotes) {
-      if (l.sucursalId !== state.sucursalActivaId) continue;
+      if (l.sucursalId !== state.sucursalActivaId || l.cantidad <= 0) continue;
       if (!l.fechaVencimiento.startsWith(prefijo)) continue;
       const nivel = calcularNivelAlerta(l.fechaVencimiento, l.diasAviso);
       const ex = mapa.get(l.fechaVencimiento);

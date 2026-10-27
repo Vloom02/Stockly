@@ -1,7 +1,11 @@
-# PRD — Suite Stockly + Almacén Ventas
+# PRD — Stockly (inventario + punto de venta)
 
 **Versión:** 1.0 · **Fecha:** junio 2026 · **Estado:** en producción (beta privada)
-**Repos:** [Vloom02/Stockly-offline](https://github.com/Vloom02/Stockly-offline) · [Vloom02/almacen-ventas-final](https://github.com/Vloom02/almacen-ventas-final)
+**Repo:** [Vloom02/Stockly](https://github.com/Vloom02/Stockly)
+
+> **Octubre 2026:** Almacén Ventas se unió a Stockly. Es una sola app (pestaña **Vender**,
+> código en `src/ventas/`, migraciones en `supabase/ventas/`). Este documento conserva la
+> descripción original de las dos partes.
 
 ---
 

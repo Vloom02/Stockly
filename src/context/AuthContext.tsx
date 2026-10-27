@@ -8,12 +8,17 @@ interface AuthContextValue {
   session: Session | null;
   comercio: Comercio | null;
   miembro: Miembro | null;
-  /** true salvo para empleados. Sin miembro cargado (offline) no se recorta nada. */
+  /** true salvo para empleados o mientras un cajero tiene el turno en este dispositivo.
+   *  Sin miembro cargado (offline) no se recorta nada. */
   esDueno: boolean;
+  /** Cajero (no el dueño) con el turno abierto con PIN en este dispositivo; lo avisa EmpleadoProvider.
+   *  Lo que hace queda a su nombre en el historial. */
+  cajeroEnTurno: string | null;
+  setCajeroEnTurno: (nombre: string | null) => void;
   /** Desarrollador / soporte de la plataforma (tabla plataforma_admins). */
   esAdminPlataforma: boolean;
   cargando: boolean;
-  registrarse: (email: string, password: string, nombre: string, nombreComercio: string, codigoInvitacion?: string) => Promise<{ error?: string }>;
+  registrarse: (email: string, password: string, nombre: string, nombreComercio: string) => Promise<{ error?: string }>;
   iniciarSesion: (email: string, password: string) => Promise<{ error?: string }>;
   cerrarSesion: () => Promise<void>;
   recargarComercio: () => void;
@@ -28,6 +33,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [esAdminPlataforma, setEsAdminPlataforma] = useState(false);
   const adminConsultadoPara = useRef<string | null>(null); // es_admin_plataforma: una vez por usuario
   const [cargando, setCargando] = useState(true);
+  const [cajeroEnTurno, setCajeroEnTurno] = useState<string | null>(null);
 
   // Cargar comercio + membresía del usuario logueado
   const cargarDatosUsuario = async (userId: string) => {
@@ -136,26 +142,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, []);
 
-  const registrarse = async (email: string, password: string, nombre: string, nombreComercio: string, codigoInvitacion?: string) => {
-    const codigo = (codigoInvitacion ?? '').trim().toUpperCase();
-
-    // Con código: validar ANTES de crear la cuenta, así un código vencido no
-    // termina creando un comercio propio por accidente.
-    if (codigo) {
-      const { data, error: e } = await supabase.rpc('validar_invitacion', { p: { codigo } });
-      if (e || !(data as { ok?: boolean })?.ok) {
-        return { error: 'El código de invitación no es válido o ya venció. Pedile uno nuevo al dueño.' };
-      }
-    }
-
+  const registrarse = async (email: string, password: string, nombre: string, nombreComercio: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: codigo
-          ? { nombre, codigo_invitacion: codigo }
-          : { nombre, nombre_comercio: nombreComercio },
-      },
+      options: { data: { nombre, nombre_comercio: nombreComercio } },
     });
     if (error) return { error: traducirError(error.message) };
     return {};
@@ -180,7 +171,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Intentar signOut en la nube, pero sin bloquear si no hay internet
     try {
       await Promise.race([
-        supabase.auth.signOut(),
+        // Solo ESTE dispositivo: la misma cuenta puede estar abierta en el celular y en la tablet.
+        supabase.auth.signOut({ scope: 'local' }),
         new Promise((resolve) => setTimeout(resolve, 4000)),
       ]);
     } catch { /* */ }
@@ -200,7 +192,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   return (
     <AuthContext.Provider value={{
-      session, comercio, miembro, esDueno: miembro?.rol !== 'empleado', esAdminPlataforma, cargando,
+      session, comercio, miembro, esDueno: miembro?.rol !== 'empleado' && !cajeroEnTurno, cajeroEnTurno, setCajeroEnTurno,
+      esAdminPlataforma, cargando,
       registrarse, iniciarSesion, cerrarSesion, recargarComercio,
     }}>
       {children}

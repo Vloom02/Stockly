@@ -22,14 +22,14 @@ const Card: React.FC<CardProps> = ({
   const isClickable = !!onClick || interactive;
 
   const variants: Record<string, React.CSSProperties> = {
+    // "Tacto": tarjeta blanca que sobresale con sombra suave, sin borde.
     default: {
       background: 'var(--surface)',
-      border: '1px solid var(--border)',
-      boxShadow: 'var(--shadow-xs)',
+      boxShadow: 'var(--shadow-md)',
     },
     elevated: {
       background: 'var(--surface)',
-      boxShadow: 'var(--shadow-md)',
+      boxShadow: 'var(--shadow-lg)',
     },
     outlined: {
       background: 'transparent',
@@ -42,9 +42,8 @@ const Card: React.FC<CardProps> = ({
 
   const baseStyle: React.CSSProperties = {
     ...variants[variant],
-    borderRadius: 'var(--radius-md)',
+    borderRadius: 'var(--radius-lg)',
     padding: PAD[padding],
-    transition: 'transform 150ms, box-shadow 150ms, border-color 150ms',
     cursor: isClickable ? 'pointer' : 'default',
     width: '100%',
     textAlign: 'left',
@@ -55,26 +54,12 @@ const Card: React.FC<CardProps> = ({
 
   if (onClick) {
     return (
+      // Al tocarla se hunde apenas (.tarjeta-tocable, theme/motion.css).
       <button
         type="button"
         onClick={onClick}
-        style={baseStyle}
-        onMouseEnter={(e) => {
-          if (variant === 'default' || variant === 'outlined') {
-            e.currentTarget.style.borderColor = 'var(--border-strong)';
-          }
-          if (variant === 'elevated') {
-            e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
-          }
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = variants[variant].border as string || 'transparent';
-          e.currentTarget.style.boxShadow = variants[variant].boxShadow as string || 'none';
-        }}
-        onMouseDown={(e) => {
-          e.currentTarget.style.transform = 'scale(0.99)';
-          setTimeout(() => { e.currentTarget.style.transform = ''; }, 150);
-        }}
+        className="tarjeta-tocable"
+        style={{ ...baseStyle, border: baseStyle.border ?? 'none' }}
       >
         {children}
       </button>

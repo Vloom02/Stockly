@@ -13,12 +13,14 @@ import { Input } from '../components/ui/Input';
 import { Header } from './ProductoPage';
 
 import { parseMonto } from '../lib/numeros';
+import { useLectorFisico } from '../lib/useLectorFisico';
 const AUMENTOS = [5, 10, 15, 20];
 
 const PreciosPage: React.FC = () => {
   const { state, updateProducto } = useStore();
   const history = useHistory();
   const [q, setQ] = useState('');
+  const lectorRef = useLectorFisico<HTMLIonContentElement>(setQ); // lector físico: busca el producto
   const [abierto, setAbierto] = useState<string | null>(null); // producto en edición
   const [nuevo, setNuevo] = useState('');                      // precio nuevo (texto)
   const [guardando, setGuardando] = useState(false);
@@ -50,7 +52,7 @@ const PreciosPage: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
+      <IonContent ref={lectorRef} style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
         <div style={{ padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px', maxWidth: 760, margin: '0 auto' }}>
           <Header title="Suba de precios" onBack={() => history.goBack()} />
           <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 14px', lineHeight: 1.5 }}>
@@ -99,15 +101,15 @@ const PreciosPage: React.FC = () => {
                           ))}
                         </div>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                          <input
+                          <input className="campo"
                             type="text" inputMode="decimal"
                             aria-label={`Nuevo precio de ${p.nombre}`}
                             value={nuevo} onChange={e => setNuevo(e.target.value)}
                             autoFocus
-                            style={{ flex: 1, padding: '11px 12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)', fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}
+                            style={{ flex: 1, padding: '11px 12px', borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}
                           />
-                          <button type="button" onClick={() => guardar(p.id!)} disabled={guardando} className="pressable"
-                            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '11px 18px', borderRadius: 'var(--radius)', border: 'none', background: 'var(--brand-500)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: guardando ? 0.6 : 1 }}>
+                          <button type="button" onClick={() => guardar(p.id!)} disabled={guardando} className="pressable boton-marca"
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '11px 18px', borderRadius: 'var(--radius)', border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: guardando ? 0.6 : 1 }}>
                             <CheckIcon width={16} height={16} /> Guardar
                           </button>
                         </div>
