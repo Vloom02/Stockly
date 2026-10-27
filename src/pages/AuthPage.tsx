@@ -19,7 +19,6 @@ const AuthPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [nombre, setNombre] = useState('');
   const [nombreComercio, setNombreComercio] = useState('');
-  const [codigoInv, setCodigoInv] = useState(''); // código de invitación (empleado)
   const [error, setError] = useState('');
   const [exito, setExito] = useState('');
   const [cargando, setCargando] = useState(false);
@@ -40,9 +39,8 @@ const AuthPage: React.FC = () => {
         if (error) { setError(error); haptic.warning(); }
         else haptic.success();
       } else {
-        const conCodigo = codigoInv.trim().length > 0;
-        if (!nombre.trim() || (!conCodigo && !nombreComercio.trim())) {
-          setError(conCodigo ? 'Completá tu nombre' : 'Completá tu nombre y el del comercio');
+        if (!nombre.trim() || !nombreComercio.trim()) {
+          setError('Completá tu nombre y el del comercio');
           setCargando(false);
           return;
         }
@@ -51,7 +49,7 @@ const AuthPage: React.FC = () => {
           setCargando(false);
           return;
         }
-        const { error } = await registrarse(email.trim(), password, nombre.trim(), nombreComercio.trim(), codigoInv.trim() || undefined);
+        const { error } = await registrarse(email.trim(), password, nombre.trim(), nombreComercio.trim());
         if (error) {
           setError(error);
           haptic.warning();
@@ -117,16 +115,10 @@ const AuthPage: React.FC = () => {
                   placeholder="Juan Pérez"
                   leftIcon={<UserIcon width={18} height={18} />} />
               </Field>
-              {!codigoInv.trim() && (
-                <Field label="Nombre del comercio">
-                  <Input value={nombreComercio} onChange={e => setNombreComercio(e.target.value)}
-                    placeholder="Almacén Don Juan"
-                    leftIcon={<BuildingStorefrontIcon width={18} height={18} />} />
-                </Field>
-              )}
-              <Field label="Código de invitación (opcional)" hint="Si el dueño te invitó, poné acá su código y te unís a su comercio como empleado.">
-                <Input value={codigoInv} onChange={e => setCodigoInv(e.target.value.toUpperCase())}
-                  placeholder="EJ: AB23CD45" autoCapitalize="characters" />
+              <Field label="Nombre del comercio">
+                <Input value={nombreComercio} onChange={e => setNombreComercio(e.target.value)}
+                  placeholder="Almacén Don Juan"
+                  leftIcon={<BuildingStorefrontIcon width={18} height={18} />} />
               </Field>
             </>
           )}

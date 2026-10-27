@@ -72,9 +72,9 @@ const CajerosPage: React.FC = () => {
   return (
     <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
       <div style={{ padding: 'var(--space-4)', maxWidth: 520, margin: '0 auto', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))' }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Empleados de caja</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Empleados</h1>
         <p style={{ fontSize: 16, color: 'var(--text-2)', marginBottom: 14, lineHeight: 1.5 }}>
-          Para empezar a vender, cada uno toca su nombre y pone su clave. Sus ventas quedan a su nombre.
+          Para usar la app, cada uno toca su nombre y pone su clave. Lo que vende queda a su nombre y no ve precios, reportes ni ajustes del dueño.
         </p>
 
         {/* Alta */}
@@ -96,14 +96,15 @@ const CajerosPage: React.FC = () => {
           ) : empleados.map((e, i) => {
             const activo = e.activo !== false;
             return (
-              <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: i < empleados.length - 1 ? '1px solid var(--border)' : 'none', opacity: activo ? 1 : 0.5 }}>
+              <div key={e.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: i < empleados.length - 1 ? '1px solid var(--border)' : 'none', opacity: activo ? 1 : 0.5 }}>
                 <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--surface-3)', color: 'var(--text-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><UserIcon size={22} /></div>
-                <div style={{ flex: 1, minWidth: 0 }}>
+                {/* El nombre necesita lugar: si no entra con los dos botones, estos bajan a otra línea. */}
+                <div style={{ flex: '1 1 140px', minWidth: 0 }}>
                   <div style={{ fontSize: 17, fontWeight: 600 }}>{e.nombre}</div>
                   <div style={{ fontSize: 14, color: 'var(--text-2)' }}>N° {e.legajo}{activo ? '' : ' · dado de baja'}</div>
                 </div>
                 <button type="button" onClick={() => setCambiandoClave(e)} className="pressable" aria-label={`Cambiar la clave de ${e.nombre}`}
-                  style={{ minHeight: 44, padding: '0 12px', display: 'flex', alignItems: 'center', gap: 6, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  style={{ minHeight: 44, padding: '0 12px', display: 'flex', alignItems: 'center', gap: 6, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                   <KeyIcon size={18} /> Clave
                 </button>
                 <button type="button" onClick={() => toggleActivo(e)} className="pressable"

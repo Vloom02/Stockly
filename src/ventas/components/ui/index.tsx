@@ -25,10 +25,9 @@ export const Button: React.FC<ButtonProps> = ({
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     gap: 8, fontFamily: 'var(--font-sans)', fontWeight: 600,
     border: 'none', borderRadius: 'var(--radius)', cursor: disabled||loading ? 'default' : 'pointer',
-    transition: 'all var(--transition-fast)', outline: 'none',
+    outline: 'none',
     width: fullWidth ? '100%' : undefined,
     opacity: disabled ? .45 : 1,
-    transform: 'scale(1)',
     WebkitTapHighlightColor: 'transparent',
   };
   const sizes: Record<BtnSize, React.CSSProperties> = {
@@ -38,15 +37,16 @@ export const Button: React.FC<ButtonProps> = ({
     lg: { padding: '16px 22px', fontSize: 18, minHeight: 56 },
   };
   const variants: Record<BtnVariant, React.CSSProperties> = {
-    primary:   { background: 'var(--color-primary)',     color: 'var(--text-on-brand)' }, // blanco sobre el violeta de marca: 4.8:1
-    secondary: { background: 'var(--surface-2)',         color: 'var(--text)',   border: '1px solid var(--border)' },
+    primary:   {},   // .boton-marca (relieve, baja como una tecla)
+    secondary: {},   // .boton-blanco
     ghost:     { background: 'transparent',              color: 'var(--text-2)', border: '1px solid var(--border)' },
-    danger:    { background: 'var(--color-danger)',      color: '#fff' },
-    success:   { background: 'var(--color-primary)',     color: 'var(--text-on-brand)' },
+    danger:    {},   // .boton-peligro
+    success:   {},   // .boton-marca
   };
+  const relieve: Partial<Record<BtnVariant, string>> = { primary: 'boton-marca', success: 'boton-marca', secondary: 'boton-blanco', danger: 'boton-peligro' };
   return (
     <button type={type} onClick={!disabled&&!loading ? onClick : undefined} disabled={disabled}
-      className={className ? `pressable ${className}` : 'pressable'}
+      className={['pressable', relieve[variant], className].filter(Boolean).join(' ')}
       style={{ ...base, ...sizes[size], ...variants[variant], ...style }}>
       {loading
         ? <span style={{ width:16, height:16, border:'2px solid rgba(255,255,255,.4)', borderTopColor:'#fff', borderRadius:'50%', animation:'spin .6s linear infinite' }} />
@@ -66,10 +66,11 @@ interface CardProps {
 
 export const Card: React.FC<CardProps> = ({ children, variant='default', onClick, style, className }) => {
   const variants: Record<string, React.CSSProperties> = {
-    default:   { background:'var(--surface)',   border:'1px solid var(--border)', boxShadow:'var(--shadow-sm)' },
-    bordered:  { background:'var(--surface)',   border:'1.5px solid var(--border)' },
+    // "Tacto": tarjetas blancas que sobresalen con sombra suave, sin borde.
+    default:   { background:'var(--surface)',   boxShadow:'var(--shadow-md)' },
+    bordered:  { background:'var(--surface)',   boxShadow:'var(--shadow-sm)' },
     flat:      { background:'var(--surface-2)', border:'none' },
-    pressable: { background:'var(--surface)',   border:'1px solid var(--border)', cursor:'pointer' },
+    pressable: { background:'var(--surface)',   boxShadow:'var(--shadow-sm)', cursor:'pointer' },
   };
   return (
     <div onClick={onClick} className={`${variant==='pressable'?'pressable':''} ${className||''}`}
@@ -102,7 +103,6 @@ export const Input: React.FC<InputProps> = ({
   label, hint, error, value, onChange, placeholder, type='text',
   maxLength, disabled, autoFocus, mono, inputMode, style, onEnter,
 }) => {
-  const [focused, setFocused] = useState(false);
   return (
     <div style={{ display:'flex', flexDirection:'column', gap: 4, marginBottom: 12 }}>
       {label && <label style={{ fontSize:15, fontWeight:600, color:'var(--text-2)' }}>{label}</label>}
@@ -111,15 +111,13 @@ export const Input: React.FC<InputProps> = ({
         placeholder={placeholder} maxLength={maxLength} disabled={disabled} autoFocus={autoFocus}
         inputMode={inputMode}
         onKeyDown={onEnter ? (e => { if (e.key === 'Enter') onEnter(); }) : undefined}
-        onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+        // Hundido y aro al enfocar: clase .campo (theme/motion.css).
+        className="campo"
         style={{
-          width:'100%', padding:'12px 14px', fontSize:17, minHeight: 48,
+          width:'100%', padding:'12px 14px', fontSize:17, fontWeight: 600, minHeight: 52,
           fontFamily: mono ? 'var(--font-mono)' : 'var(--font-sans)',
-          background: 'var(--surface)', color: 'var(--text)',
-          border: `1.5px solid ${error ? 'var(--color-danger)' : focused ? 'var(--color-primary)' : 'var(--border)'}`,
-          borderRadius: 'var(--radius)', outline: 'none',
-          boxShadow: focused && !error ? '0 0 0 3px var(--color-primary-bg)' : 'none',
-          transition: 'border-color var(--transition-fast), box-shadow var(--transition-fast)',
+          color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none',
+          ...(error ? { borderColor: 'var(--color-danger)' } : {}),
           opacity: disabled ? .5 : 1,
           ...style,
         }}
@@ -143,8 +141,8 @@ interface SelectProps {
 export const Select: React.FC<SelectProps> = ({ label, value, onChange, options, placeholder, style }) => (
   <div style={{ marginBottom: 12 }}>
     {label && <label style={{ display:'block', fontSize:13, fontWeight:500, color:'var(--text-2)', marginBottom:4 }}>{label}</label>}
-    <select value={value} onChange={e => onChange(e.target.value)}
-      style={{ width:'100%', padding:'10px 14px', fontSize:15, fontFamily:'var(--font-sans)', background:'var(--surface)', color: value ? 'var(--text)' : 'var(--text-3)', border:'1.5px solid var(--border)', borderRadius:'var(--radius)', outline:'none', ...style }}>
+    <select className="campo" value={value} onChange={e => onChange(e.target.value)}
+      style={{ width:'100%', padding:'12px 14px', fontSize:17, fontWeight:600, minHeight:52, fontFamily:'var(--font-sans)', color: value ? 'var(--text)' : 'var(--text-3)', borderRadius:'var(--radius)', outline:'none', ...style }}>
       {placeholder && <option value="">{placeholder}</option>}
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
@@ -194,7 +192,7 @@ export const Skeleton: React.FC<{ width?: string|number; height?: number; radius
 );
 
 export const SkeletonCard: React.FC = () => (
-  <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)', padding:14, marginBottom:7 }}>
+  <div style={{ background:'var(--surface)', boxShadow:'var(--shadow-sm)', borderRadius:'var(--radius-lg)', padding:14, marginBottom:7 }}>
     <div style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
       <div style={{ flex:1 }}>
         <Skeleton width="60%" height={16} style={{ marginBottom:8 }} />
@@ -232,45 +230,19 @@ export const Divider: React.FC<{ style?: React.CSSProperties }> = ({ style }) =>
 
 // ─── Section title ────────────────────────────────────────────────────────────
 export const SectionTitle: React.FC<{ children: ReactNode }> = ({ children }) => (
-  <h3 style={{ fontSize: 13, fontWeight:600, color:'var(--text-2)', textTransform:'uppercase', letterSpacing:'.6px', marginBottom:10 }}>
+  <h3 style={{ fontSize: 16, fontWeight:800, color:'var(--text-2)', marginBottom:10 }}>
     {children}
   </h3>
 );
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
 export const StatCard: React.FC<{ label: string; value: ReactNode; color?: string }> = ({ label, value, color }) => (
-  <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius)', padding:'10px 12px' }}>
+  <div style={{ background:'var(--surface)', boxShadow:'var(--shadow-md)', borderRadius:'var(--radius-lg)', padding:'12px 14px' }}>
     <div style={{ fontSize: 13, color:'var(--text-2)', marginBottom:3 }}>{label}</div>
     <div style={{ fontSize:20, fontWeight:700, color: color || 'var(--text)' }}>{value}</div>
   </div>
 );
 
-// ─── Opciones grandes ────────────────────────────────────────────────
-// Reemplaza al desplegable (<select>): para gente mayor los desplegables y
-// selectores chicos son de lo más difícil en pantallas táctiles (NN/g).
-// Botones de 48 px mínimo, todos a la vista, el elegido bien marcado.
-export interface Opcion { valor: string; etiqueta: string }
-
-export const Opciones: React.FC<{
-  opciones: Opcion[]; valor: string; onChange: (v: string) => void;
-  columnas?: number; etiqueta?: string;
-}> = ({ opciones, valor, onChange, columnas = 2, etiqueta }) => (
-  <div role="radiogroup" aria-label={etiqueta}
-    style={{ display: 'grid', gridTemplateColumns: `repeat(${columnas}, minmax(0, 1fr))`, gap: 8 }}>
-    {opciones.map((o, i) => {
-      const sel = o.valor === valor;
-      return (
-        <button key={o.valor} type="button" role="radio" aria-checked={sel} onClick={() => onChange(o.valor)}
-          className="pressable anim-entrar" style={{
-            '--i': i, minHeight: 48, padding: '8px 10px', borderRadius: 'var(--radius)',
-            border: sel ? '3px solid var(--color-primary)' : '1.5px solid var(--border)',
-            background: sel ? 'var(--color-primary-bg)' : 'var(--surface)', color: 'var(--text)',
-            fontSize: 16, fontWeight: sel ? 700 : 600, cursor: 'pointer', fontFamily: 'inherit',
-            overflowWrap: 'anywhere',
-          } as React.CSSProperties}>
-          {o.etiqueta}
-        </button>
-      );
-    })}
-  </div>
-);
+// ─── Opciones grandes: las mismas de Stockly (un solo estilo en toda la app) ───
+export { Opciones } from '../../../components/ui/Input';
+export type { Opcion } from '../../../components/ui/Input';

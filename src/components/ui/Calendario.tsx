@@ -128,7 +128,7 @@ const CalendarioVencimientos: React.FC<CalendarioProps> = ({ vencimientos, onDia
 };
 
 const navBtn: React.CSSProperties = {
-  width: 32, height: 32, borderRadius: 'var(--radius)',
+  width: 44, height: 44, borderRadius: 'var(--radius)',
   background: 'var(--surface-2)', border: 'none',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   cursor: 'pointer', color: 'var(--text)',

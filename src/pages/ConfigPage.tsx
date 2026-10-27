@@ -7,6 +7,7 @@ import {
   BuildingStorefrontIcon, ArrowRightOnRectangleIcon, PrinterIcon, ClipboardDocumentCheckIcon, UserGroupIcon,
   InformationCircleIcon, ChevronRightIcon, UserCircleIcon,
   ArrowDownTrayIcon, ArrowUpTrayIcon, SwatchIcon, CloudIcon, BanknotesIcon, ClockIcon, CurrencyDollarIcon, ClipboardDocumentListIcon, ShoppingCartIcon, ChartBarIcon,
+  DocumentChartBarIcon,
 } from '@heroicons/react/24/outline';
 import {
   useStore, setSetting,
@@ -18,6 +19,7 @@ import { aplicarEscalaFont, guardarEscalaFont, obtenerEscalaFont } from '../lib/
 import { notificacionesActivas, setNotificacionesActivas, horaNotificacion, setHoraNotificacion, sincronizarNotificaciones } from '../lib/notificaciones';
 import { stockACSV, movimientosACSV } from '../lib/exportar';
 import { useAuth } from '../context/AuthContext';
+import { useEmpleado } from '../ventas/context/EmpleadoContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { Field, Input, Textarea, Opciones } from '../components/ui/Input';
@@ -29,6 +31,7 @@ interface Props { onThemeToggle: () => void; isDark: boolean; }
 const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
   const { state, exportarBackup, importarBackup, estadoNube, sincronizarAhora, sincronizando, reintentarFallidos, lotesEnriquecidos } = useStore();
   const { comercio, miembro, esDueno, esAdminPlataforma, cerrarSesion } = useAuth();
+  const { cajero, cerrarTurno } = useEmpleado();
   const history = useHistory();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -187,15 +190,16 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
 
           {/* Herramientas — acceso directo a las pantallas más usadas */}
           <SectionTitle icon={<SwatchIcon width={16} height={16} />}>Herramientas</SectionTitle>
-          <div className="lista-animada" style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', background: 'var(--surface)', overflow: 'hidden', marginBottom: 18 }}>
+          <div className="lista-animada" style={{ borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', overflow: 'hidden', marginBottom: 18 }}>
             {[
+              { Icon: DocumentChartBarIcon, label: 'Resúmenes',             desc: 'Ventas y mercadería, Excel e imprimir', path: '/resumenes', soloDueno: true },
               { Icon: ClockIcon,          label: 'Historial',               desc: 'Todo lo que entró y salió',        path: '/movimientos' },
               { Icon: CurrencyDollarIcon, label: 'Cambiar precios',         desc: 'Subir precios de a uno',           path: '/precios', soloDueno: true },
               { Icon: ClipboardDocumentListIcon, label: 'Contar la mercadería', desc: 'Corregir lo que hay en góndola', path: '/inventario' },
               { Icon: ShoppingCartIcon,   label: 'Qué tengo que comprar',   desc: 'Lista para el proveedor',          path: '/pedido' },
               { Icon: ChartBarIcon,       label: 'Reportes y pérdidas',     desc: 'Cuánto se venció este mes',        path: '/reportes', soloDueno: true },
               { Icon: TagIcon,            label: 'Etiquetas de precio',     desc: 'Para imprimir y pegar',            path: '/etiquetas' },
-              { Icon: UserGroupIcon,      label: 'Empleados',               desc: 'Invitar o dar de baja',            path: '/empleados', soloDueno: true },
+              { Icon: UserGroupIcon,      label: 'Empleados',               desc: 'Nombre y PIN de cada uno',         path: '/ventas/cajeros', soloDueno: true },
               { Icon: BuildingStorefrontIcon, label: 'Locales',             desc: 'Si tenés más de un negocio',       path: '/sucursales', soloDueno: true },
             ].filter(t => esDueno || !('soloDueno' in t)).map((t, i) => (
               <button key={t.path} type="button" onClick={() => history.push(t.path)} className="pressable"
@@ -468,12 +472,22 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           {/* (Sucursales, Empleados, Inventario y Etiquetas ahora están en la
               grilla "Herramientas" de arriba.) */}
 
-          {/* Cerrar sesión */}
+          {/* Turno con PIN: al terminarlo, la tablet vuelve a "¿Quién va a atender?" */}
+          {cajero && (
+            <Button variant="secondary" size="md" fullWidth onClick={cerrarTurno} style={{ marginBottom: 8 }}
+              icon={<ArrowRightOnRectangleIcon width={18} height={18} />}>
+              Terminar mi turno ({cajero.nombre})
+            </Button>
+          )}
+
+          {/* Cerrar sesión: no para cajeros (dejaría la tablet del local sin la cuenta del dueño) */}
+          {!(cajero && !cajero.admin) && (
           <Button variant="ghost" size="md" fullWidth onClick={salir}
             icon={<ArrowRightOnRectangleIcon width={18} height={18} />}
             style={{ color: 'var(--danger)' }}>
             Cerrar sesión
           </Button>
+          )}
 
           <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-3)', marginTop: 20 }}>
             Stockly v1.0 · Datos en la nube
@@ -496,7 +510,7 @@ const SectionTitle: React.FC<{ icon: React.ReactNode; children: React.ReactNode 
 const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
   <div style={{ textAlign: 'center' }}>
     <div style={{ fontFamily: 'var(--font-display)', fontSize: 21, fontWeight: 800, letterSpacing: '-0.02em' }}>{value}</div>
-    <div style={{ fontSize: 13, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{label}</div>
+    <div style={{ fontSize: 13, color: 'var(--text-2)', }}>{label}</div>
   </div>
 );
 const UmbralField: React.FC<{ nivel: string; label: string; value: string; onChange: (v: string) => void }> =

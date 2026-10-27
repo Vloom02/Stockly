@@ -12,16 +12,10 @@ import { listaReposicion, reposicionATexto, MotivoReposicion } from '../lib/repo
 import { compartirTexto } from '../lib/compartir';
 import Card from '../components/ui/Card';
 import EmptyState from '../components/ui/EmptyState';
-import DonutChart from '../components/ui/DonutChart';
 import BarChart from '../components/ui/BarChart';
 import CalendarioVencimientos from '../components/ui/Calendario';
 import { Header } from './ProductoPage';
 
-// Paleta cálida editorial para la dona de categorías
-const PALETA = [
-  '#d8a43e', '#4fa89e', '#d07a4a', '#9aa84f', '#c46a8e',
-  '#5b8fb0', '#cf5d4e', '#8a7bbd', '#7fa05a', '#caa05a',
-];
 
 const ReportesPage: React.FC = () => {
   const { state, perdidasPorMes, distribucionPorCategoria, vencimientosDelMes, resumen, productosConLotes } = useStore();
@@ -40,12 +34,13 @@ const ReportesPage: React.FC = () => {
     [perdidas]
   );
 
-  const segmentosDonut = useMemo(() =>
-    distribucion.slice(0, 10).map((d, i) => ({
-      label: d.categoria,
-      valor: d.valor,
-      color: PALETA[i % PALETA.length],
-    })), [distribucion]);
+  // Barras con nombre y valor al lado (antes una dona con leyenda de colores: emparejar
+  // 8–10 colores con la leyenda es lo que más cuesta con el cristalino amarillento).
+  const barrasCategorias = useMemo(() => {
+    const top = distribucion.slice(0, 6);
+    const resto = distribucion.slice(6).reduce((s, d) => s + d.valor, 0);
+    return resto > 0 ? [...top, { categoria: 'Otras', valor: resto }] : top;
+  }, [distribucion]);
 
   const lotesDelDia = useMemo(() => {
     if (!diaSeleccionado) return [];
@@ -84,31 +79,25 @@ const ReportesPage: React.FC = () => {
                     No hay stock cargado en esta sucursal
                   </p>
                 ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-                    <DonutChart
-                      segmentos={segmentosDonut}
-                      centroValor={formatearMoneda(res.valorTotal)}
-                      centroLabel="Total"
-                    />
-                    <div style={{ flex: 1, minWidth: 160, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {distribucion.slice(0, 6).map((d, i) => {
-                        const pct = res.valorTotal > 0 ? (d.valor / res.valorTotal) * 100 : 0;
-                        return (
-                          <div key={d.categoria} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{
-                              width: 10, height: 10, borderRadius: 3,
-                              background: PALETA[i % PALETA.length], flexShrink: 0,
-                            }} />
-                            <span style={{ fontSize: 13, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {d.categoria}
-                            </span>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>
-                              {pct.toFixed(0)}%
-                            </span>
-                          </div>
-                        );
-                      })}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-2)' }}>
+                      Total <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', marginLeft: 6 }}>{formatearMoneda(res.valorTotal)}</span>
                     </div>
+                    {barrasCategorias.map((d, i) => {
+                      const pct = res.valorTotal > 0 ? (d.valor / res.valorTotal) * 100 : 0;
+                      return (
+                        <div key={d.categoria} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                            <span style={{ fontSize: 16, fontWeight: 700, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.categoria}</span>
+                            <span style={{ fontSize: 16, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{formatearMoneda(d.valor)}</span>
+                            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-2)', minWidth: 40, textAlign: 'right' }}>{pct.toFixed(0)}%</span>
+                          </div>
+                          <div style={{ height: 12, borderRadius: 999, background: 'var(--surface-3)', boxShadow: 'var(--hundido)', overflow: 'hidden' }}>
+                            <div className="anim-crecer" style={{ '--i': i, width: `${Math.max(pct, 1.5)}%`, height: '100%', borderRadius: 999, background: d.categoria === 'Otras' ? 'var(--text-3)' : 'var(--boton-marca)' } as React.CSSProperties} />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </Card>
@@ -121,7 +110,7 @@ const ReportesPage: React.FC = () => {
                   marginBottom: 16,
                 }}>
                   <div>
-                    <div style={{ fontSize: 13, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-2)', }}>
                       Total últimos 6 meses
                     </div>
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, color: 'var(--level-vencido-fg)', letterSpacing: '-0.02em' }}>
@@ -156,7 +145,7 @@ const ReportesPage: React.FC = () => {
               <Card padding="md" style={{ marginBottom: 16 }}>
                 {reposicion.length === 0 ? (
                   <p style={{ textAlign: 'center', color: 'var(--brand-600)', padding: 16, margin: 0, fontSize: 13, fontWeight: 500 }}>
-                    Nada para reponer por ahora. 👍
+                    Nada para reponer por ahora.
                   </p>
                 ) : (
                   <>
@@ -166,7 +155,7 @@ const ReportesPage: React.FC = () => {
                         type="button"
                         onClick={() => compartirTexto(reposicionATexto(reposicion), 'Lista de reposición')}
                         className="pressable"
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--brand-50)', color: 'var(--brand-700)', border: '1px solid var(--brand-200)', borderRadius: 'var(--radius)', padding: '6px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--brand-50)', color: 'var(--brand-700)', border: '1px solid var(--brand-200)', borderRadius: 'var(--radius)', padding: '6px 14px', minHeight: 44, fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                         <ShareIcon width={15} height={15} /> Compartir
                       </button>
                     </div>
@@ -224,7 +213,7 @@ const ReportesPage: React.FC = () => {
 const SectionHeader: React.FC<{ icon: React.ReactNode; title: string }> = ({ icon, title }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 11 }}>
     <span style={{ color: 'var(--brand-600)', display: 'flex' }}>{icon}</span>
-    <h2 style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontWeight: 700, fontSize: 18, margin: 0, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>{title}</h2>
+    <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, margin: 0, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>{title}</h2>
     <span style={{ flex: 1, height: 0, borderTop: '1px solid var(--border)' }} />
   </div>
 );

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Camera } from '@capacitor/camera';
+import { CameraIcon as IcoCameraIcon } from '@heroicons/react/24/outline';
 
 interface Props {
   onCodigoDetectado: (codigo: string) => void;
@@ -136,7 +137,7 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
             fontSize: 15,
             cursor: 'pointer',
           }}
-        >✕ Cancelar</button>
+        >Cancelar</button>
         <span style={{ color: '#fff', fontWeight: 600 }}>Escanear código</span>
         <div style={{ width: 90 }} />
       </div>
@@ -180,7 +181,7 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
             height: '100%',
             textAlign: 'center',
           }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>📷</div>
+            <div style={{ marginBottom: 16, color: 'var(--marca-texto)', display: 'flex', justifyContent: 'center' }}><IcoCameraIcon width={56} height={56} /></div>
             <div style={{ fontSize: 16, marginBottom: 8 }}>
               {error || 'Tu navegador no soporta el escaneo automático'}
             </div>
@@ -189,7 +190,7 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
                 ? 'Activá el permiso de cámara desde Ajustes de Android → Aplicaciones → Stockly → Permisos. Mientras tanto, podés ingresar el código manualmente.'
                 : 'Podés ingresar el código manualmente o instalar la app en tu celular para usar el escáner nativo'}
             </div>
-            <input
+            <input className="campo"
               type="text"
               inputMode="numeric"
               placeholder="Ingresar código manual"
@@ -202,7 +203,6 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
                 fontSize: 16,
                 borderRadius: 10,
                 border: '1px solid rgba(255,255,255,0.3)',
-                background: 'rgba(255,255,255,0.1)',
                 color: '#fff',
                 outline: 'none',
                 textAlign: 'center',

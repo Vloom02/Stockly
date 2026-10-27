@@ -9,11 +9,13 @@ import { ClipboardDocumentCheckIcon, MagnifyingGlassIcon } from '@heroicons/reac
 import { useStore, formatearFecha } from '../context/StoreContext';
 import EmptyState from '../components/ui/EmptyState';
 import { Header } from './ProductoPage';
+import { useLectorFisico } from '../lib/useLectorFisico';
 
 const InventarioPage: React.FC = () => {
   const { lotesEnriquecidos, updateLote } = useStore();
   const history = useHistory();
   const [q, setQ] = useState('');
+  const lectorRef = useLectorFisico<HTMLIonContentElement>(setQ); // lector físico: busca el producto
   const [conteo, setConteo] = useState<Record<string, string>>({});
   const [guardando, setGuardando] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: '' });
@@ -46,7 +48,7 @@ const InventarioPage: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
+      <IonContent ref={lectorRef} style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
         <div style={{ padding: '20px 16px calc(120px + var(--sab,env(safe-area-inset-bottom))) 16px', maxWidth: 760, margin: '0 auto' }}>
           <Header title="Inventario físico" onBack={() => history.goBack()} />
           <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 14px', lineHeight: 1.5 }}>
@@ -55,9 +57,9 @@ const InventarioPage: React.FC = () => {
 
           <div style={{ position: 'relative', marginBottom: 14 }}>
             <MagnifyingGlassIcon width={16} height={16} style={{ position: 'absolute', left: 10, top: 11, color: 'var(--text-3)' }} />
-            <input
+            <input className="campo"
               value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar producto…" aria-label="Buscar producto"
-              style={{ width: '100%', padding: '9px 12px 9px 32px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontFamily: 'inherit', fontSize: 14 }}
+              style={{ width: '100%', padding: '9px 12px 9px 32px', borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'inherit', fontSize: 14 }}
             />
           </div>
 
@@ -79,12 +81,12 @@ const InventarioPage: React.FC = () => {
                         {diff > 0 ? '+' : ''}{diff}
                       </span>
                     )}
-                    <input
+                    <input className="campo"
                       type="number" inputMode="numeric" min={0}
                       aria-label={`Cantidad real de ${l.productoNombre}`}
                       value={real ?? ''} placeholder={String(l.cantidad)}
                       onChange={e => setConteo(c => ({ ...c, [l.id!]: e.target.value }))}
-                      style={{ width: 62, textAlign: 'center', padding: '8px 6px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700 }}
+                      style={{ width: 62, textAlign: 'center', padding: '8px 6px', borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700 }}
                     />
                   </div>
                 );
@@ -97,8 +99,8 @@ const InventarioPage: React.FC = () => {
         {diferencias.length > 0 && (
           <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, padding: '12px 16px calc(12px + var(--sab,env(safe-area-inset-bottom)))', background: 'var(--surface)', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, maxWidth: 760, margin: '0 auto' }}>
             <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{diferencias.length} con diferencia</span>
-            <button type="button" onClick={aplicar} disabled={guardando} className="pressable"
-              style={{ background: 'var(--brand-500)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', padding: '11px 20px', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: guardando ? 0.6 : 1 }}>
+            <button type="button" onClick={aplicar} disabled={guardando} className="pressable boton-marca"
+              style={{ border: 'none', borderRadius: 'var(--radius)', padding: '11px 20px', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: guardando ? 0.6 : 1 }}>
               {guardando ? 'Ajustando…' : 'Aplicar ajustes'}
             </button>
           </div>

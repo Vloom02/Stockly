@@ -17,7 +17,7 @@ interface VentaRow { total: number; metodo_pago: string; fiado: boolean; }
 interface CajaMov { tipo: 'apertura' | 'ingreso' | 'egreso'; monto: number; }
 
 const metodoLabel = (k: string) =>
-  ({ efectivo: '💵 Efectivo', transferencia: '📱 Transferencia', tarjeta: '💳 Tarjeta', qr: '📲 QR' } as Record<string, string>)[k] ?? k;
+  ({ efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta', qr: 'QR' } as Record<string, string>)[k] ?? k;
 
 const CajeroCierrePage: React.FC = () => {
   const history = useHistory();
@@ -97,8 +97,7 @@ const CajeroCierrePage: React.FC = () => {
   };
 
   const inputStyle: React.CSSProperties = {
-    width: '100%', padding: 12, fontSize: 18, textAlign: 'center', fontFamily: 'var(--font-mono)',
-    background: 'var(--surface)', color: 'var(--text)', border: '1.5px solid var(--border)',
+    width: '100%', padding: 12, fontSize: 18, textAlign: 'center', fontFamily: 'var(--font-mono)', color: 'var(--text)',
     borderRadius: 'var(--radius)', outline: 'none',
   };
 
@@ -138,13 +137,13 @@ const CajeroCierrePage: React.FC = () => {
 
               {aperturaMov ? (
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 8 }}>
-                  <span style={{ color: 'var(--text-2)' }}>🔓 Apertura (fondo)</span>
+                  <span style={{ color: 'var(--text-2)' }}>Apertura (fondo)</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{formatMoney(fondoNum)}</span>
                 </div>
               ) : (
                 <>
                   <label style={{ fontSize: 13, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Fondo inicial (lo que había al empezar)</label>
-                  <input type="text" inputMode="decimal" value={fondo} onChange={e => setFondo(e.target.value)} placeholder="0" style={{ ...inputStyle, marginBottom: 12 }} />
+                  <input className="campo" type="text" inputMode="decimal" value={fondo} onChange={e => setFondo(e.target.value)} placeholder="0" style={{ ...inputStyle, marginBottom: 12 }} />
                 </>
               )}
 
@@ -170,7 +169,7 @@ const CajeroCierrePage: React.FC = () => {
               </div>
 
               <label style={{ fontSize: 13, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Efectivo contado</label>
-              <input type="text" inputMode="decimal" value={contado} onChange={e => setContado(e.target.value)} placeholder="0.00" style={inputStyle} />
+              <input className="campo" type="text" inputMode="decimal" value={contado} onChange={e => setContado(e.target.value)} placeholder="0.00" style={inputStyle} />
 
               {diferencia !== null && (
                 <div style={{
@@ -180,7 +179,7 @@ const CajeroCierrePage: React.FC = () => {
                   fontWeight: 600, fontSize: 14,
                   color: Math.abs(diferencia) < 0.01 ? 'var(--color-primary-dark)' : diferencia > 0 ? 'var(--color-info-dark)' : 'var(--color-danger-dark)',
                 }}>
-                  {Math.abs(diferencia) < 0.01 ? '✅ La caja cuadra' : diferencia > 0 ? `Sobran ${formatMoney(diferencia)}` : `Faltan ${formatMoney(Math.abs(diferencia))}`}
+                  {Math.abs(diferencia) < 0.01 ? 'La caja cuadra' : diferencia > 0 ? `Sobran ${formatMoney(diferencia)}` : `Faltan ${formatMoney(Math.abs(diferencia))}`}
                 </div>
               )}
             </Card>

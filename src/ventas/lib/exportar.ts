@@ -13,7 +13,7 @@ export interface VentaExport {
   descuento?: number;
 }
 
-const METODOS: Record<string, string> = {
+export const METODOS: Record<string, string> = {
   efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta', qr: 'QR',
 };
 

@@ -59,7 +59,7 @@ const CajeroGate: React.FC = () => {
   return (
     <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
       <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-6)', paddingTop: 'calc(var(--space-6) + var(--ion-safe-area-top, 0px))' }}>
-        <h1 className="anim-pop" style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.01em', textAlign: 'center' }}>¿Quién va a vender?</h1>
+        <h1 className="anim-pop" style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.01em', textAlign: 'center' }}>¿Quién va a atender?</h1>
         <p style={{ fontSize: 16, color: 'var(--text-2)', marginBottom: 'var(--space-5)', textAlign: 'center', maxWidth: 320, lineHeight: 1.5 }}>
           {comercio?.nombre ?? 'El comercio'} — tocá tu nombre.
         </p>
@@ -70,7 +70,7 @@ const CajeroGate: React.FC = () => {
               {activos.map(e => (
                 <button key={e.id} type="button" className="pressable"
                   onClick={() => { setElegido({ legajo: e.legajo, nombre: e.nombre }); setError(''); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 14, minHeight: 68, padding: '12px 16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', boxShadow: 'var(--shadow-sm)' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 14, minHeight: 68, padding: '12px 16px', borderRadius: 'var(--radius-lg)', border: 'none', background: 'var(--surface)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', boxShadow: 'var(--shadow-sm)' }}>
                   <span style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <UserIcon size={24} />
                   </span>
@@ -128,7 +128,7 @@ const CajeroGate: React.FC = () => {
       )}
       {elegido && !conLetras && (
         <button type="button" onClick={() => setConLetras(true)}
-          style={{ position: 'fixed', bottom: 'calc(16px + var(--sab, env(safe-area-inset-bottom)))', left: '50%', transform: 'translateX(-50%)', zIndex: 10001, minHeight: 48, padding: '0 18px', borderRadius: 'var(--radius-full)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-2)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+          style={{ position: 'fixed', bottom: 'calc(16px + var(--sab, env(safe-area-inset-bottom)))', left: '50%', transform: 'translateX(-50%)', zIndex: 10001, minHeight: 48, padding: '0 18px', borderRadius: 'var(--radius-full)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', color: 'var(--text-2)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
           Mi clave tiene letras
         </button>
       )}

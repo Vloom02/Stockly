@@ -9,14 +9,15 @@ import { IonModal } from '@ionic/react';
 import { openDB, getLocalSetting, setLocalSetting } from '../lib/outbox';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { BanknotesIcon as IcoBanknotesIcon, BookOpenIcon as IcoBookOpenIcon, CubeIcon as IcoCubeIcon, ShoppingCartIcon as IcoShoppingCartIcon } from '@heroicons/react/24/outline';
 
 const KEY = 'onboarding-ventas';
 
 const PASOS = [
-  { emoji: '🛒', titulo: 'Vendé en segundos', texto: 'Escaneá el código o buscá por nombre. Se arma el carrito y descontás stock con un toque.' },
-  { emoji: '📦', titulo: 'Stock siempre al día', texto: 'Cada venta descuenta la mercadería, empezando por lo que vence antes. La cargás una vez en Mercadería y ya queda para vender.' },
-  { emoji: '📒', titulo: 'Fiado bajo control', texto: 'Registrá ventas fiadas, cobrá de a poco y mandá recordatorios por WhatsApp desde Fiado.' },
-  { emoji: '🧾', titulo: 'Caja y reportes', texto: 'Cerrá la caja en cada turno contando la plata, y mirá cuánto vendiste en el Resumen del día.' },
+  { Icono: IcoShoppingCartIcon, titulo: 'Vendé en segundos', texto: 'Escaneá el código o buscá por nombre. Se arma el carrito y descontás stock con un toque.' },
+  { Icono: IcoCubeIcon, titulo: 'Stock siempre al día', texto: 'Cada venta descuenta la mercadería, empezando por lo que vence antes. La cargás una vez en Mercadería y ya queda para vender.' },
+  { Icono: IcoBookOpenIcon, titulo: 'Fiado bajo control', texto: 'Registrá ventas fiadas, cobrá de a poco y mandá recordatorios por WhatsApp desde Fiado.' },
+  { Icono: IcoBanknotesIcon, titulo: 'Caja y reportes', texto: 'Cerrá la caja en cada turno contando la plata, y mirá cuánto vendiste en el Resumen del día.' },
 ];
 
 const OnboardingVentas: React.FC = () => {
@@ -61,7 +62,7 @@ const OnboardingVentas: React.FC = () => {
       {/* Fondo y color explícitos: el modal no siempre hereda el tema → título ilegible */}
       <div style={{ padding: 'var(--space-6)', textAlign: 'center', display: 'flex', flexDirection: 'column', minHeight: 360, height: '100%', background: 'var(--bg)', color: 'var(--text)' }}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-          <div style={{ fontSize: 56, lineHeight: 1 }}>{paso.emoji}</div>
+          <div className="boton-marca" style={{ width: 88, height: 88, borderRadius: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}><paso.Icono width={48} height={48} /></div>
           <h2 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>{paso.titulo}</h2>
           <p style={{ fontSize: 15, color: 'var(--text-2)', lineHeight: 1.6, maxWidth: 320 }}>{paso.texto}</p>
         </div>
@@ -75,11 +76,11 @@ const OnboardingVentas: React.FC = () => {
 
         <div style={{ display: 'flex', gap: 10 }}>
           {!ultimo && (
-            <button onClick={cerrar} className="pressable" style={{ flex: 1, padding: 14, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text-2)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button onClick={cerrar} className="pressable" style={{ flex: 1, padding: 14, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text-2)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
               Saltar
             </button>
           )}
-          <button onClick={() => (ultimo ? cerrar() : setI(i + 1))} className="pressable" style={{ flex: ultimo ? 1 : 1.6, padding: 14, border: 'none', borderRadius: 'var(--radius)', background: 'var(--color-primary)', color: 'var(--text-on-brand)', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <button onClick={() => (ultimo ? cerrar() : setI(i + 1))} className="pressable boton-marca" style={{ flex: ultimo ? 1 : 1.6, padding: 14, border: 'none', borderRadius: 'var(--radius)', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
             {ultimo ? '¡Empezar!' : 'Siguiente'}
           </button>
         </div>

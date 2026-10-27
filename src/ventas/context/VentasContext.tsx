@@ -114,42 +114,45 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   useEffect(() => { if (comercio) loadVentasHoy(); }, [comercio, loadVentasHoy]);
 
-  // Precarga catálogo + lotes para vender offline; al cambiar sucursal limpia cache FEFO
+  // Baja catálogo + lotes de la sucursal (las dos consultas a la vez) para vender offline.
+  const refrescarCatalogo = useCallback(async () => {
+    if (!comercio || !sucursalActiva) return;
+    const [{ data: productos }, { data: lotes }] = await Promise.all([
+      supabase.from('productos').select('*').eq('comercio_id', comercio.id).eq('activo', true),
+      supabase.from('lotes').select('*').eq('comercio_id', comercio.id)
+        .eq('sucursal_id', sucursalActiva.id).eq('retirado', false).gt('cantidad', 0),
+    ]);
+    if (productos && lotes) await cacheCatalogo(productos, lotes);
+  }, [comercio, sucursalActiva]);
+
+  // Precarga al entrar o cambiar de sucursal (limpia el cache FEFO). Espera 2 s para no
+  // competir con el arranque de la app (primera pantalla y sync de Stockly).
   useEffect(() => {
     lotesCacheRef.current = {};
-    if (!comercio || !sucursalActiva || !navigator.onLine) return;
-    (async () => {
-      const { data: productos } = await supabase
-        .from('productos').select('*').eq('comercio_id', comercio.id).eq('activo', true);
-      const { data: lotes } = await supabase
-        .from('lotes').select('*').eq('comercio_id', comercio.id)
-        .eq('sucursal_id', sucursalActiva.id).eq('retirado', false).gt('cantidad', 0);
-      if (productos && lotes) await cacheCatalogo(productos, lotes);
-    })();
-  }, [comercio, sucursalActiva]);
+    if (!navigator.onLine) return;
+    const t = setTimeout(refrescarCatalogo, 2000);
+    return () => clearTimeout(t);
+  }, [refrescarCatalogo]);
 
   // Realtime: si Stockly cambia el stock (lotes), refrescar el cache local.
   // No bloquea nada; si Realtime no está activado, simplemente no llega nada.
   useEffect(() => {
     if (!comercio || !sucursalActiva) return;
+    let t: ReturnType<typeof setTimeout> | undefined;
     const canal = supabase
       .channel(`lotes-${sucursalActiva.id}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'lotes', filter: `sucursal_id=eq.${sucursalActiva.id}` },
-        async () => {
-          // Algo cambió en lotes (reposición, ajuste, etc.) → refrescar cache
+        () => {
+          // Una venta toca varios lotes y llega un aviso por cada uno: se refresca una sola vez.
           lotesCacheRef.current = {};
-          const { data: lotes } = await supabase
-            .from('lotes').select('*').eq('comercio_id', comercio.id)
-            .eq('sucursal_id', sucursalActiva.id).eq('retirado', false).gt('cantidad', 0);
-          const { data: productos } = await supabase
-            .from('productos').select('*').eq('comercio_id', comercio.id).eq('activo', true);
-          if (productos && lotes) await cacheCatalogo(productos, lotes);
+          clearTimeout(t);
+          t = setTimeout(refrescarCatalogo, 1500);
         }
       )
       .subscribe();
-    return () => { supabase.removeChannel(canal); };
-  }, [comercio, sucursalActiva]);
+    return () => { clearTimeout(t); supabase.removeChannel(canal); };
+  }, [comercio, sucursalActiva, refrescarCatalogo]);
 
   // ── Catálogo ───────────────────────────────────────────────────────────────
   const escanear = useCallback(async (codigo: string) => {

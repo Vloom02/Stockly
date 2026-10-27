@@ -159,8 +159,8 @@ export const OwnerProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           style={{ position: 'fixed', left: 12, right: 12, bottom: 'calc(84px + var(--sab, env(safe-area-inset-bottom)))', zIndex: 2000, padding: 16, borderRadius: 'var(--radius-lg)', background: 'var(--surface)', border: '2px solid var(--color-primary)', boxShadow: 'var(--shadow-lg)' }}>
           <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Se va a bloquear en 30 segundos</div>
           <div style={{ fontSize: 16, color: 'var(--text-2)', marginBottom: 12 }}>Por seguridad, las opciones del dueño se cierran si no se usan.</div>
-          <button type="button" onClick={keepAlive} className="pressable"
-            style={{ width: '100%', minHeight: 52, borderRadius: 'var(--radius)', border: 'none', background: 'var(--color-primary)', color: 'var(--text-on-brand)', fontSize: 18, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <button type="button" onClick={keepAlive} className="pressable boton-marca"
+            style={{ width: '100%', minHeight: 52, borderRadius: 'var(--radius)', border: 'none', fontSize: 18, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
             Seguir usando
           </button>
         </div>

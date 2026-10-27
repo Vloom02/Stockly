@@ -14,6 +14,7 @@ import { BookOpenIcon, CheckIcon, MagnifyingGlass } from '../components/ui/icons
 
 import { parseMonto } from '../../lib/numeros';
 import BotonVolver from '../components/BotonVolver';
+import { ChatBubbleLeftRightIcon as IcoChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 interface DeudaRow { id: string; cliente: string; monto: number; pagada: boolean; fecha: string; }
 
 const DeudasPage: React.FC = () => {
@@ -127,8 +128,8 @@ const DeudasPage: React.FC = () => {
         {deudas.length > 0 && (
           <div style={{ position: 'relative', marginBottom: 12 }}>
             <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }}><MagnifyingGlass size={18} color="var(--text-3)" /></span>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar cliente..."
-              style={{ width: '100%', padding: '10px 14px 10px 38px', fontSize: 15, background: 'var(--surface)', color: 'var(--text)', border: '1.5px solid var(--border)', borderRadius: 'var(--radius)', outline: 'none' }} />
+            <input className="campo" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar cliente..."
+              style={{ width: '100%', padding: '10px 14px 10px 38px', fontSize: 15, color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none' }} />
           </div>
         )}
 
@@ -144,7 +145,7 @@ const DeudasPage: React.FC = () => {
             <Card key={d.id} variant="bordered" style={{ padding: '12px 14px', marginBottom: 7 }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: 15 }}>👤 {d.cliente}</div>
+                  <div style={{ fontWeight: 600, fontSize: 15 }}>{d.cliente}</div>
                   <div style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 2 }}>{new Date(d.fecha).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}</div>
                   {abonado > 0 && <div style={{ fontSize: 13, color: 'var(--color-primary-dark)', marginTop: 3 }}>Abonado {formatMoney(abonado)} de {formatMoney(d.monto)}</div>}
                   {porCliente[d.cliente]?.count > 1 && <Badge color="yellow" style={{ marginTop: 4 }}>Total cliente: {formatMoney(porCliente[d.cliente].total)}</Badge>}
@@ -152,9 +153,9 @@ const DeudasPage: React.FC = () => {
                 <span style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-danger)', fontFamily: 'var(--font-mono)' }}>{formatMoney(saldo)}</span>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={() => pedirPago(d)} className="pressable" style={{ flex: 1, padding: '8px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>$ Pago</button>
-                <button onClick={() => saldar(d)} className="pressable" style={{ flex: 1, padding: '8px', border: '1px solid var(--color-primary-border)', borderRadius: 'var(--radius)', background: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><CheckIcon size={15} /> Saldar</button>
-                <button onClick={() => recordar(d)} aria-label={`Recordar a ${d.cliente} por WhatsApp`} className="pressable" style={{ width: 40, padding: '8px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', cursor: 'pointer', fontSize: 15 }}>💬</button>
+                <button onClick={() => pedirPago(d)} className="pressable" style={{ flex: 1, minHeight: 48, padding: '8px', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>$ Pago</button>
+                <button onClick={() => saldar(d)} className="pressable" style={{ flex: 1, minHeight: 48, padding: '8px', border: '1px solid var(--color-primary-border)', borderRadius: 'var(--radius)', background: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><CheckIcon size={15} /> Saldar</button>
+                <button onClick={() => recordar(d)} aria-label={`Recordar a ${d.cliente} por WhatsApp`} className="pressable" style={{ width: 48, minHeight: 48, padding: '8px', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', cursor: 'pointer', fontSize: 15 }}><IcoChatBubbleLeftRightIcon width={22} height={22} /></button>
               </div>
             </Card>
           );})

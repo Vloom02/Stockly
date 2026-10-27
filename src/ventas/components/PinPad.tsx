@@ -95,16 +95,16 @@ const PinPad: React.FC<Props> = ({ mode, titulo: tituloProp, subtitulo: subtitul
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 72px)', gap: 12, marginBottom: 20 }}>
         {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(n => (
           <button key={n} onClick={() => press(n)} className="pressable"
-            style={{ height: 64, borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', background: 'var(--surface)', fontSize: 24, fontWeight: 600, color: 'var(--text)', cursor: 'pointer' }}>
+            style={{ height: 64, borderRadius: 'var(--radius-lg)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', fontSize: 24, fontWeight: 600, color: 'var(--text)', cursor: 'pointer' }}>
             {n}
           </button>
         ))}
         <button onClick={backspace} className="pressable"
           style={{ height: 64, borderRadius: 'var(--radius-lg)', border: 'none', background: 'transparent', fontSize: 17, fontWeight: 600, color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit' }}>Borrar</button>
         <button onClick={() => press('0')} className="pressable"
-          style={{ height: 64, borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', background: 'var(--surface)', fontSize: 24, fontWeight: 600, color: 'var(--text)', cursor: 'pointer' }}>0</button>
-        <button onClick={submit} disabled={busy} className="pressable"
-          style={{ height: 64, borderRadius: 'var(--radius-lg)', border: 'none', background: 'var(--color-primary)', fontSize: 19, fontWeight: 700, color: 'var(--text-on-brand)', cursor: 'pointer', opacity: busy ? 0.6 : 1, fontFamily: 'inherit' }}>Listo</button>
+          style={{ height: 64, borderRadius: 'var(--radius-lg)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', fontSize: 24, fontWeight: 600, color: 'var(--text)', cursor: 'pointer' }}>0</button>
+        <button onClick={submit} disabled={busy} className="pressable boton-marca"
+          style={{ height: 64, borderRadius: 'var(--radius-lg)', border: 'none', fontSize: 19, fontWeight: 700, cursor: 'pointer', opacity: busy ? 0.6 : 1, fontFamily: 'inherit' }}>Listo</button>
       </div>
 
       <button onClick={onCancel} style={{ background: 'none', border: 'none', minHeight: 48, padding: '0 16px', fontSize: 16, color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit' }}>

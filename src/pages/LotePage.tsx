@@ -16,6 +16,8 @@ import ScannerModal from '../components/ScannerModal';
 import { NivelBadge } from '../components/ui/Badge';
 import { Header } from './ProductoPage';
 import { useAuth } from '../context/AuthContext';
+import { TagIcon as IcoTagIcon } from '@heroicons/react/24/outline';
+import { useLectorFisico } from '../lib/useLectorFisico';
 
 interface RouteParams { id?: string; }
 
@@ -57,6 +59,8 @@ const LoteForm: React.FC = () => {
   const [tipoRetiro, setTipoRetiro] = useState<'retiro_venta' | 'retiro_vencido' | 'retiro_roto'>('retiro_venta');
   const [cantRetirar, setCantRetirar] = useState('');
   const [notasRetiro, setNotasRetiro] = useState('');
+  // Lector físico: en el paso 1 de "Cargar" elige el producto por su código.
+  const lectorRef = useLectorFisico<HTMLIonContentElement>(codigo => { if (esNuevo && paso === 1) elegirPorCodigo(codigo); });
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [procesando, setProcesando] = useState(false); // anti doble-tap (guardar y retirar)
   // Mostrar el override de días de aviso si el lote ya lo tenía seteado.
@@ -111,6 +115,11 @@ const LoteForm: React.FC = () => {
     }
   };
 
+  const elegirPorCodigo = (codigo: string) => {
+    const p = state.productos.find(x => x.codigoBarras === codigo);
+    if (p) { setProductoId(p.id ?? ''); setPaso(2); } else { setBusqueda(codigo); setToast({ show: true, msg: 'No hay un producto con ese código' }); }
+  };
+
   if (esNuevo) {
     const q = busqueda.trim().toLowerCase();
     const lista = state.productos
@@ -124,7 +133,7 @@ const LoteForm: React.FC = () => {
 
     return (
       <IonPage>
-        <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
+        <IonContent ref={lectorRef} style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
           <div style={{ padding: '20px 16px calc(110px + var(--sab,env(safe-area-inset-bottom))) 16px', maxWidth: 640, margin: '0 auto' }}>
             <Header title="Cargar mercadería" onBack={atras} />
 
@@ -150,8 +159,8 @@ const LoteForm: React.FC = () => {
                     <div style={{ flex: 1 }}>
                       <Input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Escribí el nombre" aria-label="Buscar producto" />
                     </div>
-                    <button type="button" onClick={() => setShowScanner(true)} className="pressable" aria-label="Escanear el código"
-                      style={{ minWidth: 56, minHeight: 48, borderRadius: 'var(--radius)', border: 'none', background: 'var(--brand-500)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: '0 12px' }}>
+                    <button type="button" onClick={() => setShowScanner(true)} className="pressable boton-marca" aria-label="Escanear el código"
+                      style={{ minWidth: 56, minHeight: 48, borderRadius: 'var(--radius)', border: 'none', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: '0 12px' }}>
                       Escanear
                     </button>
                   </div>
@@ -159,7 +168,7 @@ const LoteForm: React.FC = () => {
                     {lista.map((p, i) => (
                       <button key={p.id} type="button" className="pressable anim-entrar"
                         onClick={() => { setProductoId(p.id ?? ''); setPaso(2); }}
-                        style={{ '--i': Math.min(i, 10), display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minHeight: 62, padding: '10px 16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', color: 'var(--text)' } as React.CSSProperties}>
+                        style={{ '--i': Math.min(i, 10), display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minHeight: 62, padding: '10px 16px', borderRadius: 'var(--radius-lg)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', color: 'var(--text)' } as React.CSSProperties}>
                         <span style={{ fontSize: 18, fontWeight: 700 }}>{p.nombre}</span>
                         <span style={{ fontSize: 14, color: 'var(--text-2)' }}>{p.categoria}</span>
                       </button>
@@ -182,17 +191,17 @@ const LoteForm: React.FC = () => {
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, margin: '18px 0' }}>
                     <button type="button" onClick={() => sumar(-1)} className="pressable" aria-label="Una menos"
-                      style={{ width: 64, height: 64, borderRadius: 'var(--radius-lg)', border: '1.5px solid var(--border)', background: 'var(--surface)', fontSize: 32, fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}>−</button>
-                    <input value={cantidad} onChange={e => setCantidad(e.target.value.replace(/\D/g, ''))} inputMode="numeric" aria-label="Cantidad de unidades"
+                      style={{ width: 64, height: 64, borderRadius: 'var(--radius-lg)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', fontSize: 32, fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}>−</button>
+                    <input className="campo" value={cantidad} onChange={e => setCantidad(e.target.value.replace(/\D/g, ''))} inputMode="numeric" aria-label="Cantidad de unidades"
                       onFocus={e => e.target.select()}
-                      style={{ width: 120, height: 72, textAlign: 'center', fontSize: 40, fontWeight: 800, borderRadius: 'var(--radius-lg)', border: '2px solid var(--brand-500)', background: 'var(--surface)', color: 'var(--text)', fontFamily: 'inherit' }} />
+                      style={{ width: 120, height: 72, textAlign: 'center', fontSize: 40, fontWeight: 800, borderRadius: 'var(--radius-lg)', border: '2px solid var(--brand-500)', color: 'var(--text)', fontFamily: 'inherit' }} />
                     <button type="button" onClick={() => sumar(1)} className="pressable" aria-label="Una más"
-                      style={{ width: 64, height: 64, borderRadius: 'var(--radius-lg)', border: '1.5px solid var(--border)', background: 'var(--surface)', fontSize: 32, fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}>+</button>
+                      style={{ width: 64, height: 64, borderRadius: 'var(--radius-lg)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', fontSize: 32, fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}>+</button>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 20 }}>
                     {[6, 12, 24, 48].map(n => (
                       <button key={n} type="button" onClick={() => setCantidad(String(n))} className="pressable" aria-pressed={cant === n}
-                        style={{ minHeight: 52, borderRadius: 'var(--radius)', border: cant === n ? '3px solid var(--brand-500)' : '1.5px solid var(--border)', background: cant === n ? 'var(--brand-50)' : 'var(--surface)', fontSize: 18, fontWeight: 700, color: 'var(--text)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                        style={{ minHeight: 52, borderRadius: 'var(--radius)', border: cant === n ? '3px solid var(--brand-500)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: cant === n ? 'var(--brand-50)' : 'var(--surface)', fontSize: 18, fontWeight: 700, color: 'var(--text)', cursor: 'pointer', fontFamily: 'inherit' }}>
                         {n}
                       </button>
                     ))}
@@ -209,7 +218,7 @@ const LoteForm: React.FC = () => {
                       const activo = valor === fechaVencimiento;
                       return (
                         <button key={a.label} type="button" onClick={() => setFechaVencimiento(valor)} aria-pressed={activo} className="pressable"
-                          style={{ minHeight: 56, borderRadius: 'var(--radius)', border: activo ? '3px solid var(--brand-500)' : '1.5px solid var(--border)', background: activo ? 'var(--brand-50)' : 'var(--surface)', color: 'var(--text)', fontSize: 17, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          style={{ minHeight: 56, borderRadius: 'var(--radius)', border: activo ? '3px solid var(--brand-500)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: activo ? 'var(--brand-50)' : 'var(--surface)', color: 'var(--text)', fontSize: 17, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                           {a.label}
                         </button>
                       );
@@ -244,11 +253,7 @@ const LoteForm: React.FC = () => {
 
           {showScanner && (
             <ScannerModal
-              onCodigoDetectado={(codigo) => {
-                setShowScanner(false);
-                const p = state.productos.find(x => x.codigoBarras === codigo);
-                if (p) { setProductoId(p.id ?? ''); setPaso(2); } else { setBusqueda(codigo); setToast({ show: true, msg: 'No hay un producto con ese código' }); }
-              }}
+              onCodigoDetectado={(codigo) => { setShowScanner(false); elegirPorCodigo(codigo); }}
               onCancel={() => setShowScanner(false)}
             />
           )}
@@ -261,7 +266,15 @@ const LoteForm: React.FC = () => {
 
   const bloqueRetiros = (
         <>
-          {loteExistente && (
+          {loteExistente && loteExistente.cantidad < 0 && (
+            <Card padding="md" style={{ marginBottom: 12, border: '2px solid var(--level-vencido-fg)' }}>
+              <h2 style={{ fontSize: 19, fontWeight: 700, marginBottom: 4, color: 'var(--level-vencido-fg)' }}>Se vendió sin stock</h2>
+              <p style={{ fontSize: 16, color: 'var(--text-2)', margin: 0 }}>
+                Faltan {-loteExistente.cantidad} unid. que se vendieron antes de cargarlas. Cuando cargues mercadería de este producto se descuentan solas. En Historial está quién las vendió.
+              </p>
+            </Card>
+          )}
+          {loteExistente && loteExistente.cantidad > 0 && (
             <Card padding="md" style={{ marginBottom: 12, border: vencidaPrimero ? '2px solid var(--level-vencido-fg)' : undefined }}>
               <h2 style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>{vencidaPrimero ? 'Esta mercadería está vencida' : 'Sacar mercadería'}</h2>
               <p style={{ fontSize: 16, color: 'var(--text-2)', margin: '0 0 12px' }}>
@@ -332,7 +345,7 @@ const LoteForm: React.FC = () => {
                   marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)',
                   display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
                 }}>
-                  <span style={{ fontSize: 18 }}>💸</span>
+                  <IcoTagIcon width={22} height={22} />
                   <div style={{ fontSize: 13, lineHeight: 1.4 }}>
                     <strong>Para que no se venza:</strong> vendé a{' '}
                     <strong style={{ color: 'var(--brand-600)' }}>{formatearMoneda(liq.precioFinal)}</strong>{' '}
@@ -379,7 +392,7 @@ const LoteForm: React.FC = () => {
                   const activo = valor === fechaVencimiento;
                   return (
                     <button key={a.label} type="button" onClick={() => setFechaVencimiento(valor)} aria-pressed={activo}
-                      style={{ minHeight: 48, borderRadius: 'var(--radius)', border: activo ? '2px solid var(--brand-500)' : '1px solid var(--border)', background: activo ? 'var(--brand-50)' : 'var(--surface)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      style={{ minHeight: 48, borderRadius: 'var(--radius)', border: activo ? '2px solid var(--brand-500)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: activo ? 'var(--brand-50)' : 'var(--surface)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                       {a.label}
                     </button>
                   );
