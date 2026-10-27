@@ -1,6 +1,6 @@
 // Resúmenes → Excel con formato (ExcelJS, se carga solo al exportar) y hoja para imprimir (HTML A4).
 import type { Worksheet } from 'exceljs';
-import { Rango, ResumenVentas, Perdidas, Fila, fechaCorta } from './resumen';
+import { Rango, ResumenVentas, Perdidas, Fila, ControlEmpleado, fechaCorta } from './resumen';
 import { METODOS } from '../ventas/lib/exportar';
 // La misma letra de la app, metida en la hoja: el visor de impresión de Android no ve las fuentes de la app.
 import nunito from '@fontsource-variable/nunito/files/nunito-latin-wght-normal.woff2?inline';
@@ -14,6 +14,7 @@ export interface DatosResumen {
   ventas: ResumenVentas | null; // null: sin internet, no se pudieron traer
   stock: { valorTotal: number; lotesVencidos: number; valorVencido: number; lotesPorVencer: number; valorEnRiesgo: number; productosEnNegativo: number; unidadesFaltantes: number; valorCosto: number };
   perdidas: Perdidas;
+  empleados: ControlEmpleado[];
   productosStock: ProductoStock[];
 }
 
@@ -177,6 +178,11 @@ export async function resumenAExcel(d: DatosResumen): Promise<Uint8Array> {
       [undefined, 'entero', 'plata'], [1, 2]);
   }
 
+  if (d.empleados.length) hojaDetalle(wb, 'Empleados', [22, 10, 16, 16, 12, 18],
+    ['Empleado', 'Ventas', 'Vendido', 'Unid. sin stock', 'Cierres', 'Diferencia de caja'],
+    d.empleados.map(e => [e.nombre, e.ventas, e.vendido, e.unidadesSinStock, e.cierres, e.diferenciaCaja]),
+    [undefined, 'entero', 'plata', 'entero', 'entero', 'plata'], [1, 2, 3, 4, 5]);
+
   hojaDetalle(wb, 'Mercadería', [36, 18, 11, 14, 16, 13, 12],
     ['Producto', 'Categoría', 'Cantidad', 'Precio', 'Valor', 'Vence', 'Estado'],
     d.productosStock.map(p => [p.nombre, p.categoria, p.cantidad, p.precio, p.valor, p.vence ? fechaExcel(p.vence + 'T00:00') : null, p.estado]),
@@ -201,7 +207,7 @@ export function resumenAHtml(d: DatosResumen): string {
     !v ? '<p class="aviso">Sin internet: las ventas no se pudieron traer.</p>' : '',
     ...cifras(d).map(b => `<h2>${esc(b.titulo)}</h2>${tablaHtml(['Concepto', 'Valor'], b.filas.map(([n, x, f]) => [n, fmt(x, f)]), [1])}`),
     v && v.porMetodo.length ? `<h2>Cómo te pagaron</h2>${tablaHtml(['Medio de pago', 'Ventas', 'Total', '%'], filasPct(v.porMetodo), [1, 2, 3])}` : '',
-    v && v.porEmpleado.length ? `<h2>Por empleado</h2>${tablaHtml(['Empleado', 'Ventas', 'Total', '%'], filasPct(v.porEmpleado), [1, 2, 3])}` : '',
+    d.empleados.length ? `<h2>Control de empleados</h2>${tablaHtml(['Empleado', 'Ventas', 'Vendido', 'Sin stock', 'Diferencia de caja'], d.empleados.map(e => [e.nombre, String(e.ventas), plata(e.vendido), `${e.unidadesSinStock} u.`, e.cierres ? plata(e.diferenciaCaja) : '—']), [1, 2, 3, 4])}` : '',
     v ? `<h2>${d.rango.porTurno ? 'Por turno' : 'Por día'}</h2>${tablaHtml([d.rango.porTurno ? 'Turno' : 'Día', 'Ventas', 'Total'], v.porDia.map(p => [p.nombre, String(p.cantidad), plata(p.total)]), [1, 2])}` : '',
     v && v.productos.length ? `<h2>Lo más vendido</h2>${tablaHtml(['Producto', 'Cantidad', 'Total', '%'], filasPct(v.productos.slice(0, 25)), [1, 2, 3])}` : '',
   ].join('');

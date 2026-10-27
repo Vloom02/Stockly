@@ -179,3 +179,30 @@ export function perdidasEntre(movs: Movimiento[], productos: Producto[], desde: 
   }
   return r;
 }
+
+export interface CierreRes { cajero_nombre: string | null; diferencia: number | null; hasta: string | null; creado_en: string; }
+export interface ControlEmpleado { nombre: string; ventas: number; vendido: number; unidadesSinStock: number; cierres: number; diferenciaCaja: number; }
+
+/** Por empleado: ventas, lo vendido sin stock (Historial) y las diferencias de caja de sus cierres. */
+export function controlEmpleados(porEmpleado: Fila[], movs: Movimiento[], cierres: CierreRes[], desde: Date, hasta: Date): ControlEmpleado[] {
+  const m = new Map<string, ControlEmpleado>();
+  const fila = (nombre: string) => {
+    let f = m.get(nombre);
+    if (!f) m.set(nombre, f = { nombre, ventas: 0, vendido: 0, unidadesSinStock: 0, cierres: 0, diferenciaCaja: 0 });
+    return f;
+  };
+  for (const e of porEmpleado) { const f = fila(e.nombre); f.ventas = e.cantidad; f.vendido = e.total; }
+  for (const mv of movs) {
+    const f = new Date(mv.fecha);
+    if (f < desde || f >= hasta || !mv.notas?.startsWith('Venta sin stock')) continue;
+    fila(mv.usuario || 'Sin nombre').unidadesSinStock += Math.abs(mv.cantidad);
+  }
+  for (const c of cierres) {
+    const f = new Date(c.hasta ?? c.creado_en);
+    if (f < desde || f >= hasta) continue;
+    const e = fila(c.cajero_nombre || 'Sin nombre');
+    e.cierres++;
+    e.diferenciaCaja += Number(c.diferencia || 0);
+  }
+  return [...m.values()].sort((a, b) => b.vendido - a.vendido);
+}
