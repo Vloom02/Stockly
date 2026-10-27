@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, processLock } from '@supabase/supabase-js';
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -19,6 +19,9 @@ export const supabase = createClient(url || 'http://localhost:54321', anonKey ||
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: false,
+    // La app es una sola ventana (WebView): el candado del navegador (navigator.locks) puede quedar
+    // tomado al volver de segundo plano en Android y trabar todas las consultas.
+    lock: processLock,
   },
 });
 

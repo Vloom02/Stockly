@@ -119,15 +119,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
 
     // Escuchar cambios de auth
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((evento, session) => {
       if (!montado) return;
       setSession(session);
       if (session?.user) {
-        try {
-          await cargarDatosUsuario(session.user.id);
-        } catch (e) {
-          console.warn('No se pudieron cargar datos del usuario', e);
-        }
+        if (evento === 'TOKEN_REFRESHED') return; // misma cuenta: no hay nada que recargar
+        // Fuera del aviso: consultar Supabase adentro del callback traba el candado de la sesión.
+        const uid = session.user.id;
+        setTimeout(() => { cargarDatosUsuario(uid).catch(e => console.warn('No se pudieron cargar datos del usuario', e)); }, 0);
       } else {
         setComercio(null);
         setMiembro(null);
