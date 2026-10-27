@@ -17,6 +17,7 @@ import { almacenGet, almacenSet } from '../lib/almacen';
 import { diasRestantes, calcularNivelAlerta as _calcNivel, ordenNivel, etiquetaNivel } from '../lib/vencimientos';
 import { DescuentoConfig } from '../lib/liquidacion';
 import { sincronizarNotificaciones } from '../lib/notificaciones';
+import { EVENTO_VENTA_PENDIENTE, leerUnidadesPendientes } from '../ventas/lib/outbox';
 
 // ─── Settings locales ───────────────────────────────────────────────────────
 const LS_PREFIX = 'stockly:';
@@ -185,6 +186,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     dispatch({ type: 'SET_BLOQUEADOS', n: b.length });
   }, []);
 
+  // Vendido en Vender que todavía no subió (sin internet): se descuenta del total de cada producto.
+  const [vendidoSinSubir, setVendidoSinSubir] = useState<Map<string, number>>(() => new Map());
+
+  useEffect(() => {
+    const leer = () => { leerUnidadesPendientes(state.sucursalActivaId).then(setVendidoSinSubir, () => { /* */ }); };
+    leer();
+    window.addEventListener(EVENTO_VENTA_PENDIENTE, leer);
+    return () => window.removeEventListener(EVENTO_VENTA_PENDIENTE, leer);
+  }, [state.sucursalActivaId]);
+
   // Recargar estado desde IndexedDB (fuente de verdad local)
   const recargarLocal = useCallback(async () => {
     const [productos, lotes, sucursales, movimientos] = await Promise.all([
@@ -197,6 +208,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const guardada = getSetting('sucursal-activa', '');
     const sucursalActivaId = sucursalesActivas.find(s => s.id === guardada)?.id || sucursalesActivas[0]?.id || '';
+    // Se leen junto con los lotes: si una venta acaba de subir, sale de la cola y entra a los lotes a la vez.
+    setVendidoSinSubir(await leerUnidadesPendientes(sucursalActivaId).catch(() => new Map<string, number>()));
 
     dispatch({
       type: 'INIT',
@@ -442,7 +455,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const productosConLotesCalc = useMemo((): ProductoConLotes[] =>
     state.productos.map(producto => {
       const lotes = lotesPorProducto.get(producto.id!) ?? [];
-      const cantidadTotal = lotes.reduce((s, l) => s + l.cantidad, 0); // con negativos: vendido sin stock
+      const cantidadTotal = lotes.reduce((s, l) => s + l.cantidad, 0) - (vendidoSinSubir.get(producto.id!) ?? 0); // con negativos: vendido sin stock
       let nivelPeor: NivelAlerta = 'ok';
       let proxVenc: string | undefined;
       for (const l of lotes) {
@@ -452,7 +465,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (!proxVenc || l.fechaVencimiento < proxVenc) proxVenc = l.fechaVencimiento;
       }
       return { producto, lotes, cantidadTotal, valorTotal: cantidadTotal * producto.precio, nivelPeor, proximoVencimiento: proxVenc };
-    }), [state.productos, lotesPorProducto]);
+    }), [state.productos, lotesPorProducto, vendidoSinSubir]);
   const productosConLotes = useCallback(() => productosConLotesCalc, [productosConLotesCalc]);
 
   const lotesEnriquecidosCalc = useMemo((): LoteConProducto[] => {
