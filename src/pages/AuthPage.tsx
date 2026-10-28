@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { IonContent, IonPage } from '@ionic/react';
 import {
-  EnvelopeIcon, LockClosedIcon, UserIcon, BuildingStorefrontIcon,
+  EnvelopeIcon, LockClosedIcon, UserIcon, BuildingStorefrontIcon, KeyIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/ui/Logo';
@@ -9,10 +9,11 @@ import Button from '../components/ui/Button';
 import { Field, Input } from '../components/ui/Input';
 import { haptic } from '../utils/haptics';
 
-type Modo = 'login' | 'registro';
+// olvido: pide el código por email · codigo: código + contraseña nueva
+type Modo = 'login' | 'registro' | 'olvido' | 'codigo';
 
 const AuthPage: React.FC = () => {
-  const { iniciarSesion, registrarse } = useAuth();
+  const { iniciarSesion, registrarse, pedirCodigo, cambiarConCodigo } = useAuth();
   const [modo, setModo] = useState<Modo>('login');
 
   const [email, setEmail] = useState('');
@@ -22,6 +23,34 @@ const AuthPage: React.FC = () => {
   const [error, setError] = useState('');
   const [exito, setExito] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [codigo, setCodigo] = useState('');
+
+  const irA = (m: Modo) => { setModo(m); setError(''); setExito(''); };
+
+  const mandarCodigo = async () => {
+    setError(''); setExito('');
+    if (!email.trim()) { setError('Escribí el email de tu cuenta'); return; }
+    setCargando(true);
+    try {
+      const { error } = await pedirCodigo(email.trim());
+      if (error) { setError(error); haptic.warning(); return; }
+      setModo('codigo'); setCodigo(''); setPassword('');
+      setExito(`Te mandamos un código a ${email.trim()}. Si no llega en unos minutos, mirá en "Spam" o "Correo no deseado".`);
+    } finally { setCargando(false); }
+  };
+
+  const cambiarClave = async () => {
+    setError('');
+    const c = codigo.replace(/\D/g, '');
+    if (c.length < 6) { setError('Escribí el código que te llegó por email'); return; }
+    if (password.length < 8) { setError('La contraseña nueva debe tener al menos 8 caracteres'); return; }
+    setCargando(true);
+    try {
+      const { error } = await cambiarConCodigo(email.trim(), c, password);
+      if (error) { setError(error); haptic.warning(); }
+      else haptic.success(); // ya queda adentro de la app
+    } finally { setCargando(false); }
+  };
 
   const submit = async () => {
     setError('');
@@ -67,6 +96,8 @@ const AuthPage: React.FC = () => {
 
   return (
     <IonPage>
+      <style>{`.link-auth { background: none; border: none; color: var(--brand-600); font-weight: 600;
+        cursor: pointer; font-family: inherit; font-size: 14px; padding: 12px 8px; min-height: 44px; }`}</style>
       <IonContent style={{ '--background': 'var(--bg)' } as any}>
         <div style={{
           minHeight: '100%',
@@ -80,12 +111,13 @@ const AuthPage: React.FC = () => {
               <Logo size={48} />
             </div>
             <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', marginBottom: 4 }}>
-              {modo === 'login' ? 'Bienvenido de nuevo' : 'Creá tu cuenta'}
+              {modo === 'login' ? 'Bienvenido de nuevo' : modo === 'registro' ? 'Creá tu cuenta' : 'Recuperar contraseña'}
             </h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)' }}>
-              {modo === 'login'
-                ? 'Ingresá para gestionar tu stock'
-                : 'Empezá a controlar tus vencimientos hoy'}
+              {modo === 'login' ? 'Ingresá para gestionar tu stock'
+                : modo === 'registro' ? 'Empezá a controlar tus vencimientos hoy'
+                : modo === 'olvido' ? 'Te mandamos un código a tu email'
+                : 'Escribí el código y elegí una contraseña nueva'}
             </p>
           </div>
 
@@ -107,6 +139,39 @@ const AuthPage: React.FC = () => {
             }}>{exito}</div>
           )}
 
+          {modo === 'olvido' && (<>
+            <Field label="Email de tu cuenta">
+              <Input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                placeholder="tu@email.com" autoCapitalize="off"
+                leftIcon={<EnvelopeIcon width={18} height={18} />}
+                onKeyDown={(e) => { if (e.key === 'Enter') mandarCodigo(); }} />
+            </Field>
+            <Button variant="primary" size="lg" fullWidth onClick={mandarCodigo} loading={cargando} style={{ marginTop: 8 }}>
+              Mandarme el código
+            </Button>
+          </>)}
+
+          {modo === 'codigo' && (<>
+            <Field label="Código del email">
+              <Input value={codigo} onChange={e => setCodigo(e.target.value)} inputMode="numeric"
+                autoComplete="one-time-code" placeholder="123456"
+                leftIcon={<KeyIcon width={18} height={18} />} />
+            </Field>
+            <Field label="Contraseña nueva" hint="Mínimo 8 caracteres">
+              <Input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                placeholder="Elegí una contraseña nueva"
+                leftIcon={<LockClosedIcon width={18} height={18} />}
+                onKeyDown={(e) => { if (e.key === 'Enter') cambiarClave(); }} />
+            </Field>
+            <Button variant="primary" size="lg" fullWidth onClick={cambiarClave} loading={cargando} style={{ marginTop: 8 }}>
+              Guardar y entrar
+            </Button>
+            <div style={{ textAlign: 'center', marginTop: 16 }}>
+              <button type="button" className="link-auth" onClick={mandarCodigo} disabled={cargando}>Mandarme otro código</button>
+            </div>
+          </>)}
+
+          {(modo === 'login' || modo === 'registro') && (<>
           {/* Form */}
           {modo === 'registro' && (
             <>
@@ -141,15 +206,17 @@ const AuthPage: React.FC = () => {
             {modo === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
           </Button>
 
+          {modo === 'login' && (
+            <div style={{ textAlign: 'center', marginTop: 16 }}>
+              <button type="button" className="link-auth" onClick={() => irA('olvido')}>Olvidé mi contraseña</button>
+            </div>
+          )}
+          </>)}
+
           {/* Cambiar modo */}
           <div style={{ textAlign: 'center', marginTop: 24, fontSize: 14, color: 'var(--text-2)' }}>
-            {modo === 'login' ? '¿No tenés cuenta?' : '¿Ya tenés cuenta?'}{' '}
-            <button type="button"
-              onClick={() => { setModo(modo === 'login' ? 'registro' : 'login'); setError(''); setExito(''); }}
-              style={{
-                background: 'none', border: 'none', color: 'var(--brand-600)',
-                fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14,
-              }}>
+            {modo === 'login' ? '¿No tenés cuenta?' : modo === 'registro' ? '¿Ya tenés cuenta?' : '¿Te acordaste?'}{' '}
+            <button type="button" className="link-auth" onClick={() => irA(modo === 'login' ? 'registro' : 'login')}>
               {modo === 'login' ? 'Registrate gratis' : 'Iniciá sesión'}
             </button>
           </div>

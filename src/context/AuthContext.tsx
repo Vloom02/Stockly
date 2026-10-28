@@ -20,6 +20,9 @@ interface AuthContextValue {
   cargando: boolean;
   registrarse: (email: string, password: string, nombre: string, nombreComercio: string) => Promise<{ error?: string }>;
   iniciarSesion: (email: string, password: string) => Promise<{ error?: string }>;
+  /** Olvidé mi contraseña: manda un código al email y con ese código se elige una nueva. */
+  pedirCodigo: (email: string) => Promise<{ error?: string }>;
+  cambiarConCodigo: (email: string, codigo: string, password: string) => Promise<{ error?: string }>;
   cerrarSesion: () => Promise<void>;
   recargarComercio: () => void;
 }
@@ -161,6 +164,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return {};
   };
 
+  const pedirCodigo = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) return { error: traducirError(error.message) };
+    return {};
+  };
+
+  // Con el código queda la sesión abierta y enseguida se guarda la contraseña nueva.
+  const cambiarConCodigo = async (email: string, codigo: string, password: string) => {
+    const { error } = await supabase.auth.verifyOtp({ email, token: codigo, type: 'recovery' });
+    if (error) return { error: traducirError(error.message) };
+    const { error: e2 } = await supabase.auth.updateUser({ password });
+    if (e2) return { error: traducirError(e2.message) };
+    return {};
+  };
+
   const cerrarSesion = async () => {
     // Limpiar caché local primero (esto siempre funciona)
     try {
@@ -197,7 +215,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     <AuthContext.Provider value={{
       session, comercio, miembro, esDueno: miembro?.rol !== 'empleado' && !cajeroEnTurno, cajeroEnTurno, setCajeroEnTurno,
       esAdminPlataforma, cargando,
-      registrarse, iniciarSesion, cerrarSesion, recargarComercio,
+      registrarse, iniciarSesion, pedirCodigo, cambiarConCodigo, cerrarSesion, recargarComercio,
     }}>
       {children}
     </AuthContext.Provider>
@@ -217,5 +235,8 @@ function traducirError(msg: string): string {
   if (msg.includes('Password should be at least')) return 'La contraseña es muy corta (mínimo 8 caracteres)';
   if (msg.includes('Unable to validate email')) return 'El email no es válido';
   if (msg.includes('Email not confirmed')) return 'Confirmá tu email antes de iniciar sesión';
+  if (msg.includes('Token has expired or is invalid')) return 'El código no es correcto o ya venció. Pedí uno nuevo.';
+  if (msg.includes('security purposes') || msg.includes('rate limit')) return 'Esperá un minuto antes de pedir otro código.';
+  if (msg.includes('should be different')) return 'La contraseña nueva tiene que ser distinta de la anterior.';
   return msg;
 }
