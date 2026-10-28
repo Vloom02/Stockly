@@ -9,12 +9,13 @@ import { aplicarEscalaFont, obtenerEscalaFont, calcularEscalaSugerida } from './
 import { aplicarMovimiento, movimientoActivo } from './lib/movimiento';
 import { hidratarAlmacenamiento } from './lib/almacen';
 import { initSentry } from './lib/sentry';
-import { marcarArranqueOk, buscarActualizacion } from './lib/actualizacion';
+import { marcarArranqueOk, buscarActualizacion, aplicarPendiente } from './lib/actualizacion';
 
 // Cargar el almacenamiento persistente a memoria ANTES de renderizar,
 // así las lecturas síncronas (config, sucursal activa, etc.) tienen los datos.
 async function arrancar() {
   initSentry(); // captura de errores (no-op en desarrollo)
+  if (await aplicarPendiente()) return; // recarga con la versión nueva
   await hidratarAlmacenamiento();
 
   // Aplicar el color de marca elegido por el usuario

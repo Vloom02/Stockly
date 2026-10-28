@@ -56,11 +56,29 @@ export function buscarActualizacion(): Promise<Actualizacion | null> {
     const plan = planDeActualizacion(rel, __APP_VERSION__, nativa);
     if (plan.tipo === 'apk') return { version: plan.version, url: plan.url };
     if (plan.tipo === 'web') {
-      const bajada = await CapacitorUpdater.download({ url: plan.url, version: plan.version, checksum: plan.checksum });
-      await CapacitorUpdater.next({ id: bajada.id }); // se aplica al volver a abrir la app
+      // Si ya se bajó en otra apertura, no se vuelve a bajar.
+      const { bundles } = await CapacitorUpdater.list();
+      const ya = bundles.find(b => b.version === plan.version && b.status !== 'error' && b.status !== 'deleted');
+      const id = ya?.id ?? (await CapacitorUpdater.download({ url: plan.url, version: plan.version, checksum: plan.checksum })).id;
+      await CapacitorUpdater.next({ id }); // se aplica al pasar a segundo plano o en el próximo arranque
     }
     return null;
   })().catch(e => { console.warn('[actualizacion]', e); return null; });
+}
+
+/**
+ * Al arrancar: si quedó una versión bajada sin aplicar (la app se cerró del todo en vez de ir a
+ * segundo plano), la aplica ya, antes de mostrar nada. Devuelve true si la app se va a recargar.
+ */
+export async function aplicarPendiente(): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) return false;
+  try {
+    const { CapacitorUpdater } = await import('@capgo/capacitor-updater');
+    const sig = await CapacitorUpdater.getNextBundle();
+    if (!sig || sig.status === 'error' || !esMasNueva(sig.version, __APP_VERSION__)) return false;
+    await CapacitorUpdater.set({ id: sig.id });
+    return true;
+  } catch (e) { console.warn('[actualizacion]', e); return false; }
 }
 
 /** Avisa que esta versión arrancó bien; si no se llama, Capgo vuelve a la anterior. */
