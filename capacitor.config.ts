@@ -11,6 +11,15 @@ const config: CapacitorConfig = {
     backgroundColor: '#1c160d',
   },
   plugins: {
+    // Actualizaciones en vivo propias (lib/actualizacion.ts): sin el servicio de Capgo y sin
+    // mandarle estadísticas. Si una versión nueva no avisa "lista" en 10 s, vuelve a la anterior.
+    CapacitorUpdater: {
+      autoUpdate: false,
+      statsUrl: '',
+      channelUrl: '',
+      updateUrl: '',
+      appReadyTimeout: 10000,
+    },
     SplashScreen: {
       launchShowDuration: 1200,
       launchAutoHide: true,

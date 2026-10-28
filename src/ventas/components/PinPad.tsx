@@ -59,7 +59,7 @@ const PinPad: React.FC<Props> = ({ mode, titulo: tituloProp, subtitulo: subtitul
       setBusy(true);
       const ok = await onSuccess(pin);
       setBusy(false);
-      if (!ok) { setError('No se pudo guardar el PIN'); setStage('first'); setPin(''); setConfirm(''); }
+      if (!ok) { setError('No se pudo guardar el PIN. Revisá que haya internet y probá de nuevo.'); setStage('first'); setPin(''); setConfirm(''); }
       return;
     }
     // unlock
