@@ -142,12 +142,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const registrarse = async (email: string, password: string, nombre: string, nombreComercio: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { nombre, nombre_comercio: nombreComercio } },
     });
     if (error) return { error: traducirError(error.message) };
+    // Con confirmación por email, Supabase no da error si el mail ya existe: devuelve un usuario sin identidades.
+    if (data.user && data.user.identities?.length === 0) {
+      return { error: 'Ese email ya está registrado. Iniciá sesión con esa cuenta.' };
+    }
     return {};
   };
 
