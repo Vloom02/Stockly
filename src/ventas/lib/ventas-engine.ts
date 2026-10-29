@@ -14,14 +14,17 @@ export function uuid(): string {
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+// Estas consultas TIRAN el error (Supabase lo devuelve sin tirar): así quien llama usa lo
+// guardado en el celular, en vez de decir "no encontrado" con la señal floja.
+
 // ─── Buscar producto por código de barras ─────────────────────────────────────
 export async function buscarProductoPorCodigo(comercioId: string, codigoBarras: string): Promise<Producto | null> {
   const { data, error } = await supabase
     .from('productos').select('*')
     .eq('comercio_id', comercioId).eq('codigo_barras', codigoBarras).eq('activo', true)
-    .maybeSingle();
-  if (error) { console.warn('[ventas] buscarProducto:', error.message); return null; }
-  return data as Producto | null;
+    .limit(1); // con maybeSingle, dos productos con el mismo código daban error
+  if (error) throw new Error(error.message);
+  return (data?.[0] ?? null) as Producto | null;
 }
 
 // ─── Buscar productos por nombre (fallback del escáner) ───────────────────────
@@ -30,7 +33,7 @@ export async function buscarProductosPorNombre(comercioId: string, query: string
     .from('productos').select('*')
     .eq('comercio_id', comercioId).eq('activo', true)
     .ilike('nombre', `%${query}%`).limit(8);
-  if (error) { console.warn('[ventas] buscarPorNombre:', error.message); return []; }
+  if (error) throw new Error(error.message);
   return (data ?? []) as Producto[];
 }
 
@@ -41,7 +44,7 @@ export async function lotesDisponibles(comercioId: string, productoId: string, s
     .eq('comercio_id', comercioId).eq('producto_id', productoId).eq('sucursal_id', sucursalId)
     .eq('retirado', false).gt('cantidad', 0)
     .order('fecha_vencimiento', { ascending: true, nullsFirst: false }); // FEFO
-  if (error) { console.warn('[ventas] lotesDisponibles:', error.message); return []; }
+  if (error) throw new Error(error.message);
   return (data ?? []) as Lote[];
 }
 
@@ -128,7 +131,7 @@ export async function aplicarVentaOnline(input: AplicarVentaInput): Promise<Apli
   const { data, error } = await supabase.rpc('registrar_venta', {
     p: payloadVenta(input, ventaId, new Date().toISOString()),
   });
-  if (error) throw new Error('No se pudo registrar la venta: ' + error.message);
+  if (error) throw new Error(error.message);
 
   const res = (data ?? {}) as RegistrarVentaResp;
   return {

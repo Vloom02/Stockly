@@ -45,10 +45,14 @@ async function arrancar() {
         fallback={
           <div style={{
             padding: 24, textAlign: 'center', fontFamily: 'system-ui',
-            color: 'var(--text, #111)',
+            color: 'var(--text, #111)', fontSize: 18, lineHeight: 1.5,
           }}>
             <h2>Ups, algo salió mal</h2>
-            <p>Cerrá y volvé a abrir la app. Ya nos llegó el aviso para revisarlo.</p>
+            <p>Lo que estabas haciendo quedó guardado. Ya nos llegó el aviso para revisarlo.</p>
+            <button type="button" onClick={() => location.reload()}
+              style={{ marginTop: 16, minHeight: 56, padding: '0 28px', fontSize: 18, fontWeight: 700, borderRadius: 14, border: 'none', background: '#1f4fbf', color: '#fff' }}>
+              Volver a abrir
+            </button>
           </div>
         }
       >
@@ -57,7 +61,9 @@ async function arrancar() {
     </React.StrictMode>
   );
   // Arrancó bien: confirmarlo (si no, Capgo vuelve a la versión anterior) y buscar una nueva.
-  setTimeout(() => { marcarArranqueOk().then(() => buscarActualizacion()).catch(() => {}); }, 3000);
+  // Se confirma enseguida: en un celular lento, esperar de más hacía que Capgo volviera atrás una versión buena.
+  setTimeout(() => { marcarArranqueOk().catch(() => {}); }, 1000);
+  setTimeout(() => { buscarActualizacion().catch(() => {}); }, 3000);
 }
 
 arrancar();

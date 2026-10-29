@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { esMasNueva, planDeActualizacion } from './actualizacion';
+import { esMasNueva, planDeActualizacion, versionParaAplicar } from './actualizacion';
 
 describe('esMasNueva', () => {
   it('compara número por número (no como texto)', () => {
@@ -26,8 +26,22 @@ describe('planDeActualizacion', () => {
       .toEqual({ tipo: 'web', version: '1.3.0', url: 'https://z/web.zip', checksum: 'abc123' });
   });
 
+  it('sin huella sha256 no se baja la parte web', () => {
+    expect(planDeActualizacion(rel('apk-minimo: 1.2.0'), '1.2.4', '1.2.0')).toEqual({ tipo: 'nada' });
+  });
+
   it('si el APK instalado es más viejo que el mínimo, pide el APK', () => {
     expect(planDeActualizacion(rel('apk-minimo: 1.3.0\nsha256: abc'), '1.2.4', '1.2.0'))
       .toEqual({ tipo: 'apk', version: '1.3.0', url: 'https://z/app.apk' });
+  });
+});
+
+describe('versionParaAplicar', () => {
+  const b = (version: string, status: string) => ({ id: version, version, status });
+  it('elige la bajada más nueva que la actual, ignorando las fallidas o a medio bajar', () => {
+    expect(versionParaAplicar([b('1.2.5', 'pending'), b('1.3.0', 'error'), b('1.2.9', 'success'), b('1.4.0', 'downloading')], '1.2.4')?.version).toBe('1.2.9');
+  });
+  it('si no hay nada más nuevo, no aplica nada', () => {
+    expect(versionParaAplicar([b('1.2.4', 'success'), b('1.2.0', 'pending')], '1.2.4')).toBeNull();
   });
 });

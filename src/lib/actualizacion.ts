@@ -22,7 +22,7 @@ interface Release { tag_name?: string; body?: string; html_url?: string; assets?
 
 export type Plan =
   | { tipo: 'nada' }
-  | { tipo: 'web'; version: string; url: string; checksum?: string }   // se baja sola
+  | { tipo: 'web'; version: string; url: string; checksum: string }    // se baja sola
   | { tipo: 'apk'; version: string; url: string };                      // hay que instalar el APK
 
 /** Qué hacer con el último release: nada, bajar la parte web, o pedir el APK (si el nativo quedó viejo). */
@@ -36,7 +36,10 @@ export function planDeActualizacion(rel: Release | null, versionWeb: string, ver
   if ((apkMinimo && esMasNueva(apkMinimo, versionNativa)) || !web) {
     return { tipo: 'apk', version, url: archivo('.apk') ?? rel.html_url ?? `https://github.com/${REPO}/releases/latest` };
   }
-  return { tipo: 'web', version, url: web, checksum: dato('sha256') };
+  // Sin huella no se instala: un zip cambiado en el camino se instalaría con la sesión del dueño.
+  const checksum = dato('sha256');
+  if (!checksum) return { tipo: 'nada' };
+  return { tipo: 'web', version, url: web, checksum };
 }
 
 export interface Actualizacion { version: string; url: string }
@@ -56,26 +59,36 @@ export function buscarActualizacion(): Promise<Actualizacion | null> {
     const plan = planDeActualizacion(rel, __APP_VERSION__, nativa);
     if (plan.tipo === 'apk') return { version: plan.version, url: plan.url };
     if (plan.tipo === 'web') {
-      // Si ya se bajó en otra apertura, no se vuelve a bajar.
+      // Si ya se bajó en otra apertura, no se vuelve a bajar. NO se usa next(): aplicaba la versión
+      // al pasar a segundo plano y la recarga vaciaba el carrito (ir a WhatsApp o a Mercado Pago).
+      // Queda bajada y se aplica la próxima vez que la app arranca de cero (aplicarPendiente).
       const { bundles } = await CapacitorUpdater.list();
-      const ya = bundles.find(b => b.version === plan.version && b.status !== 'error' && b.status !== 'deleted');
-      const id = ya?.id ?? (await CapacitorUpdater.download({ url: plan.url, version: plan.version, checksum: plan.checksum })).id;
-      await CapacitorUpdater.next({ id }); // se aplica al pasar a segundo plano o en el próximo arranque
+      if (!bundles.some(b => b.version === plan.version && listo(b.status))) {
+        await CapacitorUpdater.download({ url: plan.url, version: plan.version, checksum: plan.checksum });
+      }
     }
     return null;
   })().catch(e => { console.warn('[actualizacion]', e); return null; });
 }
 
+const listo = (s: string) => s !== 'error' && s !== 'deleted' && s !== 'deleting' && s !== 'downloading';
+
+/** La versión bajada más nueva que la actual, o null. */
+export function versionParaAplicar<B extends { version: string; status: string }>(bundles: B[], actual: string): B | null {
+  return bundles.filter(b => listo(b.status) && esMasNueva(b.version, actual))
+    .sort((a, b) => (esMasNueva(a.version, b.version) ? -1 : 1))[0] ?? null;
+}
+
 /**
- * Al arrancar: si quedó una versión bajada sin aplicar (la app se cerró del todo en vez de ir a
- * segundo plano), la aplica ya, antes de mostrar nada. Devuelve true si la app se va a recargar.
+ * Al arrancar de cero: si hay una versión bajada y sin aplicar, la aplica ya, antes de mostrar
+ * nada (no hay carrito ni pantalla a medio usar). Devuelve true si la app se va a recargar.
  */
 export async function aplicarPendiente(): Promise<boolean> {
   if (!Capacitor.isNativePlatform()) return false;
   try {
     const { CapacitorUpdater } = await import('@capgo/capacitor-updater');
-    const sig = await CapacitorUpdater.getNextBundle();
-    if (!sig || sig.status === 'error' || !esMasNueva(sig.version, __APP_VERSION__)) return false;
+    const sig = versionParaAplicar((await CapacitorUpdater.list()).bundles, __APP_VERSION__);
+    if (!sig) return false;
     await CapacitorUpdater.set({ id: sig.id });
     return true;
   } catch (e) { console.warn('[actualizacion]', e); return false; }

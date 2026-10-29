@@ -25,9 +25,13 @@ export function useAuth() {
     () => state.sucursales.map(s => ({ id: s.id!, comercio_id: s.comercioId ?? '', nombre: s.nombre, direccion: s.direccion, activa: s.activa })),
     [state.sucursales],
   );
-  const sucursalActiva = useMemo(
-    () => sucursales.find(s => s.id === state.sucursalActivaId) ?? null,
-    [sucursales, state.sucursalActivaId],
+  // Por campos también: `sucursales` se recrea en cada recarga de Mercadería y el catálogo y el
+  // tiempo real de Vender se volvían a bajar y a conectar aunque el local fuera el mismo.
+  const act = sucursales.find(s => s.id === state.sucursalActivaId);
+  const sucursalActiva = useMemo<Sucursal | null>(
+    () => (act ? { ...act } : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [act?.id, act?.nombre, act?.direccion, act?.activa, act?.comercio_id],
   );
 
   return {

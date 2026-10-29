@@ -204,9 +204,22 @@ export const SkeletonCard: React.FC = () => (
 );
 
 // ─── SyncBanner ───────────────────────────────────────────────────────────────
-export const SyncBanner: React.FC<{ queueLen: number; isOnline: boolean }> = ({ queueLen, isOnline }) => {
+export const SyncBanner: React.FC<{ queueLen: number; isOnline: boolean; bloqueados?: number; onReintentar?: () => void }> = ({ queueLen, isOnline, bloqueados = 0, onReintentar }) => {
   if (isOnline && queueLen === 0) return null;
   const isOffline = !isOnline;
+  // Ventas rechazadas por el servidor: no se mandan solas. Antes decía "Mandando…" para siempre.
+  if (!isOffline && bloqueados > 0 && onReintentar) {
+    return (
+      <button type="button" onClick={onReintentar} style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200, width: '100%', minHeight: 48,
+        padding: '10px 16px', textAlign: 'center', fontSize: 15, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
+        background: 'var(--color-danger-bg)', color: 'var(--color-danger-dark)', border: 'none',
+        borderBottom: '1px solid var(--color-danger-border)',
+      }}>
+        {bloqueados} venta{bloqueados > 1 ? 's' : ''} no se pudo guardar en internet · tocá acá para reintentar
+      </button>
+    );
+  }
   return (
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200,

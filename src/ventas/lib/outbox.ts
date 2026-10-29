@@ -131,6 +131,7 @@ export async function flushOutbox(): Promise<number> {
         if (item.kind === 'venta')      await syncVentaOffline(item.payload as OfflineVentaPayload);
         if (item.kind === 'anulacion')  await syncAnulacionOffline(item.payload as OfflineAnulacionPayload);
         if (item.kind === 'pago_fiado') await syncPagoOffline(item.payload as OfflinePagoPayload);
+        if (item.kind === 'cierre' || item.kind === 'caja_mov') await syncFilaCaja(item.kind, item.payload as FilaCaja);
         // La venta ya quedó en el servidor: borrar su copia local para que no siga
         // contando en "ventas de hoy" offline los días siguientes (store 'ventas').
         if (item.kind === 'venta') await idbDelete('ventas', (item.payload as OfflineVentaPayload).ventaId);
@@ -200,6 +201,39 @@ async function syncPagoOffline(p: OfflinePagoPayload): Promise<void> {
     },
   });
   if (error) throw new Error(error.message);
+}
+
+// ─── Caja: cierres y entradas/salidas de plata ────────────────────────────────
+// Antes se mandaban directo y, sin internet, el cierre se perdía y el turno se cerraba igual.
+// Llevan id propio: reintentar no duplica (on conflict do nothing).
+export type FilaCaja = Record<string, unknown> & { id: string };
+const tablaCaja = (k: 'cierre' | 'caja_mov') => (k === 'cierre' ? 'ventas_cierres' : 'ventas_caja_mov');
+
+async function syncFilaCaja(kind: 'cierre' | 'caja_mov', fila: FilaCaja): Promise<void> {
+  const { error } = await supabase.from(tablaCaja(kind)).upsert(fila, { onConflict: 'id', ignoreDuplicates: true });
+  if (error) throw new Error(error.message);
+}
+
+/** Con internet va directo; sin internet (o si se corta) queda en la cola y se manda sola. */
+export async function guardarFilaCaja(kind: 'cierre' | 'caja_mov', fila: FilaCaja): Promise<{ ok: boolean; enCola?: boolean; error?: string }> {
+  if (navigator.onLine) {
+    try {
+      await syncFilaCaja(kind, fila);
+      return { ok: true };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (esErrorPermanente(msg)) return { ok: false, error: msg };
+    }
+  }
+  await openDB();
+  await enqueueOutbox(kind, fila);
+  return { ok: true, enCola: true };
+}
+
+/** Filas de caja que todavía están en la cola (para mostrarlas junto con las del servidor). */
+export async function filasCajaEnCola(kind: 'cierre' | 'caja_mov'): Promise<FilaCaja[]> {
+  await openDB();
+  return (await idbGetAll<OutboxItem>('outbox')).filter(i => i.kind === kind).map(i => i.payload as FilaCaja);
 }
 
 // ─── Cache catálogo + lotes para vender offline ───────────────────────────────

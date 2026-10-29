@@ -210,6 +210,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       almacenRemove('stockly:cache-comercio');
       almacenRemove('stockly:cache-miembro');
+      localStorage.removeItem('ventas:carrito');
     } catch { /* */ }
     // Intentar signOut en la nube, pero sin bloquear si no hay internet
     try {

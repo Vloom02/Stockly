@@ -129,7 +129,7 @@ export interface FefoDeduction {
 }
 
 // ─── Outbox (offline-first) ────────────────────────────────────────────────────
-export type OutboxKind = 'venta' | 'anulacion' | 'pago_fiado';
+export type OutboxKind = 'venta' | 'anulacion' | 'pago_fiado' | 'cierre' | 'caja_mov';
 
 export interface OutboxItem {
   id?: number;

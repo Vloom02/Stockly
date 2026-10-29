@@ -36,7 +36,7 @@ const payOptions = [
 ];
 
 const VentaPage: React.FC = () => {
-  const { state, escanear, buscarPorNombre, agregarProducto, agregarMontoLibre, setQty, quitar, vaciar, confirmarVenta } = useVentas();
+  const { state, escanear, buscarPorNombre, agregarProducto, agregarMontoLibre, setQty, quitar, vaciar, confirmarVenta, sincronizar } = useVentas();
   const { sucursalActiva, sucursales, setSucursalActiva, comercio } = useAuth();
   const { cajero, cerrarTurno } = useEmpleado();
   const { isUnlocked, lock } = useOwner();
@@ -90,16 +90,18 @@ const VentaPage: React.FC = () => {
     (async () => {
       try {
         const desde = new Date(Date.now() - 30 * 86400000).toISOString();
-        const { data: items } = await supabase.from('ventas_items')
+        const { data: items, error } = await supabase.from('ventas_items')
           .select('producto_id, ventas_ventas!inner(fecha, comercio_id)')
           .eq('ventas_ventas.comercio_id', comercio.id)
           .gte('ventas_ventas.fecha', desde)
           .limit(3000);
+        if (error) throw error; // sin internet: los guardados (abajo)
         const conteo = new Map<string, number>();
         for (const it of items ?? []) if (it.producto_id) conteo.set(it.producto_id, (conteo.get(it.producto_id) ?? 0) + 1);
         const topIds = [...conteo.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(e => e[0]);
         if (topIds.length === 0) { setFavoritos([]); return; }
-        const { data: prods } = await supabase.from('productos').select('*').in('id', topIds).eq('activo', true);
+        const { data: prods, error: e2 } = await supabase.from('productos').select('*').in('id', topIds).eq('activo', true);
+        if (e2) throw e2;
         // respetar el orden por popularidad
         const orden = new Map(topIds.map((id, i) => [id, i]));
         const lista = ((prods ?? []) as Producto[]).sort((a, b) => (orden.get(a.id) ?? 99) - (orden.get(b.id) ?? 99));
@@ -144,9 +146,13 @@ const VentaPage: React.FC = () => {
     scanRef.current?.focus();
   };
 
+  // Solo vale la respuesta de lo último que se escribió (una búsqueda vieja que tarda no pisa la nueva).
+  const busquedaN = useRef(0);
   const handleSearch = useCallback(async (q: string) => {
     setQuery(q);
-    setResults(q.length >= 2 ? await buscarPorNombre(q) : []);
+    const n = ++busquedaN.current;
+    const r = q.length >= 2 ? await buscarPorNombre(q) : [];
+    if (n === busquedaN.current) setResults(r);
   }, [buscarPorNombre]);
 
   const pickProduct = async (p: Producto) => {
@@ -221,7 +227,7 @@ const VentaPage: React.FC = () => {
 
   return (
     <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
-      <SyncBanner queueLen={state.outboxLen} isOnline={state.isOnline} />
+      <SyncBanner queueLen={state.outboxLen} isOnline={state.isOnline} bloqueados={state.bloqueados} onReintentar={sincronizar} />
 
       {/* En tablet acostada: dos columnas (buscar | carrito), ver ventas.css. */}
       <div ref={lectorRef} className="venta-layout" style={{ padding: 'var(--space-4)', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))', paddingTop: state.outboxLen > 0 || !state.isOnline ? 44 : 16 }}>
@@ -361,7 +367,7 @@ const VentaPage: React.FC = () => {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button aria-label={`Restar uno a ${item.nombre}`} onClick={() => setQty(item.productoId, item.qty - 1)} className="pressable" style={{ width: 48, height: 48, flexShrink: 0, border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)' }}><MinusIcon size={24} /></button>
                     <input className="campo" type="number" inputMode="numeric" value={item.qty} aria-label={`Cantidad de ${item.nombre}`}
-                      onChange={e => { const v = parseInt(e.target.value); setQty(item.productoId, isNaN(v) ? 0 : v); }}
+                      onChange={e => { const v = parseInt(e.target.value); if (v > 0) setQty(item.productoId, v); /* vacío mientras escribe: no lo saca */ }}
                       onFocus={e => e.target.select()}
                       style={{ width: 60, height: 48, fontSize: 20, fontWeight: 700, textAlign: 'center', borderRadius: 'var(--radius-sm)', padding: '4px 2px', color: 'var(--text)', outline: 'none' }} />
                     <button aria-label={`Sumar uno a ${item.nombre}`} onClick={() => setQty(item.productoId, item.qty + 1)} className="pressable" style={{ width: 48, height: 48, flexShrink: 0, border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary-dark)' }}><PlusIcon size={24} /></button>

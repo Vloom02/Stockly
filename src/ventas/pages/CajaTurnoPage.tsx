@@ -12,6 +12,7 @@ import { formatMoney } from '../context/VentasContext';
 import { Card, Button } from '../components/ui';
 
 import { parseMonto } from '../../lib/numeros';
+import { guardarFilaCaja, filasCajaEnCola } from '../lib/outbox';
 export interface CajaMov { id: string; tipo: 'apertura' | 'ingreso' | 'egreso'; monto: number; motivo: string | null; fecha: string; }
 
 const CajaTurnoPage: React.FC = () => {
@@ -26,48 +27,66 @@ const CajaTurnoPage: React.FC = () => {
   const [motivo, setMotivo] = useState('');
   const [fondo, setFondo] = useState('');
   const [busy, setBusy] = useState(false);
+  const [sinInternet, setSinInternet] = useState(false);
+  const [corrigiendo, setCorrigiendo] = useState(false); // corregir el fondo: agrega una apertura nueva
   const [toast, setToast] = useState({ show: false, msg: '', color: 'success' as 'success' | 'danger' });
 
+  // Lo del servidor + lo guardado sin internet. Si el servidor no contesta, se queda lo que ya se veía.
   const cargar = useCallback(async () => {
     if (!comercio) return;
-    const { data } = await supabase.from('ventas_caja_mov')
+    const { data, error } = await supabase.from('ventas_caja_mov')
       .select('id, tipo, monto, motivo, fecha')
       .eq('comercio_id', comercio.id).eq('turno_desde', turnoDesde)
       .order('fecha', { ascending: true });
-    setMovs((data ?? []) as CajaMov[]);
+    const enCola = (await filasCajaEnCola('caja_mov').catch(() => []))
+      .filter(f => f.turno_desde === turnoDesde) as unknown as CajaMov[];
+    setSinInternet(!!error);
+    setMovs(prev => {
+      const base = error ? prev : ((data ?? []) as CajaMov[]);
+      const ids = new Set(base.map(m => m.id));
+      return [...base, ...enCola.filter(c => !ids.has(c.id))].sort((a, b) => a.fecha.localeCompare(b.fecha));
+    });
   }, [comercio, turnoDesde]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  const apertura = movs.find(m => m.tipo === 'apertura');
-  const ingresos = movs.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0);
-  const egresos = movs.filter(m => m.tipo === 'egreso').reduce((s, m) => s + m.monto, 0);
-  const enCaja = (apertura?.monto ?? 0) + ingresos - egresos; // sin contar ventas
+  const aperturas = movs.filter(m => m.tipo === 'apertura');
+  const apertura = aperturas[aperturas.length - 1]; // la última: corregir el fondo agrega otra
+  const ingresos = movs.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + Number(m.monto), 0);
+  const egresos = movs.filter(m => m.tipo === 'egreso').reduce((s, m) => s + Number(m.monto), 0);
+  const enCaja = Number(apertura?.monto ?? 0) + ingresos - egresos; // sin contar ventas
 
-  const insertar = async (t: 'apertura' | 'ingreso' | 'egreso', m: number, mot: string) => {
-    if (!comercio || busy) return; // anti doble-tap: un solo movimiento por vez
+  const insertar = async (t: 'apertura' | 'ingreso' | 'egreso', m: number, mot: string): Promise<boolean> => {
+    if (!comercio || busy) return false; // anti doble-tap: un solo movimiento por vez
     setBusy(true);
-    const { error } = await supabase.from('ventas_caja_mov').insert({
-      comercio_id: comercio.id, sucursal_id: sucursalActiva?.id ?? null,
+    const r = await guardarFilaCaja('caja_mov', {
+      id: crypto.randomUUID(), comercio_id: comercio.id, sucursal_id: sucursalActiva?.id ?? null,
       cajero_legajo: cajero?.legajo ?? null, cajero_nombre: cajero?.nombre ?? null,
-      turno_desde: turnoDesde, tipo: t, monto: m, motivo: mot || null,
+      turno_desde: turnoDesde, tipo: t, monto: m, motivo: mot || null, fecha: new Date().toISOString(),
     });
     setBusy(false);
-    if (error) { setToast({ show: true, msg: 'No se pudo guardar', color: 'danger' }); return; }
+    if (!r.ok) { setToast({ show: true, msg: `No se pudo guardar: ${r.error}`, color: 'danger' }); return false; }
     await cargar();
-    setToast({ show: true, msg: 'Registrado', color: 'success' });
+    setToast({ show: true, msg: r.enCola ? 'Guardado. Se manda solo cuando haya internet.' : 'Registrado', color: 'success' });
+    return true;
   };
 
-  const guardarApertura = () => {
-    const m = Math.round((parseMonto(fondo) || 0) * 100) / 100;
-    if (m < 0) return;
-    insertar('apertura', m, 'Fondo inicial'); setFondo('');
+  // Lo escrito se borra recién cuando quedó guardado.
+  const guardarApertura = async () => {
+    const n = parseMonto(fondo);
+    if (fondo.trim() === '' || !Number.isFinite(n) || n < 0) {
+      setToast({ show: true, msg: 'Poné con cuánta plata arrancás. Si no hay nada, poné 0.', color: 'danger' });
+      return;
+    }
+    if (await insertar('apertura', Math.round(n * 100) / 100, apertura ? 'Corrección del fondo' : 'Fondo inicial')) {
+      setFondo(''); setCorrigiendo(false);
+    }
   };
 
-  const guardarMov = () => {
+  const guardarMov = async () => {
     const m = Math.round((parseMonto(monto) || 0) * 100) / 100;
-    if (m <= 0) { setToast({ show: true, msg: 'Ingresá un monto válido', color: 'danger' }); return; }
-    insertar(tipo, m, motivo.trim()); setMonto(''); setMotivo('');
+    if (m <= 0) { setToast({ show: true, msg: 'Poné un monto mayor que 0', color: 'danger' }); return; }
+    if (await insertar(tipo, m, motivo.trim())) { setMonto(''); setMotivo(''); }
   };
 
   const inputStyle: React.CSSProperties = {
@@ -80,21 +99,28 @@ const CajaTurnoPage: React.FC = () => {
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>Caja del turno</h1>
         <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 16 }}>{cajero?.nombre ? `Turno de ${cajero.nombre}` : 'Entradas y salidas de plata'}</p>
 
+        {sinInternet && (
+          <p role="status" style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-warning-dark, var(--text))', margin: '0 0 12px' }}>
+            Sin internet: se ve lo cargado en este celular. Lo nuevo se guarda y se manda solo.
+          </p>
+        )}
+
         {/* Apertura */}
-        {!apertura ? (
+        {!apertura || corrigiendo ? (
           <Card style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Apertura de caja</div>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>{apertura ? 'Corregir el fondo' : 'Apertura de caja'}</div>
             <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 10px' }}>Declará el efectivo con el que arrancás (fondo para dar cambio).</p>
             <div style={{ display: 'flex', gap: 8 }}>
-              <input className="campo" type="text" inputMode="decimal" value={fondo} onChange={e => setFondo(e.target.value)} placeholder="0" style={{ ...inputStyle, flex: 1 }} />
-              <Button onClick={guardarApertura} loading={busy}>Abrir caja</Button>
+              <input className="campo" type="text" inputMode="decimal" value={fondo} onChange={e => setFondo(e.target.value)} placeholder="Ej: 5000" aria-label="Efectivo con el que arrancás" style={{ ...inputStyle, flex: 1 }} />
+              <Button onClick={guardarApertura} loading={busy}>{apertura ? 'Guardar' : 'Abrir caja'}</Button>
             </div>
           </Card>
         ) : (
           <Card style={{ marginBottom: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 14, color: 'var(--text-2)' }}>Apertura</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{formatMoney(apertura.monto)}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{formatMoney(Number(apertura.monto))}</span>
+              <Button variant="ghost" size="md" onClick={() => setCorrigiendo(true)}>Corregir</Button>
             </div>
           </Card>
         )}

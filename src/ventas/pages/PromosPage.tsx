@@ -50,7 +50,7 @@ const PromosPage: React.FC = () => {
   const buscar = async (q: string) => {
     setQuery(q);
     setProdElegido(null);
-    setResults(q.length >= 2 && comercio ? await buscarProductosPorNombre(comercio.id, q) : []);
+    setResults(q.length >= 2 && comercio ? await buscarProductosPorNombre(comercio.id, q).catch(() => []) : []);
   };
 
   const guardar = async () => {

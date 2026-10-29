@@ -19,6 +19,7 @@ import { BanknotesIcon, ArrowPathIcon, LockClosedIcon } from '../components/ui/i
 import PinPad from '../components/PinPad';
 
 import { parseMonto } from '../../lib/numeros';
+import { totalesPorMetodo, arqueo, MovCaja } from '../lib/caja';
 import BotonVolver from '../components/BotonVolver';
 import { MoonIcon as IcoMoonIcon, SunIcon as IcoSunIcon } from '@heroicons/react/24/outline';
 import { ClockIcon as IcoClockIcon } from '@heroicons/react/24/outline';
@@ -112,17 +113,31 @@ const CierrePage: React.FC = () => {
   const turno = TURNOS.find(t => t.id === selTurno)!;
   const { inicio, fin } = useMemo(() => rangoTurno(turno, new Date()), [turno]);
 
+  const [movs, setMovs] = useState<MovCaja[]>([]);
+  const [cobros, setCobros] = useState(0);
+  const [sinInternet, setSinInternet] = useState(false);
+
   const load = useCallback(async () => {
     if (!comercio) { setLoading(false); return; }
     setLoading(true);
+    const desdeIso = inicio.toISOString(), hastaIso = fin.toISOString();
     let q = supabase
       .from('ventas_ventas').select('id, total, metodo_pago, fecha, fiado')
-      .eq('comercio_id', comercio.id)
-      .gte('fecha', inicio.toISOString())
-      .lt('fecha', fin.toISOString());
-    if (sucursalActiva) q = q.eq('sucursal_id', sucursalActiva.id);
-    const { data } = await q.order('fecha', { ascending: false });
-    setVentas((data ?? []) as VentaRow[]);
+      .eq('comercio_id', comercio.id).eq('anulada', false)
+      .gte('fecha', desdeIso).lt('fecha', hastaIso);
+    let qm = supabase.from('ventas_caja_mov').select('tipo, monto, fecha, turno_desde')
+      .eq('comercio_id', comercio.id).gte('fecha', desdeIso).lt('fecha', hastaIso);
+    if (sucursalActiva) { q = q.eq('sucursal_id', sucursalActiva.id); qm = qm.eq('sucursal_id', sucursalActiva.id); }
+    const [rv, rm, rp] = await Promise.all([
+      q.order('fecha', { ascending: false }),
+      qm,
+      supabase.from('ventas_pagos').select('monto').eq('comercio_id', comercio.id).gte('fecha', desdeIso).lt('fecha', hastaIso),
+    ]);
+    // Sin internet se deja lo que ya se veía y se avisa (antes decía "Sin ventas").
+    setSinInternet(!!(rv.error || rm.error || rp.error));
+    if (!rv.error) setVentas((rv.data ?? []) as VentaRow[]);
+    if (!rm.error) setMovs((rm.data ?? []) as MovCaja[]);
+    if (!rp.error) setCobros((rp.data ?? []).reduce((s: number, p: { monto: number }) => s + Number(p.monto), 0));
     setLoading(false);
   }, [comercio, sucursalActiva, inicio, fin]);
 
@@ -146,14 +161,10 @@ const CierrePage: React.FC = () => {
   const cantidad   = ventas.length;
   const ticketProm = cantidad > 0 ? total / cantidad : 0;
 
-  const porMetodo = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const v of ventas) m[v.metodo_pago] = (m[v.metodo_pago] ?? 0) + v.total;
-    return m;
-  }, [ventas]);
-
-  const totalEfectivo = porMetodo['efectivo'] ?? 0;
-  const totalFiado    = useMemo(() => ventas.filter(v => v.fiado).reduce((s, v) => s + v.total, 0), [ventas]);
+  // Fiado aparte (no entró plata); el esperado suma fondo, entradas/salidas y cobros de fiado.
+  const porMetodo = useMemo(() => totalesPorMetodo(ventas), [ventas]);
+  const caja = useMemo(() => arqueo(ventas, movs, cobros), [ventas, movs, cobros]);
+  const totalEfectivo = caja.esperado;
 
   const contado = parseMonto(efectivoContado) || 0;
   const diferencia = efectivoContado === '' ? null : contado - totalEfectivo;
@@ -235,7 +246,9 @@ const CierrePage: React.FC = () => {
         {loading ? (
           <><Skeleton height={70} style={{ marginBottom: 8 }} /><Skeleton height={140} style={{ marginBottom: 8 }} /><Skeleton height={120} /></>
         ) : cantidad === 0 ? (
-          <EmptyState icon={<BanknotesIcon size={44} color="var(--text-3)" />} title={`Sin ventas en el turno ${turno.nombre.toLowerCase()}`} description="Cuando haya ventas en este turno, vas a ver el cierre acá." />
+          sinInternet
+            ? <EmptyState icon={<BanknotesIcon size={44} color="var(--text-3)" />} title="Sin internet" description="Las ventas del turno se ven cuando vuelva la señal. No se borró nada." />
+            : <EmptyState icon={<BanknotesIcon size={44} color="var(--text-3)" />} title={`Sin ventas en el turno ${turno.nombre.toLowerCase()}`} description="Cuando haya ventas en este turno, vas a ver el cierre acá." />
         ) : (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 14 }}>
@@ -248,16 +261,10 @@ const CierrePage: React.FC = () => {
               <SectionTitle>Ingresos por método</SectionTitle>
               {Object.entries(porMetodo).sort((a, b) => b[1] - a[1]).map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: 14 }}>{metodoLabel(k)}</span>
+                  <span style={{ fontSize: 14 }}>{k === 'fiado' ? 'Fiado (no cobrado)' : metodoLabel(k)}</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{formatMoney(v)}</span>
                 </div>
               ))}
-              {totalFiado > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', color: 'var(--color-warning-dark)' }}>
-                  <span style={{ fontSize: 14 }}>Fiado (no cobrado)</span>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{formatMoney(totalFiado)}</span>
-                </div>
-              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, marginTop: 4, borderTop: '2px solid var(--border)' }}>
                 <span style={{ fontSize: 16, fontWeight: 800 }}>Total</span>
                 <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 17, color: 'var(--color-primary-dark)' }}>{formatMoney(total)}</span>
@@ -269,9 +276,18 @@ const CierrePage: React.FC = () => {
               <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 10 }}>
                 Contá el efectivo en la caja al cerrar este turno y anotalo para verificar que cuadre.
               </p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <span style={{ fontSize: 14, color: 'var(--text-2)' }}>Efectivo esperado</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{formatMoney(totalEfectivo)}</span>
+              {([
+                ['Fondo de apertura', caja.fondo], ['Ventas en efectivo', caja.ventasEfectivo],
+                ['Entradas de plata', caja.ingresos], ['Salidas de plata', -caja.egresos], ['Cobros de fiado', caja.cobrosFiado],
+              ] as [string, number][]).filter(([, n]) => n !== 0).map(([k, n]) => (
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>
+                  <span style={{ color: 'var(--text-2)' }}>{k}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)' }}>{n < 0 ? '−' : ''}{formatMoney(Math.abs(n))}</span>
+                </div>
+              ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '6px 0 10px', paddingTop: 6, borderTop: '1px solid var(--border)' }}>
+                <span style={{ fontSize: 14, color: 'var(--text-2)', fontWeight: 600 }}>Efectivo esperado</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{formatMoney(totalEfectivo)}</span>
               </div>
               <label style={{ fontSize: 13, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Efectivo contado en caja</label>
               <input className="campo" type="text" inputMode="decimal" value={efectivoContado} onChange={e => setEfectivoContado(e.target.value)}

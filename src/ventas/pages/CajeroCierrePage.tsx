@@ -13,11 +13,14 @@ import { useConfirm } from '../../lib/useConfirm';
 import { Card, Button, Skeleton } from '../components/ui';
 
 import { parseMonto } from '../../lib/numeros';
-interface VentaRow { total: number; metodo_pago: string; fiado: boolean; }
-interface CajaMov { tipo: 'apertura' | 'ingreso' | 'egreso'; monto: number; }
+import { totalesPorMetodo, arqueo, VentaCaja, MovCaja } from '../lib/caja';
+import { openDB, idbGetAll, guardarFilaCaja, OfflineVentaPayload, OfflinePagoPayload } from '../lib/outbox';
+import { OutboxItem } from '../types';
+type VentaRow = VentaCaja;
+type CajaMov = MovCaja;
 
 const metodoLabel = (k: string) =>
-  ({ efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta', qr: 'QR' } as Record<string, string>)[k] ?? k;
+  ({ efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta', qr: 'QR', fiado: 'Fiado (no entró plata)' } as Record<string, string>)[k] ?? k;
 
 const CajeroCierrePage: React.FC = () => {
   const history = useHistory();
@@ -33,66 +36,85 @@ const CajeroCierrePage: React.FC = () => {
 
   const [ventas, setVentas] = useState<VentaRow[]>([]);
   const [movs, setMovs] = useState<CajaMov[]>([]);
+  const [cobros, setCobros] = useState(0); // cobros de fiado del turno (entra efectivo)
+  const [sinInternet, setSinInternet] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fondo, setFondo] = useState('');
   const [contado, setContado] = useState('');
+  const [errorContado, setErrorContado] = useState('');
   const [cerrando, setCerrando] = useState(false);
 
   useEffect(() => {
     (async () => {
       if (!comercio || !cajero) { setLoading(false); return; }
-      const { data } = await supabase
-        .from('ventas_ventas').select('total, metodo_pago, fiado, anulada')
-        .eq('comercio_id', comercio.id)
-        .eq('usuario', cajero.nombre)
-        .gte('fecha', desde.toISOString());
-      setVentas((data ?? []).filter((v: { anulada?: boolean }) => !v.anulada) as VentaRow[]);
-      // Movimientos de caja del turno (apertura, ingresos, egresos).
-      const { data: mv } = await supabase
-        .from('ventas_caja_mov').select('tipo, monto')
-        .eq('comercio_id', comercio.id).eq('turno_desde', new Date(cajero.desde ?? Date.now()).toISOString());
-      setMovs((mv ?? []) as CajaMov[]);
+      const turnoDesde = new Date(cajero.desde ?? Date.now()).toISOString();
+      // shortcut: las ventas se atribuyen por nombre (no hay id del cajero en la venta); dos cajeros
+      // con el mismo nombre se sumarían. CajerosPage no deja repetir nombres.
+      const [rv, rm, rp] = await Promise.all([
+        supabase.from('ventas_ventas').select('total, metodo_pago, fiado, anulada')
+          .eq('comercio_id', comercio.id).eq('usuario', cajero.nombre).gte('fecha', desde.toISOString()),
+        supabase.from('ventas_caja_mov').select('id, tipo, monto, fecha, turno_desde')
+          .eq('comercio_id', comercio.id).eq('turno_desde', turnoDesde),
+        supabase.from('ventas_pagos').select('monto')
+          .eq('comercio_id', comercio.id).eq('usuario', cajero.nombre).gte('fecha', desde.toISOString()),
+      ]);
+      // Lo guardado sin internet en este celular también es del turno.
+      await openDB();
+      const cola = await idbGetAll<OutboxItem>('outbox');
+      const ventasCola = cola.filter(i => i.kind === 'venta').map(i => i.payload as OfflineVentaPayload)
+        .filter(p => p.usuario === cajero.nombre && p.fecha >= desde.getTime())
+        .map(p => ({ total: p.total, metodo_pago: p.metodoPago, fiado: p.fiado }));
+      const cobrosCola = cola.filter(i => i.kind === 'pago_fiado').map(i => i.payload as OfflinePagoPayload)
+        .filter(p => p.usuario === cajero.nombre && p.fecha >= desde.getTime()).reduce((s, p) => s + p.monto, 0);
+      const movsCola = cola.filter(i => i.kind === 'caja_mov').map(i => i.payload as unknown as CajaMov & { id: string; turno_desde: string })
+        .filter(m => m.turno_desde === turnoDesde);
+      const movsServer = (rm.data ?? []) as (CajaMov & { id: string })[];
+      const idsMov = new Set(movsServer.map(m => m.id));
+
+      setSinInternet(!!(rv.error || rm.error || rp.error));
+      setVentas([...((rv.data ?? []) as VentaRow[]), ...ventasCola]);
+      setMovs([...movsServer, ...movsCola.filter(m => !idsMov.has(m.id))]);
+      setCobros((rp.data ?? []).reduce((s: number, p: { monto: number }) => s + Number(p.monto), 0) + cobrosCola);
       setLoading(false);
     })();
   }, [comercio, cajero, desde]);
 
-  const total = useMemo(() => ventas.reduce((s, v) => s + v.total, 0), [ventas]);
-  const porMetodo = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const v of ventas) m[v.metodo_pago] = (m[v.metodo_pago] ?? 0) + v.total;
-    return m;
-  }, [ventas]);
-  const efectivoVentas = porMetodo['efectivo'] ?? 0;
+  const validas = useMemo(() => ventas.filter(v => !v.anulada), [ventas]);
+  const total = useMemo(() => validas.reduce((s, v) => s + Number(v.total), 0), [validas]);
+  const porMetodo = useMemo(() => totalesPorMetodo(validas), [validas]);
   // La apertura registrada manda; si no hay, se puede declarar el fondo a mano.
-  const aperturaMov = movs.find(m => m.tipo === 'apertura');
-  const ingresos = movs.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0);
-  const egresos = movs.filter(m => m.tipo === 'egreso').reduce((s, m) => s + m.monto, 0);
-  const fondoNum = aperturaMov ? aperturaMov.monto : (parseMonto(fondo) || 0);
-  const esperado = fondoNum + efectivoVentas + ingresos - egresos;
+  const aperturaMov = movs.some(m => m.tipo === 'apertura');
+  const a = arqueo(validas, movs, cobros, parseMonto(fondo) || 0);
+  const { fondo: fondoNum, ventasEfectivo: efectivoVentas, ingresos, egresos, esperado } = a;
   const contadoNum = parseMonto(contado);
-  const diferencia = contado === '' || Number.isNaN(contadoNum) ? null : contadoNum - esperado;
+  const diferencia = contado.trim() === '' || !Number.isFinite(contadoNum) ? null : contadoNum - esperado;
 
   const cerrar = async () => {
     if (!comercio || !cajero) return;
+    // Sin contar no se cierra: antes quedaba "cuadra" con $0 y un faltante pasaba de largo.
+    if (diferencia === null) { setErrorContado('Contá el efectivo de la caja y anotalo acá. Si no hay nada, poné 0.'); return; }
     if (!(await confirmar('¿Cerrar la caja y salir del turno?', { okText: 'Cerrar caja' }))) return;
     setCerrando(true);
-    try {
-      await supabase.from('ventas_cierres').insert({
-        comercio_id: comercio.id,
-        sucursal_id: sucursalActiva?.id ?? null,
-        cajero_legajo: cajero.legajo,
-        cajero_nombre: cajero.nombre,
-        desde: desde.toISOString(),
-        ventas_cant: ventas.length,
-        total,
-        fondo_inicial: fondoNum,
-        efectivo_esperado: esperado,
-        efectivo_contado: Number.isNaN(contadoNum) ? 0 : contadoNum,
-        diferencia: diferencia ?? 0,
-        metodos: porMetodo,
-      });
-    } catch { /* aunque falle el registro, igual cerramos el turno */ }
+    const r = await guardarFilaCaja('cierre', {
+      id: crypto.randomUUID(),
+      comercio_id: comercio.id,
+      sucursal_id: sucursalActiva?.id ?? null,
+      cajero_legajo: cajero.legajo,
+      cajero_nombre: cajero.nombre,
+      desde: desde.toISOString(),
+      hasta: new Date().toISOString(),
+      ventas_cant: validas.length,
+      total,
+      fondo_inicial: fondoNum,
+      efectivo_esperado: esperado,
+      efectivo_contado: contadoNum,
+      diferencia,
+      metodos: porMetodo,
+    });
     setCerrando(false);
+    if (!r.ok) {
+      if (!(await confirmar(`No se pudo guardar el cierre (${r.error}). ¿Salir del turno igual?`, { okText: 'Salir igual', peligro: true }))) return;
+    }
     cerrarTurno();            // → vuelve a la pantalla de inicio de turno
   };
 
@@ -109,6 +131,11 @@ const CajeroCierrePage: React.FC = () => {
           Turno de <b>{cajero?.nombre ?? '—'}</b> · desde {desde.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
         </p>
 
+        {sinInternet && !loading && (
+          <p role="status" style={{ fontSize: 15, fontWeight: 600, margin: '0 0 12px' }}>
+            Sin internet: se cuenta lo guardado en este celular. Si vendiste en otro equipo, puede faltar.
+          </p>
+        )}
         {loading ? (
           <><Skeleton height={90} style={{ marginBottom: 8 }} /><Skeleton height={140} /></>
         ) : (
@@ -163,13 +190,22 @@ const CajeroCierrePage: React.FC = () => {
                   <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-danger)' }}>−{formatMoney(egresos)}</span>
                 </div>
               )}
+              {cobros > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>
+                  <span style={{ color: 'var(--text-2)' }}>Cobros de fiado</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-primary-dark)' }}>+{formatMoney(cobros)}</span>
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '8px 0 10px', paddingTop: 8, borderTop: '1px solid var(--border)', fontSize: 14 }}>
                 <span style={{ color: 'var(--text-2)', fontWeight: 600 }}>Efectivo esperado</span>
                 <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{formatMoney(esperado)}</span>
               </div>
 
-              <label style={{ fontSize: 13, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Efectivo contado</label>
-              <input className="campo" type="text" inputMode="decimal" value={contado} onChange={e => setContado(e.target.value)} placeholder="0.00" style={inputStyle} />
+              <label htmlFor="efectivo-contado" style={{ fontSize: 15, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Efectivo contado</label>
+              <input id="efectivo-contado" className="campo" type="text" inputMode="decimal" value={contado}
+                onChange={e => { setContado(e.target.value); setErrorContado(''); }} placeholder="Lo que hay en la caja"
+                aria-invalid={!!errorContado} aria-describedby={errorContado ? 'error-contado' : undefined} style={inputStyle} />
+              {errorContado && <p id="error-contado" role="alert" style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-danger)', margin: '6px 0 0' }}>{errorContado}</p>}
 
               {diferencia !== null && (
                 <div style={{
