@@ -43,7 +43,27 @@ export function planDeActualizacion(rel: Release | null, versionWeb: string, ver
 }
 
 export interface Actualizacion { version: string; url: string }
+export type Resultado = { tipo: 'nada' } | { tipo: 'web'; version: string } | ({ tipo: 'apk' } & Actualizacion);
 let consulta: Promise<Actualizacion | null> | null = null;
+
+/** Mira el último release. Si hay parte web nueva, la deja bajada (se aplica con aplicarPendiente). */
+async function revisar(): Promise<Resultado> {
+  const r = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`);
+  if (!r.ok) throw new Error(`GitHub respondió ${r.status}`);
+  const rel: Release = await r.json();
+  const { CapacitorUpdater } = await import('@capgo/capacitor-updater');
+  const nativa = (await CapacitorUpdater.getBuiltinVersion()).version;
+  const plan = planDeActualizacion(rel, __APP_VERSION__, nativa);
+  if (plan.tipo === 'apk') return { tipo: 'apk', version: plan.version, url: plan.url };
+  if (plan.tipo === 'nada') return plan;
+  // Si ya se bajó en otra apertura, no se vuelve a bajar. NO se usa next(): aplicaba la versión
+  // al pasar a segundo plano y la recarga vaciaba el carrito (ir a WhatsApp o a Mercado Pago).
+  const { bundles } = await CapacitorUpdater.list();
+  if (!bundles.some(b => b.version === plan.version && listo(b.status))) {
+    await CapacitorUpdater.download({ url: plan.url, version: plan.version, checksum: plan.checksum });
+  }
+  return { tipo: 'web', version: plan.version };
+}
 
 /**
  * Una vez por arranque (solo en la app instalada): si hay parte web nueva la baja y la deja lista
@@ -51,24 +71,15 @@ let consulta: Promise<Actualizacion | null> | null = null;
  */
 export function buscarActualizacion(): Promise<Actualizacion | null> {
   if (!Capacitor.isNativePlatform() || !navigator.onLine) return Promise.resolve(null);
-  return consulta ??= (async () => {
-    const r = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`);
-    const rel: Release | null = r.ok ? await r.json() : null;
-    const { CapacitorUpdater } = await import('@capgo/capacitor-updater');
-    const nativa = (await CapacitorUpdater.getBuiltinVersion()).version;
-    const plan = planDeActualizacion(rel, __APP_VERSION__, nativa);
-    if (plan.tipo === 'apk') return { version: plan.version, url: plan.url };
-    if (plan.tipo === 'web') {
-      // Si ya se bajó en otra apertura, no se vuelve a bajar. NO se usa next(): aplicaba la versión
-      // al pasar a segundo plano y la recarga vaciaba el carrito (ir a WhatsApp o a Mercado Pago).
-      // Queda bajada y se aplica la próxima vez que la app arranca de cero (aplicarPendiente).
-      const { bundles } = await CapacitorUpdater.list();
-      if (!bundles.some(b => b.version === plan.version && listo(b.status))) {
-        await CapacitorUpdater.download({ url: plan.url, version: plan.version, checksum: plan.checksum });
-      }
-    }
-    return null;
-  })().catch(e => { console.warn('[actualizacion]', e); return null; });
+  return consulta ??= revisar()
+    .then(res => res.tipo === 'apk' ? { version: res.version, url: res.url } : null)
+    .catch(e => { console.warn('[actualizacion]', e); return null; });
+}
+
+/** "Buscar actualización" de Ajustes: revisa ya. Tira si no se pudo (sin red, GitHub caído). */
+export async function buscarAhora(): Promise<Resultado> {
+  await consulta; // si la del arranque está bajando la misma versión, se espera (no se baja dos veces)
+  return revisar();
 }
 
 const listo = (s: string) => s !== 'error' && s !== 'deleted' && s !== 'deleting' && s !== 'downloading';

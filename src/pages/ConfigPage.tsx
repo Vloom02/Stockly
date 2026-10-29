@@ -6,7 +6,7 @@ import { useHistory } from 'react-router-dom';
 import {
   MoonIcon, SunIcon, BellAlertIcon, TagIcon,
   BuildingStorefrontIcon, ArrowRightOnRectangleIcon, PrinterIcon, ClipboardDocumentCheckIcon, UserGroupIcon,
-  InformationCircleIcon, ChevronRightIcon, UserCircleIcon,
+  InformationCircleIcon, ChevronRightIcon, UserCircleIcon, ArrowPathIcon,
   ArrowDownTrayIcon, ArrowUpTrayIcon, SwatchIcon, CloudIcon, BanknotesIcon, ClockIcon, CurrencyDollarIcon, ClipboardDocumentListIcon, ShoppingCartIcon, ChartBarIcon,
   DocumentChartBarIcon,
 } from '@heroicons/react/24/outline';
@@ -21,6 +21,7 @@ import { notificacionesActivas, setNotificacionesActivas, horaNotificacion, setH
 import { stockACSV, movimientosACSV } from '../lib/exportar';
 import { useAuth, useCerrarSesion } from '../context/AuthContext';
 import { flushOutbox } from '../ventas/lib/outbox';
+import { buscarAhora, aplicarPendiente, Resultado } from '../lib/actualizacion';
 import { useEmpleado } from '../ventas/context/EmpleadoContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -53,6 +54,29 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
   const [descUrgente, setDescUrgente] = useState(DESC_URGENTE().toString());
   const [descAviso, setDescAviso] = useState(DESC_AVISO().toString());
   const [toast, setToast] = useState({ show: false, msg: '' });
+  const [act, setAct] = useState<Resultado | null>(null);
+  const [buscandoAct, setBuscandoAct] = useState(false);
+
+  const buscarAct = async () => {
+    if (!navigator.onLine) { setToast({ show: true, msg: 'Sin internet: conectate para buscar una actualización' }); return; }
+    setBuscandoAct(true);
+    try {
+      const r = await buscarAhora();
+      setAct(r);
+      if (r.tipo === 'nada') setToast({ show: true, msg: `Ya tenés la última versión (${__APP_VERSION__})` });
+    } catch {
+      setToast({ show: true, msg: 'No se pudo buscar la actualización. Probá de nuevo en un rato.' });
+    } finally { setBuscandoAct(false); }
+  };
+
+  // Lo que no se subió queda guardado en el celular: recargar no lo pierde.
+  const actualizarYa = async () => {
+    setBuscandoAct(true);
+    if (!(await aplicarPendiente())) {
+      setBuscandoAct(false);
+      setToast({ show: true, msg: 'No se pudo aplicar. Cerrá y abrí la app: se actualiza sola.' });
+    }
+  };
 
   const guardar = () => {
     setSetting('dias-aviso-default', diasAviso || '15');
@@ -371,6 +395,29 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
               </div>
             )}
           </Card>
+
+          {/* Actualización: solo en la app instalada (en el navegador siempre está la última) */}
+          {Capacitor.isNativePlatform() && (
+          <Card padding="md" style={{ marginBottom: 12 }}>
+            <SectionTitle icon={<ArrowPathIcon width={16} height={16} />}>Actualización</SectionTitle>
+            <p style={{ fontSize: 15, color: 'var(--text-2)', margin: '0 0 12px' }}>Versión instalada: {__APP_VERSION__}</p>
+            {act?.tipo === 'web' ? (<>
+              <Button variant="primary" size="lg" fullWidth onClick={actualizarYa} disabled={buscandoAct}>
+                Actualizar ahora a la {act.version}
+              </Button>
+              <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '8px 0 0' }}>La app se vuelve a abrir sola. No se pierde nada.</p>
+            </>) : act?.tipo === 'apk' ? (<>
+              <Button variant="primary" size="lg" fullWidth onClick={() => { window.location.href = act.url; }}>
+                Bajar la versión {act.version}
+              </Button>
+              <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '8px 0 0' }}>Esta versión se instala encima de la app. No se pierde nada.</p>
+            </>) : (
+              <Button variant="secondary" size="lg" fullWidth onClick={buscarAct} disabled={buscandoAct}>
+                {buscandoAct ? 'Buscando…' : 'Buscar actualización'}
+              </Button>
+            )}
+          </Card>
+          )}
 
           {/* Notificaciones */}
           <Card padding="md" style={{ marginBottom: 12 }}>
