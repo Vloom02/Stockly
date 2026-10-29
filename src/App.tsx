@@ -106,9 +106,11 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
   // (usuario existente en un dispositivo nuevo), va directo al stock.
   useEffect(() => {
     if (getSetting('onboarding-visto', '') === 'si') return;
+    // Recién logueado el comercio todavía no llegó: decidir antes mostraba el tutorial a todos.
+    if (!comercio?.id) return;
     (async () => {
       try {
-        if (navigator.onLine && comercio?.id) {
+        if (navigator.onLine) {
           const { data } = await supabase.from('productos')
             .select('id').eq('comercio_id', comercio.id).limit(1);
           if ((data?.length ?? 0) > 0) {

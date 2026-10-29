@@ -162,10 +162,13 @@ const DashboardPage: React.FC = () => {
               boxShadow: 'var(--shadow-md)',
             }}>
               <div style={{ position: 'relative' }}>
-                <span style={{ fontSize: 15, color: 'var(--text-2)', fontWeight: 700 }}>Valor del inventario</span>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(20px, 6.5vw, 30px)', fontWeight: 800, margin: '6px 0 14px', letterSpacing: '-0.02em', lineHeight: 1.05, color: 'var(--text)', whiteSpace: 'nowrap' }}>
-                  {formatearMoneda(valorAnimado)}
-                </div>
+                {/* La plata es del dueño: un cajero en turno ve solo cuánta mercadería hay. */}
+                <span style={{ fontSize: 15, color: 'var(--text-2)', fontWeight: 700 }}>{esDueno ? 'Valor del inventario' : 'Mercadería'}</span>
+                {esDueno && (
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(20px, 6.5vw, 30px)', fontWeight: 800, margin: '6px 0 14px', letterSpacing: '-0.02em', lineHeight: 1.05, color: 'var(--text)', whiteSpace: 'nowrap' }}>
+                    {formatearMoneda(valorAnimado)}
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
                   <LedgerStat n={res.productosTotales} l="Productos" />
                   <LedgerStat n={res.lotesTotales} l="Compras" />
@@ -175,7 +178,7 @@ const DashboardPage: React.FC = () => {
             </div>
 
             {/* En riesgo (2x1) */}
-            <div style={{
+            {esDueno && <div style={{
               gridColumn: 'span 2', background: 'var(--surface)', borderRadius: 'var(--radius-lg)',
               padding: 16, boxShadow: 'var(--shadow-md)',
             }}>
@@ -196,7 +199,7 @@ const DashboardPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-            </div>
+            </div>}
 
             <NivelChip nivel="vencido" cantidad={res.lotesVencidos} />
             <NivelChip nivel="critico" cantidad={res.lotesCriticos} />
