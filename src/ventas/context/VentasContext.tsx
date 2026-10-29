@@ -283,11 +283,16 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if (!navigator.onLine) return saveOffline();
     try {
       // FEFO + descuento de stock se resuelven atómicamente en el servidor (RPC).
-      const res = await aplicarVentaOnline({
-        comercioId: comercio.id, sucursalId: sucursalActiva.id, usuario,
-        metodoPago: opts.metodoPago, cliente: opts.cliente, fiado: opts.fiado,
-        descuento: opts.descuento, cart, ventaId,
-      });
+      // Con señal floja no se espera 45 s con el cliente adelante: a los 8 s se guarda en el
+      // celular con el MISMO id (si el servidor la había recibido, el reintento sale duplicado).
+      const res = await Promise.race([
+        aplicarVentaOnline({
+          comercioId: comercio.id, sucursalId: sucursalActiva.id, usuario,
+          metodoPago: opts.metodoPago, cliente: opts.cliente, fiado: opts.fiado,
+          descuento: opts.descuento, cart, ventaId,
+        }),
+        new Promise<never>((_, rej) => setTimeout(() => rej(new Error('sin respuesta del servidor')), 8000)),
+      ]);
       vaciar(); hapticOk(); lotesCacheRef.current = {}; sincronizarAhora();
       const aviso = res.faltantes.length > 0
         ? ` (faltó stock de: ${res.faltantes.map(f => f.nombre).join(', ')})`

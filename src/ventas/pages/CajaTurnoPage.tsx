@@ -170,7 +170,7 @@ const CajaTurnoPage: React.FC = () => {
 
         <Button fullWidth variant="ghost" onClick={() => history.goBack()} style={{ marginTop: 14 }}>Volver</Button>
       </div>
-      <IonToast isOpen={toast.show} onDidDismiss={() => setToast(t => ({ ...t, show: false }))} message={toast.msg} duration={2000} position="top" color={toast.color} />
+      <IonToast isOpen={toast.show} onDidDismiss={() => setToast(t => ({ ...t, show: false }))} message={toast.msg} duration={4500} position="top" color={toast.color} />
     </IonContent>
   );
 };

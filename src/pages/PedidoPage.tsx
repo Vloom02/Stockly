@@ -122,7 +122,7 @@ const PedidoPage: React.FC = () => {
             ))
           )}
         </div>
-        <IonToast isOpen={!!toast} message={toast} duration={2500} onDidDismiss={() => setToast('')} />
+        <IonToast isOpen={!!toast} message={toast} duration={4500} onDidDismiss={() => setToast('')} />
       </IonContent>
     </IonPage>
   );

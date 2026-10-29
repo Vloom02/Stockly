@@ -368,7 +368,7 @@ const CierrePage: React.FC = () => {
           onCancel={() => setShowPinPad(false)}
         />
       )}
-      <IonToast isOpen={pinToast} onDidDismiss={() => setPinToast(false)} message="PIN actualizado" duration={2200} position="top" color="success" />
+      <IonToast isOpen={pinToast} onDidDismiss={() => setPinToast(false)} message="PIN actualizado" duration={4500} position="top" color="success" />
     </IonContent>
   );
 };

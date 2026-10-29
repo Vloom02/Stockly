@@ -165,7 +165,7 @@ const SucursalesPage: React.FC = () => {
           </Card>
         </div>
 
-        <IonToast isOpen={toast.show} message={toast.msg} duration={1500}
+        <IonToast isOpen={toast.show} message={toast.msg} duration={4500}
           onDidDismiss={() => setToast({ show: false, msg: '' })} />
       </IonContent>
     </IonPage>

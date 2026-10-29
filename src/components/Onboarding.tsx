@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ArchiveBoxIcon, BellAlertIcon, ArrowPathRoundedSquareIcon,
   ArrowRightIcon, CheckIcon,
@@ -41,6 +41,18 @@ interface Props {
 
 const Onboarding: React.FC<Props> = ({ onComplete }) => {
   const [paso, setPaso] = useState(0);
+  // "Atrás" de Android: vuelve un paso o cierra el tutorial (antes cambiaba la pantalla de abajo).
+  const pasoRef = useRef(paso);
+  pasoRef.current = paso;
+  const completar = useRef(onComplete);
+  completar.current = onComplete;
+  useEffect(() => {
+    const atras = (e: Event) => (e as CustomEvent<{ register: (p: number, h: () => void) => void }>).detail.register(101, () => {
+      if (pasoRef.current > 0) setPaso(p => p - 1); else completar.current();
+    });
+    document.addEventListener('ionBackButton', atras);
+    return () => document.removeEventListener('ionBackButton', atras);
+  }, []);
   const esUltimo = paso === SLIDES.length - 1;
   const slide = SLIDES[paso];
 

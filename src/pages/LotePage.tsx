@@ -262,7 +262,7 @@ const LoteForm: React.FC = () => {
               onCancel={() => setShowScanner(false)}
             />
           )}
-          <IonToast isOpen={toast.show} message={toast.msg} duration={2500}
+          <IonToast isOpen={toast.show} message={toast.msg} duration={4500}
             onDidDismiss={() => setToast({ show: false, msg: '' })} />
         </IonContent>
       </IonPage>
@@ -438,7 +438,7 @@ const LoteForm: React.FC = () => {
           {!vencidaPrimero && bloqueRetiros}
         </div>
 
-        <IonToast isOpen={toast.show} message={toast.msg} duration={2500}
+        <IonToast isOpen={toast.show} message={toast.msg} duration={4500}
           onDidDismiss={() => setToast({ show: false, msg: '' })} />
       </IonContent>
     </IonPage>

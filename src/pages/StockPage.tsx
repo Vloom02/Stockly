@@ -13,6 +13,7 @@ import { ProductoConLotes, NivelAlerta, LoteConProducto } from '../types';
 import { sugerirLiquidacion } from '../lib/liquidacion';
 import Card from '../components/ui/Card';
 import { NivelBadge } from '../components/ui/Badge';
+import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
 import { Input, Opciones } from '../components/ui/Input';
 import ScannerModal from '../components/ScannerModal';
@@ -29,12 +30,15 @@ function coincideNivel(filtro: Filtro, nivel: NivelAlerta): boolean {
   return nivel === filtro;
 }
 
+const POR_PAGINA = 60;
 const StockPage: React.FC = () => {
   const { productosConLotes, lotesEnriquecidos, buscarProductoPorCodigo } = useStore();
   const history = useHistory();
   const { esDueno } = useAuth();
 
   const [vista, setVista] = useState<Vista>('productos');
+  // De a 60: con cientos de productos, dibujar todo de una trababa los celulares baratos.
+  const [mostrar, setMostrar] = useState(POR_PAGINA);
   const [busqueda, setBusqueda] = useState('');
   const [showScanner, setShowScanner] = useState(false);
   // 'pronto' = crítico + urgente (lo usa la tarjeta "vencen pronto" del inicio)
@@ -194,10 +198,15 @@ const StockPage: React.FC = () => {
                 description="Probá cambiar la búsqueda o los filtros." />
             ) : (
               <div className="lista-animada" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {productosFiltrados.map(p => (
+                {productosFiltrados.slice(0, mostrar).map(p => (
                   <ProductoCard key={p.producto.id} p={p}
                     onClick={() => history.push(`/producto/${p.producto.id}`)} />
                 ))}
+                {productosFiltrados.length > mostrar && (
+                  <Button variant="secondary" size="lg" fullWidth onClick={() => setMostrar(m => m + POR_PAGINA)}>
+                    Ver más ({productosFiltrados.length - mostrar} más)
+                  </Button>
+                )}
               </div>
             )
           ) : (
@@ -206,9 +215,14 @@ const StockPage: React.FC = () => {
                 description="Probá cambiar la búsqueda o los filtros." />
             ) : (
               <div className="lista-animada" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {lotesFiltrados.map(l => (
+                {lotesFiltrados.slice(0, mostrar).map(l => (
                   <LoteRow key={l.id} lote={l} onClick={() => history.push(`/lote/${l.id}`)} />
                 ))}
+                {lotesFiltrados.length > mostrar && (
+                  <Button variant="secondary" size="lg" fullWidth onClick={() => setMostrar(m => m + POR_PAGINA)}>
+                    Ver más ({lotesFiltrados.length - mostrar} más)
+                  </Button>
+                )}
               </div>
             )
           )}

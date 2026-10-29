@@ -263,8 +263,8 @@ const VentaPage: React.FC = () => {
             )}
             {isUnlocked && (
               <button onClick={lock} aria-label="Salir de modo dueño" className="pressable"
-                style={{ width: 38, height: 38, borderRadius: 'var(--radius-full)', border: '1px solid var(--color-primary-border)', background: 'var(--color-primary-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
-                <LockClosedIcon size={18} color="var(--color-primary-dark)" />
+                style={{ width: 48, height: 48, borderRadius: 'var(--radius-full)', border: '1px solid var(--color-primary-border)', background: 'var(--color-primary-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                <LockClosedIcon size={22} color="var(--color-primary-dark)" />
               </button>
             )}
             {/* Caja, fiado, ventas anteriores: antes era la pestaña "Más" de la app de ventas */}
@@ -501,6 +501,11 @@ const VentaPage: React.FC = () => {
                 </div>
               )}
               <Button fullWidth size="lg" onClick={handleConfirm} loading={processing} disabled={fiadoSinCliente} style={{ fontSize: 20 }}><CheckIcon size={22} /> {fiado ? 'Anotar fiado' : 'Listo, cobrado'} · {formatMoney(total)}</Button>
+              {processing && (
+                <p role="status" style={{ fontSize: 16, fontWeight: 600, textAlign: 'center', margin: '8px 0 0' }}>
+                  Guardando la venta… Si la señal está floja tarda unos segundos. No hace falta tocar de nuevo.
+                </p>
+              )}
             </div>
             <Button fullWidth size="lg" variant="ghost" onClick={() => setConfirm(false)} style={{ marginTop: 8, marginBottom: 'calc(10px + var(--sab, env(safe-area-inset-bottom)))' }}>Volver al carrito</Button>
           </div>
@@ -538,7 +543,7 @@ const VentaPage: React.FC = () => {
 
       {/* Éxito: toast corto (el cajero agrega ítems rápido, no debe interrumpir);
           error: más largo para que se lea. */}
-      <IonToast isOpen={toast.show} onDidDismiss={() => setToast(t => ({ ...t, show: false }))} message={toast.msg} duration={toast.color === 'danger' ? 2800 : 1100} position="top" color={toast.color} />
+      <IonToast isOpen={toast.show} onDidDismiss={() => setToast(t => ({ ...t, show: false }))} message={toast.msg} duration={toast.color === 'danger' ? 6000 : 2500} position="top" color={toast.color} />
     </IonContent>
   );
 };

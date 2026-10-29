@@ -115,7 +115,7 @@ const SoportePage: React.FC = () => {
             </>
           )}
         </div>
-        <IonToast isOpen={!!toast} message={toast} duration={2400} position="top" onDidDismiss={() => setToast('')} />
+        <IonToast isOpen={!!toast} message={toast} duration={4500} position="top" onDidDismiss={() => setToast('')} />
       </IonContent>
     </IonPage>
   );

@@ -636,18 +636,22 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return { ok, error };
   }, [comercioId, state.sucursalActivaId, recargarLocal, refrescarPendientes, sincronizarAhora]);
 
-  return (
-    <StoreContext.Provider value={{
-      state, sincronizando, sincronizarAhora, reintentarFallidos, estadoNube,
-      addProducto, updateProducto, deleteProducto, buscarProductoPorCodigo,
-      addLote, updateLote, retirarLote, addSucursal, updateSucursal, setSucursalActiva,
-      productosConLotes, lotesEnriquecidos, resumen, fefoSugeridos,
-      perdidasPorMes, distribucionPorCategoria, vencimientosDelMes,
-      exportarBackup, importarBackup,
-    }}>
-      {children}
-    </StoreContext.Provider>
-  );
+  // Memo: si el proveedor se redibuja sin cambios (p. ej. por la sesión), las pantallas no.
+  const valor = useMemo(() => ({
+    state, sincronizando, sincronizarAhora, reintentarFallidos, estadoNube,
+    addProducto, updateProducto, deleteProducto, buscarProductoPorCodigo,
+    addLote, updateLote, retirarLote, addSucursal, updateSucursal, setSucursalActiva,
+    productosConLotes, lotesEnriquecidos, resumen, fefoSugeridos,
+    perdidasPorMes, distribucionPorCategoria, vencimientosDelMes,
+    exportarBackup, importarBackup,
+  }), [state, sincronizando, sincronizarAhora, reintentarFallidos, estadoNube,
+    addProducto, updateProducto, deleteProducto, buscarProductoPorCodigo,
+    addLote, updateLote, retirarLote, addSucursal, updateSucursal, setSucursalActiva,
+    productosConLotes, lotesEnriquecidos, resumen, fefoSugeridos,
+    perdidasPorMes, distribucionPorCategoria, vencimientosDelMes,
+    exportarBackup, importarBackup]);
+
+  return <StoreContext.Provider value={valor}>{children}</StoreContext.Provider>;
 };
 
 export function useStore(): StoreContextValue {

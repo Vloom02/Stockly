@@ -126,7 +126,7 @@ const InventarioPage: React.FC = () => {
           </div>
         )}
 
-        <IonToast isOpen={toast.show} message={toast.msg} duration={2200} onDidDismiss={() => setToast({ show: false, msg: '' })} />
+        <IonToast isOpen={toast.show} message={toast.msg} duration={4500} onDidDismiss={() => setToast({ show: false, msg: '' })} />
       </IonContent>
     </IonPage>
   );

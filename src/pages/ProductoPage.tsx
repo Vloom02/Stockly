@@ -369,7 +369,7 @@ const ProductoForm: React.FC = () => {
           />
         )}
 
-        <IonToast isOpen={toast.show} message={toast.msg} duration={2500}
+        <IonToast isOpen={toast.show} message={toast.msg} duration={4500}
           onDidDismiss={() => setToast({ show: false, msg: '' })} />
       </IonContent>
     </IonPage>

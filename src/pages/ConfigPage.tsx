@@ -498,7 +498,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           </p>
         </div>
 
-        <IonToast isOpen={toast.show} message={toast.msg} duration={2000}
+        <IonToast isOpen={toast.show} message={toast.msg} duration={4500}
           onDidDismiss={() => setToast({ show: false, msg: '' })} />
       </IonContent>
     </IonPage>
