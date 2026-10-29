@@ -1,10 +1,12 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Deudas / Fiado — lee y actualiza ventas_deudas.
 // ═══════════════════════════════════════════════════════════════════════════
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { IonContent, IonToast, useIonViewWillEnter } from '@ionic/react';
 import { supabase } from '../lib/supabase';
-import { openDB, enqueueOutbox } from '../lib/outbox';
+import { openDB, enqueueOutbox, idbGetAll, esErrorPermanente, OfflinePagoPayload } from '../lib/outbox';
+import { OutboxItem } from '../types';
+import { useAuth as useAuthStockly } from '../../context/AuthContext';
 import { uuid } from '../lib/ventas-engine';
 import { useAuth } from '../context/AuthContext';
 import { formatMoney } from '../context/VentasContext';
@@ -19,29 +21,44 @@ interface DeudaRow { id: string; cliente: string; monto: number; pagada: boolean
 
 const DeudasPage: React.FC = () => {
   const { comercio, miembro } = useAuth();
+  const { cajeroEnTurno } = useAuthStockly();
   const confirmar = useConfirm();
   const [deudas, setDeudas] = useState<DeudaRow[]>([]);
   const [pagos, setPagos] = useState<Record<string, number>>({}); // deuda_id → abonado
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [sinInternet, setSinInternet] = useState(false);
+  const cobrando = useRef(new Set<string>());
   const [toast, setToast] = useState({ show: false, msg: '', color: 'success' as 'success' | 'danger' });
 
   const load = async () => {
     if (!comercio) { setLoading(false); return; }
     setLoading(true);
-    const { data } = await supabase.from('ventas_deudas').select('*')
+    const { data, error } = await supabase.from('ventas_deudas').select('*')
       .eq('comercio_id', comercio.id).eq('pagada', false)
       .order('fecha', { ascending: false });
+    // Sin internet se deja la lista que ya se veía (antes decía "No hay fiados pendientes").
+    setSinInternet(!!error);
+    if (error) { setLoading(false); return; }
     const rows = (data ?? []) as DeudaRow[];
-    setDeudas(rows);
-    // Pagos parciales ya registrados (para calcular saldo).
+    // Pagos parciales ya registrados (para calcular saldo), más los cobrados sin internet que
+    // todavía no subieron: si no, al recargar la deuda volvía entera y se podía cobrar dos veces.
+    const m: Record<string, number> = {};
     const ids = rows.map(d => d.id);
     if (ids.length) {
       const { data: p } = await supabase.from('ventas_pagos').select('deuda_id, monto').in('deuda_id', ids);
-      const m: Record<string, number> = {};
       for (const x of p ?? []) m[x.deuda_id] = (m[x.deuda_id] ?? 0) + Number(x.monto);
-      setPagos(m);
-    } else { setPagos({}); }
+    }
+    try {
+      await openDB();
+      for (const it of await idbGetAll<OutboxItem>('outbox')) {
+        if (it.kind !== 'pago_fiado') continue;
+        const pg = it.payload as OfflinePagoPayload;
+        m[pg.deudaId] = (m[pg.deudaId] ?? 0) + Number(pg.monto);
+      }
+    } catch { /* sin cola local */ }
+    setPagos(m);
+    setDeudas(rows.filter(d => d.monto - (m[d.id] ?? 0) > 0));
     setLoading(false);
   };
 
@@ -56,8 +73,19 @@ const DeudasPage: React.FC = () => {
   // server lo detecta como duplicado y no lo cobra dos veces.
   const registrarPago = async (d: DeudaRow, monto: number) => {
     if (!comercio || monto <= 0) return;
+    // Dos toques seguidos en "Saldar" apilaban dos cobros de la misma deuda.
+    if (cobrando.current.has(d.id)) return;
+    cobrando.current.add(d.id);
+    // Saldada: queda marcada, así un segundo "Saldar" de un diálogo apilado no cobra de nuevo.
+    let salda = false;
+    try { salda = await registrarPagoUnaVez(d, monto); } finally { if (!salda) cobrando.current.delete(d.id); }
+  };
+
+  const registrarPagoUnaVez = async (d: DeudaRow, monto: number): Promise<boolean> => {
+    if (!comercio) return false;
     const pagoId = uuid();
     const saldaria = monto >= saldoDe(d);
+    const usuario = cajeroEnTurno ?? miembro?.nombre ?? null; // el cierre del cajero suma sus cobros
 
     const aplicarLocal = (msgExtra = '') => {
       if (saldaria) {
@@ -71,17 +99,24 @@ const DeudasPage: React.FC = () => {
 
     if (navigator.onLine) {
       const { error } = await supabase.rpc('registrar_pago_fiado', {
-        p: { pago_id: pagoId, deuda_id: d.id, comercio_id: comercio.id, monto, usuario: miembro?.nombre ?? null },
+        p: { pago_id: pagoId, deuda_id: d.id, comercio_id: comercio.id, monto, usuario },
       });
-      if (!error) { aplicarLocal(); return; }
-      // Falló online: cae al outbox.
+      if (!error) { aplicarLocal(); return saldaria; }
+      // Rechazado por el servidor: guardarlo para después solo lo mandaba a cuarentena.
+      if (esErrorPermanente(error.message)) {
+        setToast({ show: true, msg: `No se pudo registrar el pago: ${error.message}`, color: 'danger' });
+        return false;
+      }
+      // Sin señal o se cortó: cae al outbox.
     }
     try {
       await openDB();
-      await enqueueOutbox('pago_fiado', { pagoId, deudaId: d.id, comercioId: comercio.id, monto, usuario: miembro?.nombre ?? null, fecha: Date.now() });
-      aplicarLocal(' (offline, se sincroniza)');
+      await enqueueOutbox('pago_fiado', { pagoId, deudaId: d.id, comercioId: comercio.id, monto, usuario, fecha: Date.now() });
+      aplicarLocal('. Se manda solo cuando haya internet.');
+      return saldaria;
     } catch {
       setToast({ show: true, msg: 'No se pudo registrar el pago', color: 'danger' });
+      return false;
     }
   };
 
@@ -136,7 +171,9 @@ const DeudasPage: React.FC = () => {
         {loading ? (
           <><Skeleton height={70} style={{ marginBottom: 7 }} /><Skeleton height={70} /></>
         ) : filtered.length === 0 ? (
-          <EmptyState icon={<BookOpenIcon size={44} color="var(--text-3)" />} title={deudas.length === 0 ? 'Sin deudas' : 'Sin resultados'} description={deudas.length === 0 ? 'No hay fiados pendientes' : 'Probá otra búsqueda'} />
+          <EmptyState icon={<BookOpenIcon size={44} color="var(--text-3)" />}
+            title={deudas.length > 0 ? 'Sin resultados' : sinInternet ? 'Sin internet' : 'Sin deudas'}
+            description={deudas.length > 0 ? 'Probá otra búsqueda' : sinInternet ? 'El fiado se ve cuando vuelva la señal. No se borró nada.' : 'No hay fiados pendientes'} />
         ) : (
           filtered.map(d => {
             const abonado = pagos[d.id] ?? 0;

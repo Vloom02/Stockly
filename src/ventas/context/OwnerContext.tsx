@@ -17,6 +17,7 @@ import {
 // el dueño (preferencia local del dispositivo); antes era fijo en 5 min y el
 // dueño terminaba tipeando el PIN decenas de veces por día.
 const LOCK_KEY = 'ventas:pin-lock-min';
+const TIENE_PIN_KEY = 'ventas:tiene-pin';
 export const OPCIONES_LOCK = [5, 15, 30, 60, 120];
 const AVISO_SEG = 30; // aviso antes de bloquear (WCAG 2.2.1 pide al menos 20 s)
 const leerLockMin = (): number => {
@@ -64,10 +65,11 @@ export const OwnerProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const { data, error } = await supabase.rpc('tiene_pin', { p: { comercio_id: comercio.id } });
         if (error) throw error;
         setHasPin(data === true);
+        localStorage.setItem(TIENE_PIN_KEY, data === true ? '1' : '');
       } catch {
-        // Sin conexión: si hay un PIN cacheado vigente, el comercio TIENE pin
-        // (evita que offline la UI ofrezca "crear PIN" sobre uno existente).
-        setHasPin(await hayCredencialOffline(CLAVE_PIN_DUENO));
+        // Sin conexión: lo último que dijo el servidor, o un PIN cacheado vigente. Antes, vencido
+        // el PIN cacheado (72 h), "no había PIN" y la tablet quedaba sin pedir turno.
+        setHasPin(localStorage.getItem(TIENE_PIN_KEY) === '1' || await hayCredencialOffline(CLAVE_PIN_DUENO));
       }
       setUnlocked(false);
       setLoading(false);

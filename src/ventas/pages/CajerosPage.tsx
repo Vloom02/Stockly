@@ -34,12 +34,17 @@ const CajerosPage: React.FC = () => {
 
   const agregar = async () => {
     if (!comercio || !nombre.trim() || !CLAVE_VALIDA.test(pass)) { aviso('Poné el nombre y una clave de 4 a 6 números', false); return; }
+    // Las ventas y los cierres quedan a nombre del empleado: dos con el mismo nombre se mezclarían.
+    if (empleados.some(e => e.nombre.trim().toLowerCase() === nombre.trim().toLowerCase())) {
+      aviso(`Ya hay un empleado que se llama ${nombre.trim()}. Agregale el apellido o una inicial.`, false);
+      return;
+    }
     setSaving(true);
     const { error } = await supabase.rpc('guardar_empleado_venta', {
       p: { comercio_id: comercio.id, legajo: legajo.trim() || proximoLegajo(), nombre: nombre.trim(), pass },
     });
     setSaving(false);
-    if (error) { aviso('No se pudo guardar: ' + error.message, false); return; }
+    if (error) { aviso(navigator.onLine ? 'No se pudo guardar. Probá de nuevo.' : 'Sin internet: los empleados se agregan con conexión.', false); return; }
     setLegajo(''); setNombre(''); setPass('');
     await recargar();
     aviso('Empleado agregado');

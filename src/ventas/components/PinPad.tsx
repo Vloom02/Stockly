@@ -3,7 +3,8 @@
 //  - 'unlock': ingresar PIN existente para entrar a modo dueño
 //  - 'create': crear PIN nuevo la primera vez (pide confirmación)
 // ═══════════════════════════════════════════════════════════════════════════
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { LockClosedIcon } from './ui/icons';
 
 interface Props {
@@ -72,8 +73,19 @@ const PinPad: React.FC<Props> = ({ mode, titulo: tituloProp, subtitulo: subtitul
 
   const dots = Math.max(current.length, 0);
 
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+  // "Atrás" de Android cierra el teclado (antes sacaba de la pantalla).
+  const cancelar = useRef(onCancel);
+  cancelar.current = onCancel;
+  useEffect(() => {
+    const atras = (e: Event) => (e as CustomEvent<{ register: (p: number, h: () => void) => void }>).detail.register(101, () => cancelar.current());
+    document.addEventListener('ionBackButton', atras);
+    return () => document.removeEventListener('ionBackButton', atras);
+  }, []);
+
+  // En document.body y con scroll: dentro de la pantalla la barra de pestañas tapaba "Listo" y
+  // "Cancelar", y con letra grande se cortaba arriba.
+  return createPortal(
+    <div role="dialog" aria-modal="true" aria-label={titulo} style={{ position: 'fixed', inset: 0, zIndex: 20000, background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'safe center', overflowY: 'auto', padding: 24, paddingTop: 'calc(24px + env(safe-area-inset-top))', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}>
       <div style={{ width: 56, height: 56, borderRadius: 'var(--radius-full)', background: 'var(--color-primary-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
         <LockClosedIcon size={28} color="var(--color-primary)" />
       </div>
@@ -110,7 +122,8 @@ const PinPad: React.FC<Props> = ({ mode, titulo: tituloProp, subtitulo: subtitul
       <button onClick={onCancel} style={{ background: 'none', border: 'none', minHeight: 48, padding: '0 16px', fontSize: 16, color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit' }}>
         Cancelar
       </button>
-    </div>
+    </div>,
+    document.body,
   );
 };
 

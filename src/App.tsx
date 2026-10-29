@@ -87,11 +87,13 @@ const enVentas = (pagina: React.ReactNode, tituloDueno?: string) => (
 
 // Celular del dueño + tablet del local con la misma cuenta: si hay empleados con PIN,
 // nadie usa la app sin iniciar su turno (el dueño entra con su PIN o huella). Necesita
-// el PIN del dueño (si no, no tendría cómo entrar). Sin internet no se bloquea, como en Vender.
+// el PIN del dueño (si no, no tendría cómo entrar). Sin internet TAMBIÉN se pide: antes se
+// salteaba con modo avión y quedaba todo lo del dueño a la vista. Sin claves guardadas se
+// puede atender "sin turno" (solo vender), desde la misma pantalla.
 const ConTurno: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { cajero, hayEmpleados, cargando } = useEmpleado();
   const { hasPin } = useOwner();
-  if (!cargando && hayEmpleados && hasPin && !cajero && navigator.onLine) return <IonPage><CajeroGate /></IonPage>;
+  if (!cargando && hayEmpleados && hasPin && !cajero) return <IonPage><CajeroGate /></IonPage>;
   return <>{children}</>;
 };
 

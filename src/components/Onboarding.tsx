@@ -69,8 +69,8 @@ const Onboarding: React.FC<Props> = ({ onComplete }) => {
           <button type="button" onClick={onComplete}
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--text-2)', fontSize: 14, fontWeight: 500,
-              fontFamily: 'inherit',
+              color: 'var(--text-2)', fontSize: 16, fontWeight: 600,
+              fontFamily: 'inherit', minHeight: 48, padding: '0 14px',
             }}>
             Saltar
           </button>

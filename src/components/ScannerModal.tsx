@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useIonViewWillLeave } from '@ionic/react';
 import { Capacitor } from '@capacitor/core';
 import { Camera } from '@capacitor/camera';
 import { CameraIcon as IcoCameraIcon } from '@heroicons/react/24/outline';
@@ -23,6 +25,20 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
   const [error, setError] = useState<string | null>(null);
   const [manualValue, setManualValue] = useState('');
   const [scannerSupported, setScannerSupported] = useState(true);
+  // Por ref: la pantalla de atrás se redibuja (cada sync) y, con la función en las dependencias,
+  // la cámara se apagaba y se volvía a prender sola.
+  const alDetectar = useRef(onCodigoDetectado);
+  alDetectar.current = onCodigoDetectado;
+  const alCancelar = useRef(onCancel);
+  alCancelar.current = onCancel;
+
+  // Si se cambia de pantalla (pestaña de abajo) o se toca "atrás" de Android, se cierra el escáner.
+  useIonViewWillLeave(() => alCancelar.current());
+  useEffect(() => {
+    const atras = (e: Event) => (e as CustomEvent<{ register: (p: number, h: () => void) => void }>).detail.register(101, () => alCancelar.current());
+    document.addEventListener('ionBackButton', atras);
+    return () => document.removeEventListener('ionBackButton', atras);
+  }, []);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -62,6 +78,8 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' },
         });
+        // Se cerró mientras se pedía la cámara: apagarla (si no, quedaba prendida).
+        if (!active) { stream.getTracks().forEach(t => t.stop()); return; }
 
         if (videoRef.current && active) {
           videoRef.current.srcObject = stream;
@@ -75,13 +93,14 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
             const barcodes = await detector.detect(videoRef.current);
             if (barcodes.length > 0 && barcodes[0].rawValue) {
               active = false;
-              onCodigoDetectado(barcodes[0].rawValue);
+              alDetectar.current(barcodes[0].rawValue);
               return;
             }
           } catch (e) {
             // Ignorar errores intermitentes
           }
-          if (active) requestAnimationFrame(detect);
+          // ~7 lecturas por segundo alcanzan y no calientan un celular barato (antes, 60 por segundo).
+          if (active) setTimeout(detect, 150);
         };
         detect();
       } catch (err) {
@@ -100,7 +119,7 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
       active = false;
       if (stream) stream.getTracks().forEach(t => t.stop());
     };
-  }, [onCodigoDetectado]);
+  }, []);
 
   const handleManual = () => {
     const val = manualValue.trim();
@@ -108,12 +127,13 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
     onCodigoDetectado(val);
   };
 
-  return (
-    <div style={{
+  // En document.body: dentro de la pantalla quedaba debajo de la barra de pestañas.
+  return createPortal(
+    <div role="dialog" aria-modal="true" aria-label="Escanear código" style={{
       position: 'fixed',
       inset: 0,
       background: 'rgba(0,0,0,0.9)',
-      zIndex: 1000,
+      zIndex: 20000,
       display: 'flex',
       flexDirection: 'column',
     }}>
@@ -133,8 +153,10 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
             color: '#fff',
             border: 'none',
             borderRadius: 10,
-            padding: '8px 16px',
-            fontSize: 15,
+            padding: '8px 18px',
+            minHeight: 48,
+            fontSize: 17,
+            fontWeight: 600,
             cursor: 'pointer',
           }}
         >Cancelar</button>
@@ -202,8 +224,7 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
                 padding: 12,
                 fontSize: 16,
                 borderRadius: 10,
-                border: '1px solid rgba(255,255,255,0.3)',
-                color: '#fff',
+                color: 'var(--text)', // sobre .campo (claro): en blanco no se veía lo escrito
                 outline: 'none',
                 textAlign: 'center',
                 marginBottom: 12,
@@ -211,18 +232,18 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
             />
             <button
               type="button"
+              className="boton-marca"
               onClick={handleManual}
               disabled={!manualValue.trim()}
               style={{
                 width: '100%',
                 maxWidth: 320,
                 padding: 12,
-                background: 'var(--blue)',
-                color: '#fff',
+                minHeight: 52,
                 border: 'none',
                 borderRadius: 10,
-                fontSize: 15,
-                fontWeight: 600,
+                fontSize: 17,
+                fontWeight: 700,
                 cursor: 'pointer',
                 opacity: manualValue.trim() ? 1 : 0.5,
               }}
@@ -243,7 +264,8 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
           Apuntá la cámara al código de barras
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 };
 

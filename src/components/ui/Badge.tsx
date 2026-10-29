@@ -59,9 +59,9 @@ export const NivelBadge: React.FC<{ nivel: NivelAlerta; size?: 'sm' | 'md' }> = 
     display: 'inline-flex',
     alignItems: 'center',
     gap: 6,
-    padding: size === 'sm' ? '2px 8px' : '4px 10px',
-    fontSize: size === 'sm' ? 11 : 12,
-    fontWeight: 600,
+    padding: size === 'sm' ? '3px 9px' : '4px 11px',
+    fontSize: size === 'sm' ? 14 : 15, // aparece en todas las listas: a 11 px no se leía
+    fontWeight: 700,
     borderRadius: 'var(--radius-full)',
     letterSpacing: '-0.005em',
     background: `var(--level-${nivel}-bg)`,

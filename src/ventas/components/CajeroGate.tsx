@@ -15,12 +15,14 @@ import PinPad from './PinPad';
 import BotonHuella from './BotonHuella';
 import { useHuella, dejarOfertaHuella } from '../lib/useHuella';
 import { CLAVE_HUELLA_DUENO, claveHuellaCajero } from '../lib/huella';
+import { useOnline } from '../../utils/useOnline';
 
 interface Elegido { legajo: string; nombre: string; }
 
 const CajeroGate: React.FC = () => {
   const { comercio } = useAuth();
-  const { empleados, iniciarTurno, entrarComoAdmin } = useEmpleado();
+  const { empleados, iniciarTurno, entrarComoAdmin, entrarSinTurno } = useEmpleado();
+  const online = useOnline();
   const { hasPin, tryUnlock } = useOwner();
   const [elegido, setElegido] = useState<Elegido | null>(null);
   const [conLetras, setConLetras] = useState(false); // clave con letras → formulario de texto
@@ -98,6 +100,14 @@ const CajeroGate: React.FC = () => {
             </>
           )}
 
+          {/* Sin internet y sin clave guardada nadie queda trabado: se vende, sin nada del dueño. */}
+          {!online && (
+            <button type="button" onClick={entrarSinTurno}
+              style={{ marginTop: 20, width: '100%', minHeight: 56, borderRadius: 'var(--radius-lg)', background: 'var(--surface)', border: '1.5px solid var(--border)', color: 'var(--text)', fontSize: 17, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', boxShadow: 'var(--shadow-sm)' }}>
+              Atender sin turno (solo vender)
+            </button>
+          )}
+
           {/* Acceso del dueño */}
           {hasPin && (
             <button type="button" onClick={() => setShowPinDueno(true)}
@@ -114,9 +124,14 @@ const CajeroGate: React.FC = () => {
           mode="unlock"
           titulo={`Hola, ${elegido.nombre}`}
           subtitulo="Poné tu clave"
-          extra={huellaCajero.activa ? (
-            <BotonHuella onClick={async () => { if (await huellaCajero.entrar(entrarCajero)) setElegido(null); }} />
-          ) : undefined}
+          extra={<>
+            {huellaCajero.activa && <BotonHuella onClick={async () => { if (await huellaCajero.entrar(entrarCajero)) setElegido(null); }} />}
+            {/* Dentro del teclado: como botón fijo aparte quedaba tapado por él. */}
+            <button type="button" onClick={() => setConLetras(true)}
+              style={{ minHeight: 48, padding: '0 18px', marginBottom: 12, borderRadius: 'var(--radius-full)', border: '1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--text-2)', fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Mi clave tiene letras
+            </button>
+          </>}
           onSuccess={async (clave) => {
             if (huellaCajero.disponible && !huellaCajero.activa) dejarOfertaHuella(claveHuellaCajero(elegido.legajo), clave);
             const ok = await entrarCajero(clave);
@@ -125,12 +140,6 @@ const CajeroGate: React.FC = () => {
           }}
           onCancel={() => setElegido(null)}
         />
-      )}
-      {elegido && !conLetras && (
-        <button type="button" onClick={() => setConLetras(true)}
-          style={{ position: 'fixed', bottom: 'calc(16px + var(--sab, env(safe-area-inset-bottom)))', left: '50%', transform: 'translateX(-50%)', zIndex: 10001, minHeight: 48, padding: '0 18px', borderRadius: 'var(--radius-full)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', color: 'var(--text-2)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-          Mi clave tiene letras
-        </button>
       )}
 
       {showPinDueno && (

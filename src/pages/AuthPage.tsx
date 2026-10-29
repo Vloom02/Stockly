@@ -27,7 +27,9 @@ const AuthPage: React.FC = () => {
 
   const irA = (m: Modo) => { setModo(m); setError(''); setExito(''); };
 
+  // "if (cargando) return": con Enter dos veces salían dos mails o dos registros.
   const mandarCodigo = async () => {
+    if (cargando) return;
     setError(''); setExito('');
     if (!email.trim()) { setError('Escribí el email de tu cuenta'); return; }
     setCargando(true);
@@ -40,6 +42,7 @@ const AuthPage: React.FC = () => {
   };
 
   const cambiarClave = async () => {
+    if (cargando) return;
     setError('');
     const c = codigo.replace(/\D/g, '');
     if (c.length < 6) { setError('Escribí el código que te llegó por email'); return; }
@@ -53,6 +56,7 @@ const AuthPage: React.FC = () => {
   };
 
   const submit = async () => {
+    if (cargando) return;
     setError('');
     setExito('');
 
@@ -123,19 +127,19 @@ const AuthPage: React.FC = () => {
 
           {/* Mensajes */}
           {error && (
-            <div className="animate-slide-up" style={{
+            <div role="alert" className="animate-slide-up" style={{
               background: 'var(--level-vencido-bg)', color: 'var(--level-vencido-fg)',
               border: '1px solid var(--level-vencido-border)',
-              borderRadius: 'var(--radius)', padding: 12, fontSize: 13,
-              marginBottom: 16, fontWeight: 500,
+              borderRadius: 'var(--radius)', padding: 12, fontSize: 16,
+              marginBottom: 16, fontWeight: 600,
             }}>{error}</div>
           )}
           {exito && (
-            <div className="animate-slide-up" style={{
+            <div role="status" className="animate-slide-up" style={{
               background: 'var(--level-ok-bg)', color: 'var(--level-ok-fg)',
               border: '1px solid var(--level-ok-border)',
-              borderRadius: 'var(--radius)', padding: 12, fontSize: 13,
-              marginBottom: 16, fontWeight: 500,
+              borderRadius: 'var(--radius)', padding: 12, fontSize: 16,
+              marginBottom: 16, fontWeight: 600,
             }}>{exito}</div>
           )}
 

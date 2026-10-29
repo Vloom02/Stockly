@@ -2,7 +2,7 @@
 // portapapeles como fallback. Devuelve true si quedó compartido/copiado.
 import { Capacitor } from '@capacitor/core';
 
-export async function compartirTexto(texto: string, titulo = 'Stockly'): Promise<'compartido' | 'copiado' | 'error'> {
+export async function compartirTexto(texto: string, titulo = 'Stockly'): Promise<'compartido' | 'copiado' | 'cancelado' | 'error'> {
   try {
     if (Capacitor.isNativePlatform()) {
       const { Share } = await import('@capacitor/share');
@@ -15,8 +15,10 @@ export async function compartirTexto(texto: string, titulo = 'Stockly'): Promise
     }
     await navigator.clipboard.writeText(texto);
     return 'copiado';
-  } catch {
-    // El usuario pudo cancelar la hoja de compartir.
+  } catch (e) {
+    // Cerró la hoja de compartir: no es un error ni se copia nada (antes decía "copiado").
+    const msg = e instanceof Error ? `${e.name} ${e.message}` : String(e);
+    if (/cancel|abort/i.test(msg)) return 'cancelado';
     try { await navigator.clipboard.writeText(texto); return 'copiado'; } catch { return 'error'; }
   }
 }

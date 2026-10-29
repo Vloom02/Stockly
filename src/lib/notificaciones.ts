@@ -14,6 +14,8 @@ const NOTIF_ID = 4090; // id fijo: siempre pisamos el aviso anterior
 const PREFIX = 'stockly:';
 const KEY_ACTIVO = PREFIX + 'notif-vencimiento';
 const KEY_HORA = PREFIX + 'notif-hora';
+const KEY_PEDIDO = PREFIX + 'notif-permiso-pedido';
+const KEY_PUSH_OK = PREFIX + 'push-ok'; // = push.ts: el aviso llega del servidor
 
 const getSetting = (k: string, def = '') => almacenGet(k, def);
 const setSetting = (k: string, v: string) => almacenSet(k, v);
@@ -23,6 +25,7 @@ export function notificacionesActivas(): boolean {
 }
 export function setNotificacionesActivas(v: boolean): void {
   setSetting(KEY_ACTIVO, v ? '1' : '0');
+  if (v) setSetting(KEY_PEDIDO, ''); // lo activó a mano: se puede volver a pedir el permiso
 }
 export function horaNotificacion(): number {
   const h = parseInt(getSetting(KEY_HORA, '9'), 10);
@@ -71,6 +74,8 @@ export async function sincronizarNotificaciones(lotes: LoteConProducto[]): Promi
     });
 
     if (!notificacionesActivas()) return;
+    // Con el aviso del servidor andando, el local llegaba a la misma hora con otros números.
+    if (getSetting(KEY_PUSH_OK) === '1') return;
 
     const u = umbrales();
     const base = proximaHora(horaNotificacion());
@@ -82,6 +87,7 @@ export async function sincronizarNotificaciones(lotes: LoteConProducto[]): Promi
 
       // Recalcular qué estará vencido/crítico/urgente EN esa fecha.
       const relevantes = lotes
+        .filter(l => l.cantidad > 0) // un lote vacío o en negativo no vence (avisaba vencido sin mercadería)
         .map(l => ({ lote: l, dias: diasRestantes(l.fechaVencimiento, objetivo) }))
         .map(x => ({ ...x, nivel: nivelPorDias(x.dias, u, x.lote.diasAviso) }))
         .filter(x => x.nivel === 'vencido' || x.nivel === 'critico' || x.nivel === 'urgente')
@@ -104,15 +110,18 @@ export async function sincronizarNotificaciones(lotes: LoteConProducto[]): Promi
         summaryText: 'Vencimientos',
         schedule: { at: objetivo, allowWhileIdle: true },
         smallIcon: 'ic_stat_icon',
-        iconColor: '#e7bd4d',
+        iconColor: '#1f4fbf',
       });
     }
 
     if (aProgramar.length === 0) return;
 
     // Permiso (solo lo pedimos si hay algo para avisar).
+    // Una sola vez: si dijo que no, no se vuelve a preguntar en cada recarga (se reactiva en Ajustes).
     let perm = await LocalNotifications.checkPermissions();
     if (perm.display !== 'granted') {
+      if (getSetting(KEY_PEDIDO) === '1') return;
+      setSetting(KEY_PEDIDO, '1');
       perm = await LocalNotifications.requestPermissions();
       if (perm.display !== 'granted') return;
     }

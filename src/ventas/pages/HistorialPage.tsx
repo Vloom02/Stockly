@@ -3,8 +3,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { fechaLocalISO } from '../../lib/vencimientos';
-import { IonContent, useIonViewWillEnter } from '@ionic/react';
+import { IonContent, IonToast, useIonViewWillEnter } from '@ionic/react';
 import { supabase } from '../lib/supabase';
+import { todas } from '../../lib/todas';
 import { openDB, enqueueOutbox } from '../lib/outbox';
 import { ventasACSV, guardarCSV } from '../lib/exportar';
 import { useAuth } from '../context/AuthContext';
@@ -111,15 +112,21 @@ const HistorialPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<HistoryFilters>({ metodoPago: '', cliente: '', dateFrom: '', dateTo: '' });
+  const [sinInternet, setSinInternet] = useState(false);
+  const [aviso, setAviso] = useState('');
 
   const cargar = useCallback(async () => {
     if (!comercio) { setLoading(false); return; }
     setLoading(true);
     const desde = new Date(); desde.setDate(desde.getDate() - 30);
-    const { data } = await supabase.from('ventas_ventas').select('*')
-      .eq('comercio_id', comercio.id).gte('fecha', desde.toISOString())
-      .order('fecha', { ascending: false });
-    setVentas((data ?? []) as VentaRow[]);
+    // De a 1.000 (con unas 40 ventas por día se pasaba y el total quedaba corto sin avisar).
+    // Sin internet se deja lo que ya se veía.
+    try {
+      setVentas(await todas<VentaRow>((a, b) => supabase.from('ventas_ventas').select('*')
+        .eq('comercio_id', comercio.id).gte('fecha', desde.toISOString())
+        .order('fecha', { ascending: false }).order('id').range(a, b)));
+      setSinInternet(false);
+    } catch { setSinInternet(true); }
     setLoading(false);
   }, [comercio]);
 
@@ -130,11 +137,12 @@ const HistorialPage: React.FC = () => {
   const filtered = useMemo(() => ventas
     .filter(v => !filters.metodoPago || v.metodo_pago === filters.metodoPago)
     .filter(v => !filters.cliente || (v.cliente ?? '').toLowerCase().includes(filters.cliente.toLowerCase()))
-    .filter(v => !filters.dateFrom || v.fecha >= filters.dateFrom)
-    .filter(v => !filters.dateTo || v.fecha <= filters.dateTo + 'T23:59:59'),
+    // Por el día en hora local (la fecha guardada es UTC: una venta de las 22 h caía al día siguiente).
+    .filter(v => !filters.dateFrom || fechaLocalISO(new Date(v.fecha)) >= filters.dateFrom)
+    .filter(v => !filters.dateTo || fechaLocalISO(new Date(v.fecha)) <= filters.dateTo),
     [ventas, filters]);
 
-  const total = useMemo(() => filtered.reduce((s, v) => s + v.total, 0), [filtered]);
+  const total = useMemo(() => filtered.filter(v => !v.anulada).reduce((s, v) => s + Number(v.total), 0), [filtered]); // las anuladas no suman
 
   const grouped = useMemo(() => {
     const g: Record<string, VentaRow[]> = {};
@@ -146,7 +154,10 @@ const HistorialPage: React.FC = () => {
   }, [filtered]);
 
   // CSV unificado con la lib compartida (en Android guarda en Documentos).
-  const exportCSV = () => guardarCSV(`ventas-${fechaLocalISO()}.csv`, ventasACSV(filtered));
+  const exportCSV = async () => {
+    const r = await guardarCSV(`ventas-${fechaLocalISO()}.csv`, ventasACSV(filtered.filter(v => !v.anulada)));
+    setAviso(r === 'guardado' ? 'Planilla guardada en Documentos' : r === 'descargado' ? 'Planilla descargada' : 'No se pudo guardar la planilla');
+  };
 
   const activeFilters = Object.values(filters).filter(Boolean).length;
   const inputStyle: React.CSSProperties = { width: '100%', padding: 9, fontSize: 13, color: 'var(--text)', borderRadius: 'var(--radius-sm)', outline: 'none' };
@@ -157,6 +168,8 @@ const HistorialPage: React.FC = () => {
         <BotonVolver />
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Ventas anteriores</h1>
         <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 14 }}>Últimos 30 días</p>
+        {sinInternet && <p role="status" style={{ fontSize: 15, fontWeight: 600, margin: '0 0 12px' }}>Sin internet: las ventas se ven cuando vuelva la señal. No se borró nada.</p>}
+        <IonToast isOpen={!!aviso} message={aviso} duration={4000} onDidDismiss={() => setAviso('')} position="top" />
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 12 }}>
           <Card variant="bordered" style={{ padding: 10 }}><div style={{ fontSize: 13, color: 'var(--text-2)' }}>Ventas</div><div style={{ fontSize: 20, fontWeight: 700 }}>{filtered.length}</div></Card>
@@ -191,7 +204,7 @@ const HistorialPage: React.FC = () => {
           <EmptyState icon={<ClipboardIcon size={44} color="var(--text-3)" />} title={activeFilters > 0 ? 'Sin resultados' : 'Sin ventas'} description={activeFilters > 0 ? 'Probá con otros filtros' : 'Todavía no registraste ventas'} />
         ) : (
           Object.entries(grouped).map(([day, vs]) => {
-            const dayTotal = vs.reduce((s, v) => s + v.total, 0);
+            const dayTotal = vs.filter(v => !v.anulada).reduce((s, v) => s + Number(v.total), 0);
             return (
               <div key={day} style={{ marginBottom: 18 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>

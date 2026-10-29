@@ -32,16 +32,18 @@ async function arrancar() {
   if (Capacitor.getPlatform() === 'android') {
     try {
       await StatusBar.setOverlaysWebView({ overlay: false });
-      await StatusBar.setStyle({ style: Style.Light });
+      await StatusBar.setStyle({ style: Style.Dark }); // íconos claros: sobre el azul, los oscuros casi no se veían
       await StatusBar.setBackgroundColor({ color: colorActual.tonos[1] });
     } catch (e) { /* en web no existe */ }
   }
 
+  let fallo = false;
   const container = document.getElementById('root');
   const root = createRoot(container!);
   root.render(
     <React.StrictMode>
       <Sentry.ErrorBoundary
+        onError={() => { fallo = true; }}
         fallback={
           <div style={{
             padding: 24, textAlign: 'center', fontFamily: 'system-ui',
@@ -61,8 +63,8 @@ async function arrancar() {
     </React.StrictMode>
   );
   // Arrancó bien: confirmarlo (si no, Capgo vuelve a la versión anterior) y buscar una nueva.
-  // Se confirma enseguida: en un celular lento, esperar de más hacía que Capgo volviera atrás una versión buena.
-  setTimeout(() => { marcarArranqueOk().catch(() => {}); }, 1000);
+  // Solo si arrancó sin romperse: con la pantalla de error, Capgo tiene que volver a la versión anterior sola.
+  setTimeout(() => { if (!fallo) marcarArranqueOk().catch(() => {}); }, 3000);
   setTimeout(() => { buscarActualizacion().catch(() => {}); }, 3000);
 }
 

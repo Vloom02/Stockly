@@ -45,6 +45,22 @@ describe('authOffline (fallback sin conexión)', () => {
     expect(JSON.parse(mem.get('k4')!).hash).not.toBe(JSON.parse(mem.get('k5')!).hash);
   });
 
+  it('sin internet, a los 5 fallos se traba aunque después pongan el PIN bueno', async () => {
+    await guardarCredencialOffline('k6', '2202');
+    for (let i = 0; i < 4; i++) expect((await verificarCredencialOffline('k6', '0000')).bloqueadoHasta).toBeUndefined();
+    expect((await verificarCredencialOffline('k6', '0000')).bloqueadoHasta).toBeGreaterThan(Date.now());
+    const r = await verificarCredencialOffline('k6', '2202');
+    expect(r.ok).toBe(false);
+    expect(r.bloqueadoHasta).toBeGreaterThan(Date.now());
+  });
+
+  it('un acierto antes del bloqueo borra los fallos', async () => {
+    await guardarCredencialOffline('k7', '2202');
+    for (let i = 0; i < 4; i++) await verificarCredencialOffline('k7', '0000');
+    expect((await verificarCredencialOffline('k7', '2202')).ok).toBe(true);
+    for (let i = 0; i < 4; i++) expect((await verificarCredencialOffline('k7', '0000')).bloqueadoHasta).toBeUndefined();
+  });
+
   it('clavePorLegajo normaliza el legajo', () => {
     expect(clavePorLegajo(' 15 ')).toBe(clavePorLegajo('15'));
     expect(clavePorLegajo('AB')).toBe(clavePorLegajo('ab'));

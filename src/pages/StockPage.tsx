@@ -139,10 +139,10 @@ const StockPage: React.FC = () => {
               rightAddon={
                 <div style={{ display: 'flex', gap: 6 }}>
                   {busqueda && (
-                    <button type="button" onClick={() => setBusqueda('')}
+                    <button type="button" onClick={() => setBusqueda('')} aria-label="Borrar búsqueda"
                       style={{
                         background: 'var(--surface-2)', border: 'none', boxShadow: 'var(--shadow-sm)',
-                        borderRadius: 'var(--radius)', padding: '0 10px', cursor: 'pointer',
+                        borderRadius: 'var(--radius)', padding: '0 10px', cursor: 'pointer', minWidth: 44, minHeight: 44, justifyContent: 'center',
                         color: 'var(--text-2)', display: 'flex', alignItems: 'center',
                       }}>
                       <XMarkIcon width={16} height={16} />

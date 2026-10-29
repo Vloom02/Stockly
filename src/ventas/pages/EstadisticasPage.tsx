@@ -7,6 +7,7 @@
 import React, { useEffect, useState } from 'react';
 import { IonContent } from '@ionic/react';
 import { supabase } from '../lib/supabase';
+import { todas } from '../../lib/todas';
 import { useAuth } from '../context/AuthContext';
 import { formatMoney } from '../context/VentasContext';
 import { Card, EmptyState, Skeleton } from '../components/ui';
@@ -28,11 +29,11 @@ const EstadisticasPage: React.FC = () => {
       setLoading(true);
       try {
         const desde = new Date(Date.now() - 30 * 86400000).toISOString();
-        const { data: ventas } = await supabase.from('ventas_ventas')
+        // De a 1.000: limit(2000) no sirve, el servidor corta en 1.000 y sin orden.
+        const vs = await todas<{ id: string; fecha: string; total: number }>((x, y) => supabase.from('ventas_ventas')
           .select('id, fecha, total')
           .eq('comercio_id', comercio.id).eq('anulada', false)
-          .gte('fecha', desde).limit(2000);
-        const vs = ventas ?? [];
+          .gte('fecha', desde).order('id').range(x, y));
         setTotales({ ventas: vs.length, plata: vs.reduce((s, v) => s + Number(v.total), 0) });
 
         // Ventas por hora del día (0-23)

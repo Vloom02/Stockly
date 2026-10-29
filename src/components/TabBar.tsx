@@ -67,7 +67,8 @@ const TabBar: React.FC = () => {
           <button
             key={t.path}
             type="button"
-            onClick={() => history.push(t.path)}
+            // Tocar la pestaña en la que ya estás no suma otro "atrás" que no hace nada.
+            onClick={() => { if (location.pathname !== t.path) history.push(t.path); }}
             aria-current={active ? 'page' : undefined}
             style={{
               position: 'relative', background: 'none', border: 'none', cursor: 'pointer',

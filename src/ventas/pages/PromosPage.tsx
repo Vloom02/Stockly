@@ -65,7 +65,7 @@ const PromosPage: React.FC = () => {
     };
     const { error } = await supabase.from('ventas_promos')
       .upsert(fila, { onConflict: 'comercio_id,producto_id' });
-    if (error) { toast$('No se pudo guardar: ' + error.message, false); return; }
+    if (error) { toast$(navigator.onLine ? 'No se pudo guardar la oferta. Probá de nuevo.' : 'Sin internet: las ofertas se guardan con conexión.', false); return; }
     toast$('Promo guardada');
     setQuery(''); setResults([]); setProdElegido(null);
     load();

@@ -1,6 +1,6 @@
-// Si el comercio tiene cajeros, para entrar a vender hay que iniciar turno.
-// Sin internet no se puede validar el legajo: no se bloquea (el cajero no queda
-// trabado si cerró turno offline); al volver la red, se exige.
+// Si el comercio tiene cajeros, para entrar a vender hay que iniciar turno, también sin
+// internet (con la clave guardada en el celular). Si no hay clave guardada, CajeroGate ofrece
+// atender "sin turno": solo vender, sin nada del dueño.
 import React, { ReactNode } from 'react';
 import { useEmpleado } from '../context/EmpleadoContext';
 import CajeroGate from './CajeroGate';
@@ -15,7 +15,7 @@ const TurnoGate: React.FC<{ children: ReactNode }> = ({ children }) => {
       </div>
     );
   }
-  if (hayEmpleados && !cajero && navigator.onLine) return <CajeroGate />;
+  if (hayEmpleados && !cajero) return <CajeroGate />;
   return <>{children}</>;
 };
 

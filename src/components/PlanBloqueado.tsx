@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { IonContent, IonPage } from '@ionic/react';
 import { ExclamationTriangleIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import Logo from './ui/Logo';
@@ -7,12 +7,19 @@ import { EstadoPlan } from '../lib/plan';
 
 interface Props {
   estado: EstadoPlan;
-  onReintentar: () => void;
+  onReintentar: () => Promise<void>;
   onCerrarSesion: () => void;
 }
 
 const PlanBloqueado: React.FC<Props> = ({ estado, onReintentar, onCerrarSesion }) => {
   const esSuspendido = estado.tipo === 'suspendido';
+  // Respuesta visible: antes, si la cuenta seguía bloqueada, parecía que el botón no hacía nada.
+  const [revision, setRevision] = useState<'' | 'revisando' | 'sigue'>('');
+  const reintentar = async () => {
+    setRevision('revisando');
+    await onReintentar();
+    setRevision('sigue');
+  };
 
   return (
     <IonPage>
@@ -59,9 +66,14 @@ const PlanBloqueado: React.FC<Props> = ({ estado, onReintentar, onCerrarSesion }
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 340 }}>
-            <Button variant="primary" size="md" onClick={onReintentar}>
+            <Button variant="primary" size="md" onClick={reintentar} loading={revision === 'revisando'}>
               Ya activé mi cuenta · Reintentar
             </Button>
+            {revision === 'sigue' && (
+              <p role="status" style={{ fontSize: 16, fontWeight: 600, margin: 0, color: 'var(--text)' }}>
+                {navigator.onLine ? 'Tu cuenta todavía figura sin activar. Si ya pagaste, escribinos por WhatsApp.' : 'Sin internet: conectate y volvé a tocar el botón.'}
+              </p>
+            )}
             <Button variant="ghost" size="md" onClick={onCerrarSesion}
               icon={<ArrowRightOnRectangleIcon width={18} height={18} />}>
               Cerrar sesión

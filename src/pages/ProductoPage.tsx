@@ -47,7 +47,7 @@ const ProductoForm: React.FC = () => {
   const [codigoBarras, setCodigoBarras] = useState(productoExistente?.codigoBarras || '');
   const lectorRef = useLectorFisico<HTMLIonContentElement>(setCodigoBarras); // lector físico completa el código
   const [categoria, setCategoria] = useState(productoExistente?.categoria || '');
-  const [precio, setPrecio] = useState(productoExistente?.precio.toString() || '0');
+  const [precio, setPrecio] = useState(productoExistente?.precio ? productoExistente.precio.toString() : '');
   const [proveedor, setProveedor] = useState(productoExistente?.proveedor || '');
   const [stockMinimo, setStockMinimo] = useState((productoExistente?.stockMinimo ?? 0).toString());
   const [costo, setCosto] = useState(productoExistente?.costo?.toString() ?? '');
@@ -98,7 +98,11 @@ const ProductoForm: React.FC = () => {
       const repetido = state.productos.find(p => p.activo && p.nombre.trim().toLowerCase() === nombreNorm);
       if (repetido) err.nombre = `Ya existe "${repetido.nombre}". Buscalo en Mercadería para cambiarlo.`;
     }
-    if (precio.trim() && Number.isNaN(parseMonto(precio))) err.precio = 'Escribí solo el número, por ejemplo 1.500';
+    // Sin precio se vendía a $0 sin aviso; negativo, el servidor rechazaba la venta y quedaba trabada.
+    const precioNum = parseMonto(precio);
+    if (!precio.trim()) err.precio = 'Poné el precio de venta, por ejemplo 1.500';
+    else if (Number.isNaN(precioNum)) err.precio = 'Escribí solo el número, por ejemplo 1.500';
+    else if (precioNum <= 0) err.precio = 'El precio tiene que ser mayor que 0';
     if (costo.trim() && Number.isNaN(parseMonto(costo))) err.costo = 'Escribí solo el número, por ejemplo 900';
     setErrores(err);
     if (Object.keys(err).length) return;
@@ -106,7 +110,7 @@ const ProductoForm: React.FC = () => {
       nombre: nombre.trim(),
       codigoBarras: codigoBarras.trim() || undefined,
       categoria: categoria.trim() || 'Sin categoría',
-      precio: parseMonto(precio) || 0,
+      precio: precioNum,
       proveedor: proveedor.trim() || undefined,
       stockMinimo: Math.max(0, parseInt(stockMinimo, 10) || 0),
       costo: costo.trim() ? Math.max(0, parseMonto(costo)) : undefined,

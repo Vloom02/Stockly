@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { Comercio, Miembro } from '../types';
 import { almacenGet, almacenSet, almacenRemove } from '../lib/almacen';
 import { useConfirm } from '../lib/useConfirm';
+import { olvidarPush } from '../lib/push';
 
 interface AuthContextValue {
   session: Session | null;
@@ -25,7 +26,7 @@ interface AuthContextValue {
   pedirCodigo: (email: string) => Promise<{ error?: string }>;
   cambiarConCodigo: (email: string, codigo: string, password: string) => Promise<{ error?: string }>;
   cerrarSesion: () => Promise<void>;
-  recargarComercio: () => void;
+  recargarComercio: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -202,6 +203,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const cerrarSesion = async () => {
+    // Que este equipo deje de recibir los avisos de este comercio (necesita la sesión todavía).
+    await Promise.race([olvidarPush(), new Promise(r => setTimeout(r, 3000))]);
     // Limpiar caché local primero (esto siempre funciona)
     try {
       const { limpiarTodoLocal } = await import('../lib/localDb');
@@ -231,9 +234,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Volver a traer los datos del comercio (ej: tras activar la suscripción)
-  const recargarComercio = () => {
+  const recargarComercio = async () => {
     if (session?.user) {
-      cargarDatosUsuario(session.user.id).catch(() => { /* */ });
+      await cargarDatosUsuario(session.user.id).catch(() => { /* */ });
     }
   };
 
