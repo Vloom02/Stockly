@@ -15,6 +15,7 @@ const SucursalesPage  = lazy(() => import('./pages/SucursalesPage'));
 const EtiquetasPage   = lazy(() => import('./pages/EtiquetasPage'));
 const InventarioPage  = lazy(() => import('./pages/InventarioPage'));
 const PreciosPage     = lazy(() => import('./pages/PreciosPage'));
+const SoportePage     = lazy(() => import('./pages/SoportePage'));
 const PedidoPage      = lazy(() => import('./pages/PedidoPage'));
 const ConfigPage      = lazy(() => import('./pages/ConfigPage'));
 const AuthPage        = lazy(() => import('./pages/AuthPage'));
@@ -161,6 +162,7 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
           <Route path="/etiquetas" exact>{soloDueno(<EtiquetasPage />)}</Route>
           <Route path="/inventario" exact>{soloDueno(<InventarioPage />)}</Route>
           <Route path="/precios" exact>{soloDueno(<PreciosPage />)}</Route>
+          <Route path="/soporte" exact>{soloDueno(<SoportePage />)}</Route>
           <Route path="/pedido" exact>{soloDueno(<PedidoPage />)}</Route>
           <Route path="/config" exact><Suspense fallback={<Cargando />}><ConfigPage onThemeToggle={onThemeToggle} isDark={isDark} /></Suspense></Route>
           <Route path="/ventas" exact>{enVentas(<><VentaPage /><OnboardingVentas /></>)}</Route>

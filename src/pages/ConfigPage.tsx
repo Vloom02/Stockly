@@ -32,7 +32,7 @@ interface Props { onThemeToggle: () => void; isDark: boolean; }
 
 const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
   const { state, exportarBackup, importarBackup, estadoNube, sincronizarAhora, sincronizando, reintentarFallidos, lotesEnriquecidos } = useStore();
-  const { comercio, miembro, esDueno } = useAuth();
+  const { comercio, miembro, esDueno, esAdminPlataforma } = useAuth();
   const cerrarSesion = useCerrarSesion();
   const { cajero, cerrarTurno } = useEmpleado();
   const history = useHistory();
@@ -187,6 +187,12 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
 
           {/* Herramientas — acceso directo a las pantallas más usadas (solo el dueño) */}
           {esDueno && (<>
+          {/* Soporte: solo la cuenta que el servidor reconoce como admin, y nunca en el turno de un empleado */}
+          {esAdminPlataforma && (
+            <Button variant="primary" size="lg" fullWidth onClick={() => history.push('/soporte')} style={{ marginBottom: 16 }}>
+              Panel de soporte (todos los comercios)
+            </Button>
+          )}
           <SectionTitle icon={<SwatchIcon width={16} height={16} />}>Herramientas</SectionTitle>
           <div className="lista-animada" style={{ borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', overflow: 'hidden', marginBottom: 18 }}>
             {[
