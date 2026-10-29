@@ -1,8 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Entrar con la huella en vez de tipear el PIN / la clave (WCAG 2.2 · 3.3.8:
 // no obligar a recordar un secreto). La clave real se guarda en el Keystore de
-// Android protegida por biometría (BIOMETRY_ANY): solo sale con una huella
+// Android protegida por biometría (BIOMETRY_CURRENT_SET): solo sale con una huella
 // válida, y después se verifica en el servidor como si se hubiera tipeado.
+// CURRENT_SET: si alguien agrega su huella a la tablet compartida, lo guardado deja de abrir.
 // Así la huella no salta ninguna verificación: si el dueño cambió el PIN, la
 // clave guardada falla y se pide tipear de nuevo.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -41,7 +42,7 @@ export async function guardarHuella(clave: string, secreto: string): Promise<boo
   try {
     await NativeBiometric.setCredentials({
       server: servidor(clave), username: clave, password: secreto,
-      accessControl: AccessControl.BIOMETRY_ANY, title: 'Activar huella',
+      accessControl: AccessControl.BIOMETRY_CURRENT_SET, title: 'Activar huella',
     });
     await openDB();
     await setLocalSetting(flag(clave), '1');

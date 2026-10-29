@@ -3,6 +3,7 @@ import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { Comercio, Miembro } from '../types';
 import { almacenGet, almacenSet, almacenRemove } from '../lib/almacen';
+import { useConfirm } from '../lib/useConfirm';
 
 interface AuthContextValue {
   session: Session | null;
@@ -37,19 +38,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const adminConsultadoPara = useRef<string | null>(null); // es_admin_plataforma: una vez por usuario
   const [cargando, setCargando] = useState(true);
   const [cajeroEnTurno, setCajeroEnTurno] = useState<string | null>(null);
+  const cargadoPara = useRef<string | null>(null); // usuario con datos ya traídos del servidor
 
   // Cargar comercio + membresía del usuario logueado
   const cargarDatosUsuario = async (userId: string) => {
     // Rol de soporte: si la función no existe (migración 8 sin aplicar) queda en false.
     if (adminConsultadoPara.current !== userId) {
       adminConsultadoPara.current = userId;
-      supabase.rpc('es_admin_plataforma').then(({ data }) => setEsAdminPlataforma(data === true), () => setEsAdminPlataforma(false));
+      supabase.rpc('es_admin_plataforma').then(({ data, error }) => {
+        if (error) adminConsultadoPara.current = null; // sin red: se vuelve a preguntar después
+        else setEsAdminPlataforma(data === true);
+      }, () => { adminConsultadoPara.current = null; });
     }
-    const { data: miembros } = await supabase
+    const { data: miembros, error } = await supabase
       .from('miembros')
       .select('*, comercios(*)')
       .eq('user_id', userId)
       .limit(1);
+    // Sin red Supabase no tira: devuelve el error. Se sigue con lo guardado en el celular.
+    if (error) throw new Error(error.message);
+    cargadoPara.current = userId;
 
     if (miembros && miembros.length > 0) {
       const m = miembros[0] as any;
@@ -76,43 +84,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Respaldo offline: cargar comercio/miembro del caché si no hay red
-  const cargarDesdeCache = () => {
+  // Respaldo offline: comercio/miembro guardados en el celular. Devuelve si había datos de ESTE usuario.
+  const cargarDesdeCache = (userId: string): boolean => {
     try {
       const c = almacenGet('stockly:cache-comercio');
       const m = almacenGet('stockly:cache-miembro');
-      if (c) setComercio(JSON.parse(c));
-      if (m) setMiembro(JSON.parse(m));
-    } catch { /* */ }
+      if (!c || !m) return false;
+      const mi = JSON.parse(m) as Miembro;
+      if (mi.userId !== userId) return false; // quedó de otra cuenta
+      setMiembro(mi);
+      setComercio(JSON.parse(c));
+      return true;
+    } catch { return false; }
   };
 
   useEffect(() => {
     let montado = true;
 
+    // Muestra lo guardado al instante y trae lo del servidor por detrás.
+    // Sin datos guardados (primer ingreso) espera al servidor.
+    const arrancarCon = async (s: Session | null) => {
+      setSession(s);
+      if (!s?.user) return;
+      const uid = s.user.id;
+      const pedido = cargarDatosUsuario(uid).catch(e => console.warn('Sin datos del servidor, sigo con lo guardado', e));
+      if (!cargarDesdeCache(uid)) await pedido;
+    };
+
     // Timeout de seguridad: si en 8s no resolvió, dejamos de cargar igual
     // (evita spinner infinito si no hay internet al abrir)
     const timeoutId = setTimeout(() => {
-      if (montado) setCargando(false);
+      if (!montado) return;
+      const s = sesionGuardada();
+      if (s) { setSession(prev => prev ?? s); cargarDesdeCache(s.user.id); }
+      setCargando(false);
     }, 8000);
 
-    // Sesión inicial
+    // Sesión inicial. Sin internet y con el token vencido, getSession() da null con error
+    // pero la sesión sigue guardada: se trabaja con ella y al volver la red se renueva sola.
     supabase.auth.getSession()
-      .then(async ({ data: { session } }) => {
+      .then(async ({ data, error }) => {
         if (!montado) return;
-        setSession(session);
-        if (session?.user) {
-          try {
-            await cargarDatosUsuario(session.user.id);
-          } catch (e) {
-            // Sin internet o error al traer datos: usamos el caché local
-            // así la app abre igual (offline-first)
-            console.warn('No se pudieron cargar datos del usuario al inicio, usando caché', e);
-            cargarDesdeCache();
-          }
-        }
+        await arrancarCon(data.session ?? (error ? sesionGuardada() : null));
       })
-      .catch((e) => {
+      .catch(async (e) => {
         console.warn('Error obteniendo sesión', e);
+        if (montado) await arrancarCon(sesionGuardada());
       })
       .finally(() => {
         if (montado) {
@@ -123,14 +140,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Escuchar cambios de auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange((evento, session) => {
-      if (!montado) return;
+      // El arranque lo resuelve getSession (con el respaldo sin internet): INITIAL_SESSION llega
+      // en null cuando el token venció offline y cerraría la sesión.
+      if (!montado || evento === 'INITIAL_SESSION') return;
       setSession(session);
       if (session?.user) {
-        if (evento === 'TOKEN_REFRESHED') return; // misma cuenta: no hay nada que recargar
+        // Misma cuenta ya cargada: no hay nada que recargar. Si arrancó sin internet, ahora sí.
+        if (evento === 'TOKEN_REFRESHED' && cargadoPara.current === session.user.id) return;
         // Fuera del aviso: consultar Supabase adentro del callback traba el candado de la sesión.
         const uid = session.user.id;
         setTimeout(() => { cargarDatosUsuario(uid).catch(e => console.warn('No se pudieron cargar datos del usuario', e)); }, 0);
       } else {
+        cargadoPara.current = null;
+        adminConsultadoPara.current = null;
         setComercio(null);
         setMiembro(null);
         setEsAdminPlataforma(false);
@@ -198,6 +220,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       ]);
     } catch { /* */ }
     // Pase lo que pase, limpiamos el estado local → vuelve al login
+    cargadoPara.current = null;
+    adminConsultadoPara.current = null;
+    setCajeroEnTurno(null);
     setSession(null);
     setComercio(null);
     setMiembro(null);
@@ -226,6 +251,35 @@ export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth debe usarse dentro de AuthProvider');
   return ctx;
+}
+
+/** Cerrar sesión borra lo guardado en el celular: si quedó algo sin mandar, antes se avisa. */
+export function useCerrarSesion(): () => Promise<void> {
+  const { cerrarSesion } = useAuth();
+  const confirmar = useConfirm();
+  return async () => {
+    const { contarSinSubir } = await import('../lib/localDb');
+    const n = await contarSinSubir().catch(() => 0);
+    if (n > 0) {
+      const s = n === 1 ? '' : 's';
+      const ok = await confirmar(
+        `Hay ${n} cambio${s} o venta${s} en este celular que todavía no llegaron a internet. Si cerrás la sesión ahora, se pierden. Conectate a internet y esperá a que se manden solos.`,
+        { titulo: 'Quedan cosas sin mandar', okText: 'Cerrar igual y perderlos', peligro: true },
+      );
+      if (!ok) return;
+    }
+    await cerrarSesion();
+  };
+}
+
+/** Sesión que Supabase dejó guardada. Sin internet y con el token vencido, getSession() da null
+ *  pero no la borra: con ella se sigue trabajando y al volver la red se renueva (TOKEN_REFRESHED). */
+function sesionGuardada(): Session | null {
+  try {
+    const clave = (supabase.auth as unknown as { storageKey: string }).storageKey;
+    const s = JSON.parse(localStorage.getItem(clave) ?? 'null');
+    return s?.user?.id && s.refresh_token ? s : null;
+  } catch { return null; }
 }
 
 // Traducir errores comunes de Supabase al español

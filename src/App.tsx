@@ -39,7 +39,7 @@ import { evaluarPlan, EstadoPlan } from './lib/plan';
 import { registrarPush } from './lib/push';
 import { transicionPagina, toastEntra, toastSale, alertEntra, alertSale } from './lib/animaciones';
 
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider, useAuth, useCerrarSesion } from './context/AuthContext';
 import { StoreProvider, getSetting, setSetting } from './context/StoreContext';
 import { supabase, supabaseConfigurado } from './lib/supabase';
 import { VentasProvider } from './ventas/context/VentasContext';
@@ -200,7 +200,8 @@ const Cargando: React.FC = () => (
 
 // ─── Router de auth ───────────────────────────────────────────────────────
 const Router: React.FC<{ isDark: boolean; onThemeToggle: () => void }> = ({ isDark, onThemeToggle }) => {
-  const { session, cargando, comercio, recargarComercio, cerrarSesion } = useAuth();
+  const { session, cargando, comercio, recargarComercio } = useAuth();
+  const cerrarSesion = useCerrarSesion();
 
   if (cargando) return <Cargando />;
   if (!session) {

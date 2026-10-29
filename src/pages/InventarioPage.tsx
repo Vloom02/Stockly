@@ -10,39 +10,56 @@ import { useStore, formatearFecha } from '../context/StoreContext';
 import EmptyState from '../components/ui/EmptyState';
 import { Header } from './ProductoPage';
 import { useLectorFisico } from '../lib/useLectorFisico';
+import { useVentas } from '../ventas/context/VentasContext';
 
 const InventarioPage: React.FC = () => {
-  const { lotesEnriquecidos, updateLote } = useStore();
+  const { state, lotesEnriquecidos, updateLote } = useStore();
+  const { state: ventas } = useVentas();
   const history = useHistory();
   const [q, setQ] = useState('');
   const lectorRef = useLectorFisico<HTMLIonContentElement>(setQ); // lector físico: busca el producto
   const [conteo, setConteo] = useState<Record<string, string>>({});
+  // Lo que decía el sistema cuando se empezó a contar cada lote: lo vendido después no se pisa.
+  const [base, setBase] = useState<Record<string, number>>({});
   const [guardando, setGuardando] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: '' });
 
+  const todos = useMemo(() => [...lotesEnriquecidos()]
+    .sort((a, b) => a.productoNombre.localeCompare(b.productoNombre) || a.fechaVencimiento.localeCompare(b.fechaVencimiento)),
+  [lotesEnriquecidos]);
+  const codigoDe = useMemo(() => new Map(state.productos.map(p => [p.id, p.codigoBarras ?? ''])), [state.productos]);
+
+  // Por nombre o por código (el lector físico escribe el código).
   const lotes = useMemo(() => {
     const t = q.trim().toLowerCase();
-    return lotesEnriquecidos()
-      .filter(l => !t || l.productoNombre.toLowerCase().includes(t))
-      .sort((a, b) => a.productoNombre.localeCompare(b.productoNombre) || a.fechaVencimiento.localeCompare(b.fechaVencimiento));
-  }, [lotesEnriquecidos, q]);
+    return todos.filter(l => !t || l.productoNombre.toLowerCase().includes(t) || codigoDe.get(l.productoId) === q.trim());
+  }, [todos, q, codigoDe]);
 
-  // Lotes con diferencia entre lo contado y el sistema.
-  const diferencias = useMemo(() => lotes.filter(l => {
+  // Diferencias de TODOS los lotes contados, aunque la búsqueda los oculte (antes se perdían).
+  const diferencias = useMemo(() => todos.filter(l => {
     const real = conteo[l.id!];
-    return real !== undefined && real !== '' && parseInt(real, 10) !== l.cantidad;
-  }), [lotes, conteo]);
+    return real !== undefined && real !== '' && parseInt(real, 10) !== (base[l.id!] ?? l.cantidad);
+  }), [todos, conteo, base]);
 
   const aplicar = async () => {
     if (diferencias.length === 0) return;
+    // Lo vendido sin internet todavía no está en los lotes: ajustar ahora lo restaría dos veces.
+    if (ventas.outboxLen > 0) {
+      setToast({ show: true, msg: `Hay ${ventas.outboxLen} venta${ventas.outboxLen !== 1 ? 's' : ''} sin mandar. Conectate a internet, esperá que se manden y volvé a tocar "Ajustar".` });
+      return;
+    }
     setGuardando(true);
     let ok = 0;
     for (const l of diferencias) {
+      const lote = state.lotes.find(x => x.id === l.id);
+      if (!lote) continue;
       const real = Math.max(0, parseInt(conteo[l.id!], 10) || 0);
-      try { await updateLote({ ...l, cantidad: real }); ok++; } catch { /* sigue */ }
+      const desde = base[l.id!] ?? lote.cantidad;
+      try { await updateLote({ ...lote, cantidad: lote.cantidad + (real - desde) }); ok++; } catch { /* sigue */ }
     }
     setGuardando(false);
     setConteo({});
+    setBase({});
     setToast({ show: true, msg: `${ok} lote${ok !== 1 ? 's' : ''} ajustado${ok !== 1 ? 's' : ''}` });
   };
 
@@ -85,7 +102,10 @@ const InventarioPage: React.FC = () => {
                       type="number" inputMode="numeric" min={0}
                       aria-label={`Cantidad real de ${l.productoNombre}`}
                       value={real ?? ''} placeholder={String(l.cantidad)}
-                      onChange={e => setConteo(c => ({ ...c, [l.id!]: e.target.value }))}
+                      onChange={e => {
+                        setConteo(c => ({ ...c, [l.id!]: e.target.value }));
+                        setBase(b => (l.id! in b ? b : { ...b, [l.id!]: l.cantidad }));
+                      }}
                       style={{ width: 62, textAlign: 'center', padding: '8px 6px', borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700 }}
                     />
                   </div>

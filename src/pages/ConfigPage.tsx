@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { fechaLocalISO } from '../lib/vencimientos';
 import { Capacitor } from '@capacitor/core';
 import { IonContent, IonPage, IonToast } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
@@ -18,7 +19,8 @@ import { COLORES_MARCA, aplicarColorMarca, guardarColorMarca, obtenerColorMarcaG
 import { aplicarEscalaFont, guardarEscalaFont, obtenerEscalaFont } from '../lib/tipografia';
 import { notificacionesActivas, setNotificacionesActivas, horaNotificacion, setHoraNotificacion, sincronizarNotificaciones } from '../lib/notificaciones';
 import { stockACSV, movimientosACSV } from '../lib/exportar';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, useCerrarSesion } from '../context/AuthContext';
+import { flushOutbox } from '../ventas/lib/outbox';
 import { useEmpleado } from '../ventas/context/EmpleadoContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -30,7 +32,8 @@ interface Props { onThemeToggle: () => void; isDark: boolean; }
 
 const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
   const { state, exportarBackup, importarBackup, estadoNube, sincronizarAhora, sincronizando, reintentarFallidos, lotesEnriquecidos } = useStore();
-  const { comercio, miembro, esDueno, esAdminPlataforma, cerrarSesion } = useAuth();
+  const { comercio, miembro, esDueno, esAdminPlataforma } = useAuth();
+  const cerrarSesion = useCerrarSesion();
   const { cajero, cerrarTurno } = useEmpleado();
   const history = useHistory();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -90,12 +93,13 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
   };
 
   const salir = async () => {
+    await Promise.all([sincronizarAhora(), flushOutbox()]); // lo que se pueda mandar, se manda antes de borrar
     await cerrarSesion();
   };
 
   const exportar = async () => {
     const json = exportarBackup();
-    const nombre = `stockly_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    const nombre = `stockly_backup_${fechaLocalISO()}.json`;
 
     if (Capacitor.isNativePlatform()) {
       // Android: guardar con Filesystem en la carpeta Documents
@@ -149,7 +153,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
     setToast({ show: true, msg: 'Planilla exportada' });
   };
 
-  const fechaHoy = () => new Date().toISOString().slice(0, 10);
+  const fechaHoy = () => fechaLocalISO();
   const exportarStockCSV = () =>
     guardarTexto(`stockly_stock_${fechaHoy()}.csv`, stockACSV(lotesEnriquecidos()), 'text/csv');
   const exportarMovimientosCSV = () =>

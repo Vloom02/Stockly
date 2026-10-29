@@ -1,4 +1,5 @@
 import { Producto, Lote, Sucursal, Movimiento } from '../types';
+import { openDB as abrirVentasDB, idbGetAll as ventasGetAll, idbClear as ventasClear } from '../ventas/lib/outbox';
 
 /**
  * Capa de persistencia local (IndexedDB).
@@ -103,6 +104,20 @@ export function encolar(item: Omit<ItemOutbox, 'id' | 'intentos' | 'creadoEn'>):
   return put('outbox', completo);
 }
 
+/** Guarda (o borra, con obj null) el registro y encola su cambio en UNA transacción: si la app se
+ *  cierra en el medio no queda un cambio en pantalla que nunca sube, ni uno encolado que no está. */
+export function guardarYEncolar(tabla: TablaSync, obj: object | null, item: Omit<ItemOutbox, 'id' | 'intentos' | 'creadoEn'>): Promise<void> {
+  return new Promise((res, rej) => {
+    if (!db) { rej(new Error('DB local no abierta')); return; }
+    const t = db.transaction([tabla, 'outbox'], 'readwrite');
+    if (obj) t.objectStore(tabla).put(obj); else t.objectStore(tabla).delete(item.registroId);
+    t.objectStore('outbox').put({ ...item, id: crypto.randomUUID(), intentos: 0, creadoEn: Date.now() });
+    t.oncomplete = () => res();
+    t.onerror = () => rej(t.error);
+    t.onabort = () => rej(t.error);
+  });
+}
+
 // Pendientes ACTIVOS (no bloqueados), en orden cronológico.
 export function obtenerPendientes(): Promise<ItemOutbox[]> {
   return getAll<ItemOutbox>('outbox').then(items =>
@@ -153,7 +168,16 @@ export function setMeta(k: string, v: string): Promise<void> {
 }
 
 // ─── Reset completo (al cerrar sesión) ──────────────────────────────────────
+/** Cambios guardados en el celular que todavía no llegaron al servidor (Mercadería + ventas). */
+export async function contarSinSubir(): Promise<number> {
+  await abrirDB();
+  await abrirVentasDB();
+  return (await getAll('outbox')).length + (await ventasGetAll('outbox')).length;
+}
+
 export async function limpiarTodoLocal(): Promise<void> {
+  await abrirDB();
+  await abrirVentasDB();
   await Promise.all([
     clearTabla('productos'),
     clearTabla('lotes'),
@@ -161,6 +185,8 @@ export async function limpiarTodoLocal(): Promise<void> {
     clearTabla('movimientos'),
     clearTabla('outbox'),
     clearTabla('meta'),
+    // Vender: catálogo, ventas sin subir, turno abierto y claves sin internet (PIN, cajeros).
+    ...['productos', 'lotes', 'ventas', 'deudas', 'settings', 'outbox'].map(s => ventasClear(s)),
   ]);
 }
 

@@ -2,6 +2,7 @@
 // Historial de ventas — lee ventas_ventas con sus items. Filtros + export CSV.
 // ═══════════════════════════════════════════════════════════════════════════
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { fechaLocalISO } from '../../lib/vencimientos';
 import { IonContent, useIonViewWillEnter } from '@ionic/react';
 import { supabase } from '../lib/supabase';
 import { openDB, enqueueOutbox } from '../lib/outbox';
@@ -145,7 +146,7 @@ const HistorialPage: React.FC = () => {
   }, [filtered]);
 
   // CSV unificado con la lib compartida (en Android guarda en Documentos).
-  const exportCSV = () => guardarCSV(`ventas-${new Date().toISOString().slice(0, 10)}.csv`, ventasACSV(filtered));
+  const exportCSV = () => guardarCSV(`ventas-${fechaLocalISO()}.csv`, ventasACSV(filtered));
 
   const activeFilters = Object.values(filters).filter(Boolean).length;
   const inputStyle: React.CSSProperties = { width: '100%', padding: 9, fontSize: 13, color: 'var(--text)', borderRadius: 'var(--radius-sm)', outline: 'none' };

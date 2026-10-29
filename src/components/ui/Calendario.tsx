@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { fechaLocalISO } from '../../lib/vencimientos';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { DiaVencimiento } from '../../types';
 
@@ -29,7 +30,7 @@ const CalendarioVencimientos: React.FC<CalendarioProps> = ({ vencimientos, onDia
   if (offsetInicial < 0) offsetInicial = 6;   // domingo va al final
 
   const diasEnMes = new Date(anio, mes + 1, 0).getDate();
-  const hoyStr = hoy.toISOString().slice(0, 10);
+  const hoyStr = fechaLocalISO(hoy);
 
   const cambiarMes = (delta: number) => {
     let nuevoMes = mes + delta;

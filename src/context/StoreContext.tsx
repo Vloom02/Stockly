@@ -7,14 +7,14 @@ import {
 import { haptic } from '../utils/haptics';
 import { useAuth } from './AuthContext';
 import {
-  abrirDB, put, del, encolar,
+  abrirDB, put, guardarYEncolar,
   cargarProductos, cargarLotes, cargarSucursales, cargarMovimientos,
   obtenerPendientes, obtenerBloqueados, reintentarBloqueados,
 } from '../lib/localDb';
 import { sincronizar } from '../lib/sync';
 import { supabaseConfigurado } from '../lib/supabase';
 import { almacenGet, almacenSet } from '../lib/almacen';
-import { diasRestantes, calcularNivelAlerta as _calcNivel, ordenNivel, etiquetaNivel } from '../lib/vencimientos';
+import { diasRestantes, calcularNivelAlerta as _calcNivel, ordenNivel, etiquetaNivel, fechaLocalISO } from '../lib/vencimientos';
 import { DescuentoConfig } from '../lib/liquidacion';
 import { sincronizarNotificaciones } from '../lib/notificaciones';
 import { EVENTO_VENTA_PENDIENTE, leerUnidadesPendientes } from '../ventas/lib/outbox';
@@ -79,7 +79,7 @@ export function textoEstado(fechaVencimiento: string): string {
   return `Vence en ${d} días`;
 }
 
-const hoyISO = () => new Date().toISOString().slice(0, 10);
+const hoyISO = () => fechaLocalISO();
 
 // ─── Estado ─────────────────────────────────────────────────────────────────
 interface State {
@@ -218,6 +218,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     });
   }, []);
 
+  // Sincroniza y redibuja solo si bajó algo nuevo: antes cada 30 s se recargaba todo
+  // (catálogo, lotes, historial) y se redibujaban todas las pantallas aunque no cambiara nada.
+  const sincronizarYRecargar = useCallback(async (id: string) => {
+    const res = await sincronizar(id);
+    if (res.bajados > 0) await recargarLocal();
+    await refrescarPendientes();
+    return res;
+  }, [recargarLocal, refrescarPendientes]);
+
   // ─── Init: abrir DB local, cargar, y sincronizar si hay internet ──────────
   useEffect(() => {
     if (!comercioId) {
@@ -237,9 +246,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (navigator.onLine) {
         setSincronizando(true);
         try {
-          await sincronizar(comercioId);
-          await recargarLocal();
-          await refrescarPendientes();
+          await sincronizarYRecargar(comercioId);
         } catch (e) {
           console.warn('Sync inicial falló', e);
         } finally {
@@ -247,7 +254,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
       }
     })();
-  }, [comercioId, recargarLocal, refrescarPendientes]);
+  }, [comercioId, recargarLocal, refrescarPendientes, sincronizarYRecargar]);
 
   // ─── Sincronizar cuando vuelve internet ───────────────────────────────────
   useEffect(() => {
@@ -255,16 +262,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const alVolver = async () => {
       setSincronizando(true);
       try {
-        await sincronizar(comercioId);
-        await recargarLocal();
-        await refrescarPendientes();
+        await sincronizarYRecargar(comercioId);
       } finally {
         setSincronizando(false);
       }
     };
     window.addEventListener('online', alVolver);
     return () => window.removeEventListener('online', alVolver);
-  }, [comercioId, recargarLocal, refrescarPendientes]);
+  }, [comercioId, sincronizarYRecargar]);
 
   // ─── Sincronización periódica (cada 30s si hay internet) ──────────────────
   useEffect(() => {
@@ -272,13 +277,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const intervalo = setInterval(async () => {
       if (!navigator.onLine || sincronizandoRef.current) return;
       try {
-        await sincronizar(comercioId);
-        await recargarLocal();
-        await refrescarPendientes();
+        await sincronizarYRecargar(comercioId);
       } catch { /* */ }
     }, 30000);
     return () => clearInterval(intervalo);
-  }, [comercioId, recargarLocal, refrescarPendientes]);
+  }, [comercioId, sincronizarYRecargar]);
 
   const sincronizarAhora = useCallback(async () => {
     if (!comercioId || !navigator.onLine) return;
@@ -286,9 +289,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     sincronizandoRef.current = true;
     setSincronizando(true);
     try {
-      const res = await sincronizar(comercioId);
-      await recargarLocal();
-      await refrescarPendientes();
+      const res = await sincronizarYRecargar(comercioId);
       setEstadoNube({
         configurado: supabaseConfigurado,
         ultimoError: res.error,
@@ -298,7 +299,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       sincronizandoRef.current = false;
       setSincronizando(false);
     }
-  }, [comercioId, recargarLocal, refrescarPendientes]);
+  }, [comercioId, sincronizarYRecargar]);
 
   // Saca de cuarentena los cambios fallidos y reintenta sincronizarlos.
   const reintentarFallidos = useCallback(async () => {
@@ -317,12 +318,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       ...m, id: crypto.randomUUID(), comercioId,
       fecha: new Date().toISOString(), usuario,
     };
-    await put('movimientos', mov);
-    if (comoAjuste && mov.loteId) {
-      await encolar({ tabla: 'ajuste_stock', operacion: 'insert', registroId: mov.id!, payload: mov });
-    } else {
-      await encolar({ tabla: 'movimientos', operacion: 'insert', registroId: mov.id!, payload: mov });
-    }
+    await guardarYEncolar('movimientos', mov, {
+      tabla: comoAjuste && mov.loteId ? 'ajuste_stock' : 'movimientos', operacion: 'insert', registroId: mov.id!, payload: mov,
+    });
     dispatch({ type: 'PREPEND_MOVIMIENTO', movimiento: mov });
     await refrescarPendientes();
   }, [comercioId, usuario, refrescarPendientes]);
@@ -333,8 +331,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       ...p, id: crypto.randomUUID(), comercioId,
       fechaCreacion: hoyISO(), activo: true,
     };
-    await put('productos', prod);
-    await encolar({ tabla: 'productos', operacion: 'insert', registroId: prod.id!, payload: prod });
+    await guardarYEncolar('productos', prod, { tabla: 'productos', operacion: 'insert', registroId: prod.id!, payload: prod });
     dispatch({ type: 'UPSERT_PRODUCTO', producto: prod });
     await registrarMovimiento({ productoId: prod.id!, sucursalId: state.sucursalActivaId, tipo: 'creacion', cantidad: 0, cantidadAnterior: 0, cantidadNueva: 0, notas: `Producto "${p.nombre}" creado` });
     sincronizarAhora();
@@ -342,22 +339,18 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [comercioId, state.sucursalActivaId, registrarMovimiento, sincronizarAhora]);
 
   const updateProducto = useCallback(async (p: Producto) => {
-    await put('productos', p);
-    await encolar({ tabla: 'productos', operacion: 'update', registroId: p.id!, payload: p });
+    await guardarYEncolar('productos', p, { tabla: 'productos', operacion: 'update', registroId: p.id!, payload: p });
     dispatch({ type: 'UPSERT_PRODUCTO', producto: p });
     await refrescarPendientes();
     sincronizarAhora();
   }, [refrescarPendientes, sincronizarAhora]);
 
   const deleteProducto = useCallback(async (id: string) => {
-    const prod = state.productos.find(p => p.id === id);
-    if (prod) await put('productos', { ...prod, activo: false });
-    await encolar({ tabla: 'productos', operacion: 'delete', registroId: id, payload: { id } });
-    await del('productos', id);
+    await guardarYEncolar('productos', null, { tabla: 'productos', operacion: 'delete', registroId: id, payload: { id } });
     dispatch({ type: 'REMOVE_PRODUCTO', id });
     await refrescarPendientes();
     sincronizarAhora();
-  }, [state.productos, refrescarPendientes, sincronizarAhora]);
+  }, [refrescarPendientes, sincronizarAhora]);
 
   const buscarProductoPorCodigo = useCallback((codigo: string) =>
     state.productos.find(p => p.codigoBarras === codigo), [state.productos]);
@@ -368,8 +361,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       ...l, id: crypto.randomUUID(), comercioId,
       fechaIngreso: hoyISO(), retirado: false,
     };
-    await put('lotes', lote);
-    await encolar({ tabla: 'lotes', operacion: 'insert', registroId: lote.id!, payload: lote });
+    await guardarYEncolar('lotes', lote, { tabla: 'lotes', operacion: 'insert', registroId: lote.id!, payload: lote });
     dispatch({ type: 'UPSERT_LOTE', lote });
     haptic.success();
     await registrarMovimiento({ loteId: lote.id, productoId: l.productoId, sucursalId: l.sucursalId, tipo: 'ingreso', cantidad: l.cantidad, cantidadAnterior: 0, cantidadNueva: l.cantidad, notas: `Ingreso de ${l.cantidad} unid.` });
@@ -380,12 +372,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const updateLote = useCallback(async (l: Lote) => {
     const anterior = state.lotes.find(x => x.id === l.id);
     const diff = l.cantidad - (anterior?.cantidad || 0);
-    await put('lotes', l);
-    await encolar({ tabla: 'lotes', operacion: 'update', registroId: l.id!, payload: l });
-    dispatch({ type: 'UPSERT_LOTE', lote: l });
+    // El ajuste se encola antes que el lote: si la app se corta en el medio, el stock igual llega al servidor.
     if (diff !== 0) {
       await registrarMovimiento({ loteId: l.id, productoId: l.productoId, sucursalId: l.sucursalId, tipo: 'ajuste', cantidad: diff, cantidadAnterior: anterior?.cantidad || 0, cantidadNueva: l.cantidad, notas: `Ajuste (${diff > 0 ? '+' : ''}${diff})` }, true);
     }
+    await guardarYEncolar('lotes', l, { tabla: 'lotes', operacion: 'update', registroId: l.id!, payload: l });
+    dispatch({ type: 'UPSERT_LOTE', lote: l });
     await refrescarPendientes();
     sincronizarAhora();
   }, [state.lotes, registrarMovimiento, refrescarPendientes, sincronizarAhora]);
@@ -398,20 +390,20 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const retirado = cantNueva === 0;
     const actualizado: Lote = { ...lote, cantidad: cantNueva, retirado };
 
+    // El retiro se sincroniza por delta atómico (ajuste_stock), no por upsert de cantidad. Se encola
+    // antes de tocar el lote: si la app se corta en el medio, el retiro igual llega al servidor.
+    await registrarMovimiento({ loteId: id, productoId: lote.productoId, sucursalId: lote.sucursalId, tipo, cantidad: -cantARetirar, cantidadAnterior: lote.cantidad, cantidadNueva: cantNueva, notas }, true);
     await put('lotes', actualizado);
     haptic.medium();
     if (retirado) dispatch({ type: 'REMOVE_LOTE', id });
     else dispatch({ type: 'UPSERT_LOTE', lote: actualizado });
-    // El retiro se sincroniza por delta atómico (ajuste_stock), no por upsert de cantidad.
-    await registrarMovimiento({ loteId: id, productoId: lote.productoId, sucursalId: lote.sucursalId, tipo, cantidad: -cantARetirar, cantidadAnterior: lote.cantidad, cantidadNueva: cantNueva, notas }, true);
     sincronizarAhora();
   }, [state.lotes, registrarMovimiento, sincronizarAhora]);
 
   const addSucursal = useCallback(async (s: Omit<Sucursal, 'id' | 'activa' | 'comercioId'>) => {
     if (!comercioId) return null;
     const suc: Sucursal = { ...s, id: crypto.randomUUID(), comercioId, activa: true };
-    await put('sucursales', suc);
-    await encolar({ tabla: 'sucursales', operacion: 'insert', registroId: suc.id!, payload: suc });
+    await guardarYEncolar('sucursales', suc, { tabla: 'sucursales', operacion: 'insert', registroId: suc.id!, payload: suc });
     dispatch({ type: 'UPSERT_SUCURSAL', sucursal: suc });
     await refrescarPendientes();
     // Sincronizar en segundo plano SIN recargar el estado completo de inmediato
@@ -424,8 +416,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [comercioId, refrescarPendientes]);
 
   const updateSucursal = useCallback(async (s: Sucursal) => {
-    await put('sucursales', s);
-    await encolar({ tabla: 'sucursales', operacion: 'update', registroId: s.id!, payload: s });
+    await guardarYEncolar('sucursales', s, { tabla: 'sucursales', operacion: 'update', registroId: s.id!, payload: s });
     dispatch({ type: 'UPSERT_SUCURSAL', sucursal: s });
     await refrescarPendientes();
     sincronizarAhora();
@@ -526,7 +517,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const idx = new Map(res.map((r, i) => [r.mes, i]));
     for (const m of state.movimientos) {
       if (m.tipo !== 'retiro_vencido' && m.tipo !== 'retiro_roto') continue;
-      const i = idx.get(m.fecha.slice(0, 7));
+      const i = idx.get(fechaLocalISO(new Date(m.fecha)).slice(0, 7));
       if (i === undefined) continue;
       const prod = state.productos.find(p => p.id === m.productoId);
       const valor = Math.abs(m.cantidad) * (prod?.precio || 0);
@@ -601,8 +592,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           const nuevoId = crypto.randomUUID();
           if (item.id) mapaIds.set(item.id, nuevoId);
           const registro = { ...item, id: nuevoId, comercioId };
-          await put(tabla, registro);
-          await encolar({ tabla, operacion: 'insert', registroId: nuevoId, payload: registro });
+          await guardarYEncolar(tabla, registro, { tabla, operacion: 'insert', registroId: nuevoId, payload: registro });
           ok++;
         } catch {
           error++;
@@ -630,8 +620,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           const registro: Lote = {
             ...lote, id: nuevoId, comercioId, productoId, sucursalId,
           };
-          await put('lotes', registro);
-          await encolar({ tabla: 'lotes', operacion: 'insert', registroId: nuevoId, payload: registro });
+          await guardarYEncolar('lotes', registro, { tabla: 'lotes', operacion: 'insert', registroId: nuevoId, payload: registro });
           ok++;
         } catch {
           error++;

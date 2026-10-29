@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { fechaLocalISO } from '../lib/vencimientos';
 import { IonContent, IonPage } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import {
@@ -25,7 +26,7 @@ const MovimientosPage: React.FC = () => {
   const porDia = useMemo(() => {
     const grupos: { fecha: string; items: Movimiento[] }[] = [];
     for (const m of filtrados) {
-      const dia = m.fecha.slice(0, 10);
+      const dia = fechaLocalISO(new Date(m.fecha));
       const ult = grupos[grupos.length - 1];
       if (ult && ult.fecha === dia) ult.items.push(m);
       else grupos.push({ fecha: dia, items: [m] });
@@ -138,10 +139,10 @@ function tipoInfo(t: TipoMovimiento): { icon: React.ReactNode; label: string; co
 }
 
 function tituloFecha(iso: string): string {
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = fechaLocalISO();
   const ayer = new Date(); ayer.setDate(ayer.getDate() - 1);
   if (iso === hoy) return 'Hoy';
-  if (iso === ayer.toISOString().slice(0, 10)) return 'Ayer';
+  if (iso === fechaLocalISO(ayer)) return 'Ayer';
   return new Date(iso + 'T00:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' });
 }
 

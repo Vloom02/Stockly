@@ -23,8 +23,8 @@ const MAX_INTENTOS = 50;
 // atómico (ajustar_stock), nunca por upsert (así no pisa lo que descontó Ventas).
 function aSnake(tabla: TablaSync, payload: any, comercioId: string, esUpdate = false): any {
   switch (tabla) {
-    case 'productos':
-      return {
+    case 'productos': {
+      const fila: any = {
         id: payload.id, comercio_id: comercioId, nombre: payload.nombre,
         codigo_barras: payload.codigoBarras ?? null, categoria: payload.categoria,
         precio: payload.precio, dias_aviso_default: payload.diasAvisoDefault,
@@ -32,8 +32,11 @@ function aSnake(tabla: TablaSync, payload: any, comercioId: string, esUpdate = f
         stock_minimo: payload.stockMinimo ?? 0,
         costo: payload.costo ?? null,
         foto_url: payload.fotoUrl ?? null,
-        activo: payload.activo ?? true,
       };
+      // Un cambio no manda `activo`: editar sin internet un producto que otro equipo borró lo revivía.
+      if (!esUpdate) fila.activo = payload.activo ?? true;
+      return fila;
+    }
     case 'lotes': {
       const fila: any = {
         id: payload.id, comercio_id: comercioId, producto_id: payload.productoId,
@@ -71,6 +74,24 @@ function aSnake(tabla: TablaSync, payload: any, comercioId: string, esUpdate = f
  */
 const TAMANO_LOTE = 100; // registros por tanda
 
+// Orden de subida por dependencias: el local y el producto antes que el lote, el lote antes
+// que su movimiento. Antes se subía en el orden de la cola y una FK fallida iba a cuarentena.
+const ORDEN_TABLAS: TablaSync[] = ['sucursales', 'productos', 'lotes', 'movimientos'];
+
+/** Agrupa altas y cambios por tabla y operación (cada tanda manda las mismas columnas), en orden de dependencias. */
+export function agruparParaSubir(items: ItemOutbox[]): [string, ItemOutbox[]][] {
+  const grupos = new Map<string, ItemOutbox[]>();
+  for (const t of ORDEN_TABLAS) for (const op of ['insert', 'update']) grupos.set(`${t}:${op}`, []);
+  for (const it of items) grupos.get(`${it.tabla}:${it.operacion}`)?.push(it);
+  return [...grupos].filter(([, g]) => g.length > 0);
+}
+
+/** Lotes con el alta todavía en la cola: sus cambios esperan (un update o ajuste antes del alta lo crearía en 0). */
+async function lotesSinAlta(): Promise<Set<string>> {
+  return new Set((await getAll<ItemOutbox>('outbox'))
+    .filter(i => i.tabla === 'lotes' && i.operacion === 'insert').map(i => i.registroId));
+}
+
 export async function subirPendientes(comercioId: string): Promise<number> {
   const pendientes = await obtenerPendientes();
   if (pendientes.length === 0) return 0;
@@ -78,49 +99,60 @@ export async function subirPendientes(comercioId: string): Promise<number> {
   let exitosos = 0;
   let ultimoError: string | null = null;
 
-  // Separar por tipo. Orden de proceso: 1) upserts (para que el lote exista),
+  // De a uno: aísla el que falla para que no arrastre a cuarentena al resto de su tanda.
+  const subirUno = async (it: ItemOutbox) => {
+    try {
+      const err = await procesarItem(it, comercioId);
+      if (!err) { await quitarDeOutbox(it.id); exitosos++; }
+      else { ultimoError = err; await manejarFallo(it, err); }
+    } catch (e) {
+      ultimoError = e instanceof Error ? e.message : 'Error al subir';
+      await manejarFallo(it, ultimoError);
+    }
+  };
+
+  // Separar por tipo. Orden de proceso: 1) altas y cambios (para que el lote exista),
   // 2) ajustes de stock por delta (RPC), 3) deletes.
   const ajustes = pendientes.filter(p => p.tabla === 'ajuste_stock');
   const upserts = pendientes.filter(p => p.tabla !== 'ajuste_stock' && p.operacion !== 'delete');
   const deletes = pendientes.filter(p => p.tabla !== 'ajuste_stock' && p.operacion === 'delete');
 
-  // ── Subir upserts en lotes de 100. Los lotes se separan insert/update porque
-  //    en update se omiten cantidad/retirado (columnas distintas en el upsert). ──
-  const grupos: Record<string, ItemOutbox[]> = {};
-  for (const item of upserts) {
-    const key = item.tabla === 'lotes'
-      ? `lotes:${item.operacion === 'update' ? 'update' : 'insert'}`
-      : item.tabla;
-    (grupos[key] ||= []).push(item);
-  }
-
-  for (const key of Object.keys(grupos)) {
-    const items = grupos[key];
-    const tabla = key.startsWith('lotes:') ? 'lotes' : key;
-    const esUpdate = key === 'lotes:update';
+  for (const [key, items] of agruparParaSubir(upserts)) {
+    const tabla = key.split(':')[0] as TablaSync;
+    const esUpdate = key.endsWith(':update');
+    if (key === 'lotes:update') {
+      // update (no upsert) y de a uno: son pocos y así nunca crea un lote.
+      const sinAlta = await lotesSinAlta();
+      for (const it of items) if (!sinAlta.has(it.registroId)) await subirUno(it);
+      continue;
+    }
     for (let i = 0; i < items.length; i += TAMANO_LOTE) {
       const tanda = items.slice(i, i + TAMANO_LOTE);
-      const filas = tanda.map(it => aSnake(tabla as TablaSync, it.payload, comercioId, esUpdate));
+      const filas = tanda.map(it => aSnake(tabla, it.payload, comercioId, esUpdate));
       try {
         const { error } = await conTimeout(
           Promise.resolve(supabase.from(tabla).upsert(filas, { onConflict: 'id' })),
           15000, `subir ${key}`
         );
-        if (error) {
-          ultimoError = error.message;
-          for (const it of tanda) await manejarFallo(it, ultimoError ?? undefined);
-        } else {
+        if (!error) {
           for (const it of tanda) { await quitarDeOutbox(it.id); exitosos++; }
+        } else if (tanda.length > 1 && esErrorPermanente(error.message)) {
+          for (const it of tanda) await subirUno(it);
+        } else {
+          ultimoError = error.message;
+          for (const it of tanda) await manejarFallo(it, ultimoError);
         }
       } catch (e) {
         ultimoError = e instanceof Error ? e.message : 'Error al subir lote';
-        for (const it of tanda) await manejarFallo(it, ultimoError ?? undefined);
+        for (const it of tanda) await manejarFallo(it, ultimoError);
       }
     }
   }
 
   // ── Ajustes de stock por DELTA atómico (RPC idempotente). De a uno. ──
+  const sinAlta = await lotesSinAlta();
   for (const item of ajustes) {
+    if (sinAlta.has(item.payload?.loteId)) continue; // espera a que suba el alta del lote
     const mov: any = item.payload;
     const pRpc = {
       mov_id: mov.id, comercio_id: comercioId, lote_id: mov.loteId,
@@ -142,16 +174,7 @@ export async function subirPendientes(comercioId: string): Promise<number> {
   }
 
   // ── Deletes (soft-delete) de a uno: son pocos ──
-  for (const item of deletes) {
-    try {
-      const err = await procesarItem(item, comercioId);
-      if (!err) { await quitarDeOutbox(item.id); exitosos++; }
-      else { ultimoError = err; await manejarFallo(item, ultimoError ?? undefined); }
-    } catch (e) {
-      ultimoError = e instanceof Error ? e.message : 'Error al borrar';
-      await manejarFallo(item, ultimoError ?? undefined);
-    }
-  }
+  for (const item of deletes) await subirUno(item);
 
   // Reportar error si quedó algo sin subir por un problema real
   const quedanPendientes = await obtenerPendientes();
@@ -182,11 +205,12 @@ async function procesarItem(item: ItemOutbox, comercioId: string): Promise<strin
     return error ? error.message : null;
   }
 
-  // insert o update → upsert (idempotente, seguro ante reintentos)
+  // insert o update → upsert (idempotente, seguro ante reintentos).
+  // El cambio de un lote es update: un upsert lo crearía con 0 si el alta todavía no llegó.
   const fila = aSnake(tabla as TablaSync, payload, comercioId, operacion === 'update');
-  const { error } = await conTimeoutItem(
-    supabase.from(tabla).upsert(fila, { onConflict: 'id' })
-  );
+  const { error } = await conTimeoutItem(tabla === 'lotes' && operacion === 'update'
+    ? supabase.from(tabla).update(fila).eq('id', registroId)
+    : supabase.from(tabla).upsert(fila, { onConflict: 'id' }));
   return error ? error.message : null;
 }
 
@@ -215,7 +239,29 @@ async function manejarFallo(item: ItemOutbox, error?: string) {
  * BAJAR: trae cambios remotos desde la última sincronización.
  * Actualiza IndexedDB local con lo que cambió en otros dispositivos.
  */
-export async function bajarCambios(comercioId: string): Promise<void> {
+const PAGINA = 1000; // = max_rows de Supabase: pedir más no trae más
+
+/** Todo lo cambiado desde `desde`, de a páginas. Sin paginar, con más de 1.000 cambios llegaban
+ *  1.000 al azar y el watermark saltaba al resto para siempre. */
+async function traerCambiados(tabla: string, comercioId: string, desde: string): Promise<{ data: any[] | null; error: { message?: string } | null }> {
+  const filas: any[] = [];
+  for (let i = 0; ; i += PAGINA) {
+    const { data, error } = await supabase.from(tabla).select('*').eq('comercio_id', comercioId)
+      .gt('updated_at', desde).order('updated_at').order('id').range(i, i + PAGINA - 1);
+    if (error) return { data: null, error };
+    filas.push(...(data ?? []));
+    if (!data || data.length < PAGINA) return { data: filas, error: null };
+  }
+}
+
+/** Stock de un lote con los ajustes locales encima, igual que ajustar_stock en el servidor:
+ *  un retiro no lo baja de 0 (ni de donde ya estaba en negativo); un ingreso suma. */
+export function cantidadConDelta(cantidad: number, delta: number): number {
+  return Math.max(Math.min(cantidad, 0), cantidad + delta);
+}
+
+/** Devuelve cuántas filas nuevas llegaron (0 = no hace falta redibujar nada). */
+export async function bajarCambios(comercioId: string): Promise<number> {
   const ultimaSync = await getMeta('ultima-sync');
   const desdeBase = ultimaSync || '1970-01-01T00:00:00Z';
   // Overlap de 1s: re-bajamos una ventana chica para no perder filas cuyo timestamp
@@ -226,15 +272,14 @@ export async function bajarCambios(comercioId: string): Promise<void> {
   // Pull INCREMENTAL: productos/lotes/sucursales por updated_at (trigger server);
   // movimientos por creado_en (timestamp del SERVIDOR, no el reloj del cliente).
   const [prods, lotes, sucs] = await Promise.all([
-    supabase.from('productos').select('*').eq('comercio_id', comercioId).gt('updated_at', desde),
-    supabase.from('lotes').select('*').eq('comercio_id', comercioId).gt('updated_at', desde),
-    supabase.from('sucursales').select('*').eq('comercio_id', comercioId).gt('updated_at', desde),
+    traerCambiados('productos', comercioId, desde),
+    traerCambiados('lotes', comercioId, desde),
+    traerCambiados('sucursales', comercioId, desde),
   ]);
 
   // Movimientos: PAGINADO ascendente por creado_en (antes el tope de 500 perdía los
   // más viejos). gte + dedupe por id tolera que varios movimientos compartan creado_en
   // (p.ej. los que inserta una misma venta en una sola transacción).
-  const PAGINA = 1000;
   const movsData: any[] = [];
   const vistos = new Set<string>();
   let movsError: { message?: string } | null = null;
@@ -270,8 +315,9 @@ export async function bajarCambios(comercioId: string): Promise<void> {
       const local = mapLoteLocal(r);
       const delta = deltaPendiente.get(local.id);
       if (delta) {
-        local.cantidad = Math.max(0, local.cantidad + delta);
-        local.retirado = local.retirado || local.cantidad <= 0;
+        // Sin recortar a 0: un lote en negativo (vendido sin stock) tiene que seguir viéndose.
+        local.cantidad = cantidadConDelta(local.cantidad, delta);
+        local.retirado = local.retirado || local.cantidad === 0;
       }
       await put('lotes', local);
     }
@@ -283,18 +329,25 @@ export async function bajarCambios(comercioId: string): Promise<void> {
 
   // Watermark = mayor timestamp del SERVIDOR visto, comparado por EPOCH (no como
   // string: ISO con distinto offset/decimales no ordenan lexicográficamente bien).
-  let maxEpoch = new Date(desdeBase).getTime();
+  const baseEpoch = new Date(desdeBase).getTime();
+  let maxEpoch = baseEpoch;
   let maxIso = desdeBase;
+  let nuevas = 0;
   const considerar = (ts?: string | null) => {
     if (!ts) return;
     const t = new Date(ts).getTime();
-    if (Number.isFinite(t) && t > maxEpoch) { maxEpoch = t; maxIso = ts; }
+    if (!Number.isFinite(t)) return;
+    // shortcut: lo re-bajado por el overlap de 1 s no cuenta como nuevo; si una fila con el mismo
+    // timestamp que el watermark entra recién ahí, se ve en el próximo cambio real.
+    if (t > baseEpoch) nuevas++;
+    if (t > maxEpoch) { maxEpoch = t; maxIso = ts; }
   };
   for (const r of prods.data ?? []) considerar((r as any).updated_at);
   for (const r of lotes.data ?? []) considerar((r as any).updated_at);
   for (const r of sucs.data ?? [])  considerar((r as any).updated_at);
   for (const r of movsData)         considerar((r as any).creado_en);
   if (maxIso !== desdeBase) await setMeta('ultima-sync', maxIso);
+  return nuevas;
 }
 
 /** Suma, por lote, los deltas de stock encolados que el servidor todavía no aplicó. */
@@ -358,18 +411,19 @@ function conTimeout<T>(promesa: Promise<T>, ms: number, etiqueta: string): Promi
 // se saltee el guard del contexto. Si ya hay una sync en curso, no arranca otra.
 let sincronizando = false;
 
-export async function sincronizar(comercioId: string): Promise<{ subidos: number; error: string | null }> {
-  if (!navigator.onLine) return { subidos: 0, error: 'Sin conexión a internet' };
-  if (sincronizando) return { subidos: 0, error: null }; // ya hay una sync corriendo
+export async function sincronizar(comercioId: string): Promise<{ subidos: number; bajados: number; error: string | null }> {
+  if (!navigator.onLine) return { subidos: 0, bajados: 0, error: 'Sin conexión a internet' };
+  if (sincronizando) return { subidos: 0, bajados: 0, error: null }; // ya hay una sync corriendo
   sincronizando = true;
+  let subidos = 0;
   try {
-    const subidos = await conTimeout(subirPendientes(comercioId), 90000, 'subir');
-    await conTimeout(bajarCambios(comercioId), 30000, 'bajar');
-    return { subidos, error: null };
+    subidos = await conTimeout(subirPendientes(comercioId), 90000, 'subir');
+    const bajados = await conTimeout(bajarCambios(comercioId), 30000, 'bajar');
+    return { subidos, bajados, error: null };
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Error desconocido';
     console.warn('Sincronización interrumpida:', msg);
-    return { subidos: 0, error: msg };
+    return { subidos, bajados: 0, error: msg };
   } finally {
     sincronizando = false;
   }

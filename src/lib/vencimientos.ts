@@ -10,6 +10,21 @@ export interface UmbralesVencimiento {
   aviso: number;   // días: <= → 'aviso' (default si el lote no trae diasAviso)
 }
 
+/** Fecha YYYY-MM-DD en la hora del celular. toISOString() da la de Greenwich: en Argentina,
+ *  después de las 21 h ya decía "mañana". */
+export function fechaLocalISO(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Hoy + días/meses, en hora local. Los meses se cortan en el último día: el 31/1 + 1 mes es
+ *  el 28/2 (antes daba el 3/3 por el desborde de setMonth). */
+export function sumarFecha(dias: number, meses: number, hoy: Date = new Date()): string {
+  const d = new Date(hoy.getFullYear(), hoy.getMonth() + meses, 1);
+  const ultimo = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(hoy.getDate(), ultimo) + dias);
+  return fechaLocalISO(d);
+}
+
 /**
  * Días calendario entre hoy y la fecha de vencimiento (YYYY-MM-DD).
  * Compara a medianoche local para evitar errores por hora/zona horaria.

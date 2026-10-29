@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { sumarFecha } from '../lib/vencimientos';
 import { IonContent, IonPage, IonToast } from '@ionic/react';
 import { useHistory, useParams, useLocation } from 'react-router-dom';
 import {
@@ -46,6 +47,8 @@ const LoteForm: React.FC = () => {
     loteExistente?.productoId ?? (productoIdInicial || '')
   );
   const [cantidad, setCantidad] = useState(loteExistente?.cantidad.toString() || '1');
+  // Lo que había al abrir: si mientras tanto se vendió, se guarda el cambio de la persona (no el número viejo).
+  const [cantidadAlAbrir] = useState(loteExistente?.cantidad ?? 0);
   const [fechaVencimiento, setFechaVencimiento] = useState(loteExistente?.fechaVencimiento || fechaTresMeses());
   const [diasAviso, setDiasAviso] = useState(loteExistente?.diasAviso.toString() || '');
   const [numeroLote, setNumeroLote] = useState(loteExistente?.numeroLote || '');
@@ -78,14 +81,16 @@ const LoteForm: React.FC = () => {
   const handleGuardar = async () => {
     if (!productoId) { setToast({ show: true, msg: 'Elegí un producto' }); return; }
     const cant = parseInt(cantidad, 10);
-    if (!Number.isFinite(cant) || cant <= 0) { setToast({ show: true, msg: 'Cantidad inválida' }); return; }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaVencimiento)) { setToast({ show: true, msg: 'Fecha inválida' }); return; }
+    // Un lote que ya existe puede estar en 0 o en negativo y solo querer cambiarle la fecha.
+    const cantOk = Number.isFinite(cant) && (cant > 0 || (!!loteExistente && (cant === 0 || cant === cantidadAlAbrir)));
+    if (!cantOk) { setToast({ show: true, msg: 'Poné cuántas unidades hay (un número mayor que 0)' }); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaVencimiento)) { setToast({ show: true, msg: 'Elegí la fecha de vencimiento' }); return; }
 
     if (procesando) return;
     const datos = {
       productoId: productoId,
       sucursalId: state.sucursalActivaId,
-      cantidad: cant,
+      cantidad: loteExistente ? loteExistente.cantidad + (cant - cantidadAlAbrir) : cant,
       fechaVencimiento,
       diasAviso: diasAvisoEf,
       numeroLote: numeroLote.trim() || undefined,
@@ -464,14 +469,6 @@ const ATAJOS_VENCIMIENTO = [
   { label: '6 meses', dias: 0, meses: 6 },
   { label: '1 año', dias: 0, meses: 12 },
 ];
-
-/** Hoy + días/meses, como YYYY-MM-DD en hora LOCAL (toISOString usa UTC y de noche corría un día). */
-function sumarFecha(dias: number, meses: number): string {
-  const d = new Date();
-  d.setMonth(d.getMonth() + meses);
-  d.setDate(d.getDate() + dias);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
 
 function fechaTresMeses(): string {
   return sumarFecha(0, 3);
