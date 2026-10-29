@@ -21,3 +21,4 @@ supabase/migracion-9-rendimiento.sql
 supabase/migracion-10-sin-invitaciones.sql
 supabase/migracion-11-stock-negativo.sql
 supabase/migracion-12-costo-ganancia.sql
+supabase/migracion-13-seguridad-2026-10-29.sql

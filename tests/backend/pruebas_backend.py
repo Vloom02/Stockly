@@ -257,6 +257,84 @@ def main():
     _, it2 = http('GET', f"/rest/v1/ventas_items?venta_id=eq.{r['venta_id']}&select=costo_unit", tok_d)
     caso('si después sube el costo, la venta vieja no cambia', all(float(x['costo_unit']) == 600 for x in it2), f'{it2}')
 
+    print('\n── I) Migración 13: seguridad y consistencia')
+    vf = str(uuid.uuid4())
+    s, r = http('POST', '/rest/v1/rpc/registrar_venta', tok_e, {'p': {
+        'id': vf, 'comercio_id': comercio, 'sucursal_id': sucursal, 'usuario': 'Juan', 'metodo_pago': 'efectivo',
+        'cliente': 'Doña Rosa', 'fiado': True, 'descuento': 0, 'fecha': '2026-10-25T10:00:00Z',
+        'items': [{'producto_id': None, 'nombre': 'Varios', 'cantidad': 1, 'precio': 1000}]}})
+    http('PATCH', f'/rest/v1/ventas_ventas?id=eq.{vf}', tok_d, {'total': 1})
+    http('DELETE', f'/rest/v1/ventas_ventas?id=eq.{vf}', tok_d)
+    _, v = http('GET', f'/rest/v1/ventas_ventas?id=eq.{vf}&select=total', tok_d)
+    caso('nadie edita ni borra una venta por la API', s == 200 and len(v) == 1 and float(v[0]['total']) == 1000, f'{s} {v}')
+    s, r = http('POST', '/rest/v1/ventas_ventas', tok_d, {'id': str(uuid.uuid4()), 'comercio_id': comercio, 'total': 5})
+    caso('una venta no se crea directo (solo con registrar_venta)', s >= 400, f'{s} {r}')
+    s, r = http('POST', '/rest/v1/rpc/anular_venta', tok_e, {'p': {'venta_id': vf, 'comercio_id': comercio, 'usuario': 'Juan'}})
+    caso('una cuenta de empleado NO puede anular ventas', s >= 400 and 'dueño' in json.dumps(r, ensure_ascii=False), f'{s} {r}')
+
+    _, d = http('GET', f'/rest/v1/ventas_deudas?venta_id=eq.{vf}&select=id,monto', tok_d)
+    deuda = d[0]['id']
+    pago = str(uuid.uuid4())
+    pagar = lambda pid, monto: http('POST', '/rest/v1/rpc/registrar_pago_fiado', tok_d, {'p': {
+        'pago_id': pid, 'deuda_id': deuda, 'comercio_id': comercio, 'monto': monto, 'usuario': 'Marta'}})
+    hilos = [threading.Thread(target=lambda: pagar(pago, 1000)) for _ in range(2)]
+    [h.start() for h in hilos]
+    [h.join() for h in hilos]
+    s, r = pagar(str(uuid.uuid4()), 1000)  # otro equipo cobra de nuevo la misma deuda
+    _, pg = http('GET', f'/rest/v1/ventas_pagos?deuda_id=eq.{deuda}&select=monto', tok_d)
+    caso('el fiado se cobra una sola vez (reintento simultáneo y cobro repetido)',
+         s == 200 and r.get('sin_saldo') and sum(float(x['monto']) for x in pg) == 1000, f'{s} {r} {pg}')
+    http('DELETE', f'/rest/v1/ventas_pagos?deuda_id=eq.{deuda}', tok_d)
+    _, pg2 = http('GET', f'/rest/v1/ventas_pagos?deuda_id=eq.{deuda}&select=id', tok_d)
+    caso('los pagos de fiado no se borran por la API', len(pg2) == len(pg), f'{pg2}')
+
+    leg = 'T' + secrets.token_hex(2)
+    s, r = http('POST', '/rest/v1/rpc/guardar_empleado_venta', tok_d, {'p': {'comercio_id': comercio, 'legajo': leg, 'nombre': 'Prueba ' + leg, 'pass': '4321'}})
+    emp = r['id'] if s == 200 else None
+    _, h = sql_service('GET', f'/rest/v1/ventas_empleados?id=eq.{emp}&select=pass_hash')
+    caso('las claves nuevas se guardan con bcrypt costo 10', bool(h) and h[0]['pass_hash'].startswith('$2a$10$'), f'{h}')
+    hilos = [threading.Thread(target=lambda: http('POST', '/rest/v1/rpc/verificar_empleado_venta', tok_d,
+                                                  {'p': {'comercio_id': comercio, 'legajo': leg, 'pass': '0000'}})) for _ in range(12)]
+    [h.start() for h in hilos]
+    [h.join() for h in hilos]
+    s, r = http('POST', '/rest/v1/rpc/verificar_empleado_venta', tok_d, {'p': {'comercio_id': comercio, 'legajo': leg, 'pass': '4321'}})
+    caso('12 intentos en paralelo igual traban la clave (ni la buena entra)', s == 200 and r.get('ok') is False, f'{s} {r}')
+    http('POST', '/rest/v1/rpc/baja_empleado_venta', tok_d, {'p': {'id': emp, 'comercio_id': comercio}})
+
+    mid = str(uuid.uuid4())
+    _, l = http('GET', f'/rest/v1/lotes?id=eq.{lote}&select=cantidad', tok_d)
+    antes = l[0]['cantidad']
+    salidas = []
+    ajuste = lambda: salidas.append(http('POST', '/rest/v1/rpc/ajustar_stock', tok_e, {'p': {
+        'mov_id': mid, 'comercio_id': comercio, 'lote_id': lote, 'tipo': 'ajuste', 'delta': -1,
+        'cantidad_anterior': antes, 'usuario': 'Juan', 'notas': 'reintento'}}))
+    hilos = [threading.Thread(target=ajuste) for _ in range(2)]
+    [h.start() for h in hilos]
+    [h.join() for h in hilos]
+    _, l = http('GET', f'/rest/v1/lotes?id=eq.{lote}&select=cantidad', tok_d)
+    caso('dos reintentos simultáneos del mismo ajuste: sin error y una sola vez',
+         all(st == 200 for st, _ in salidas) and l[0]['cantidad'] == antes - 1, f'{salidas} cant={l[0]["cantidad"]}')
+
+    _, mv = http('GET', f'/rest/v1/miembros?user_id=eq.{uid_v}&select=comercio_id', tok_v)
+    otro = str(uuid.uuid4())
+    http('POST', '/rest/v1/productos', tok_v, {'id': otro, 'comercio_id': mv[0]['comercio_id'], 'nombre': 'De otro comercio', 'categoria': 'X', 'precio': 1})
+    s, r = http('POST', '/rest/v1/lotes', tok_d, {'id': str(uuid.uuid4()), 'comercio_id': comercio, 'producto_id': otro, 'sucursal_id': sucursal,
+                                                  'cantidad': 1, 'fecha_vencimiento': '2027-01-01', 'dias_aviso': 7})
+    caso('no se carga un lote con un producto de otro comercio', s >= 400, f'{s} {r}')
+
+    http('POST', '/rest/v1/rpc/admin_cambiar_plan', tok_v, {'p': {'comercio_id': comercio, 'plan': 'trial', 'trial_hasta': '2026-01-01T00:00:00Z'}})
+    s, r = http('POST', '/rest/v1/productos', tok_d, {'id': str(uuid.uuid4()), 'comercio_id': comercio, 'nombre': 'Con prueba vencida', 'categoria': 'X', 'precio': 1})
+    s2, r2 = venta([{'producto_id': None, 'nombre': 'Varios', 'cantidad': 1, 'precio': 100}])
+    http('POST', '/rest/v1/rpc/admin_cambiar_plan', tok_v, {'p': {'comercio_id': comercio, 'plan': 'trial', 'trial_hasta': '2027-01-31T23:59:59Z'}})
+    caso('con la prueba vencida el servidor no acepta cargas ni ventas', s >= 400 and s2 >= 400, f'{s} {r} | {s2} {r2}')
+
+    tok = 'prueba-' + secrets.token_hex(4)
+    s, r = http('POST', '/rest/v1/rpc/registrar_push_token', tok_d, {'p_token': tok, 'p_comercio': comercio})
+    _, pt = http('GET', f'/rest/v1/push_tokens?token=eq.{tok}&select=comercio_id,user_id', tok_d)
+    caso('registrar_push_token deja el token en el comercio y la cuenta actuales',
+         s in (200, 204) and pt and pt[0]['comercio_id'] == comercio and pt[0]['user_id'] == uid_d, f'{s} {r} {pt}')
+    http('DELETE', f'/rest/v1/push_tokens?token=eq.{tok}', tok_d)
+
     fallas = [n for n, ok in resultados if not ok]
     print(f'\n{len(resultados) - len(fallas)}/{len(resultados)} pruebas OK')
     sys.exit(1 if fallas else 0)

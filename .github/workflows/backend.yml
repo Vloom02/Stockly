@@ -8,6 +8,9 @@ on:
   pull_request:
     paths: ['supabase/**', 'tests/backend/**', 'scripts/pruebas-backend.sh', '.github/workflows/backend.yml']
 
+permissions:
+  contents: read
+
 jobs:
   pruebas:
     runs-on: ubuntu-latest

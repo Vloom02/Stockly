@@ -92,6 +92,7 @@ const VentaPage: React.FC = () => {
         const desde = new Date(Date.now() - 30 * 86400000).toISOString();
         const { data: items, error } = await supabase.from('ventas_items')
           .select('producto_id, ventas_ventas!inner(fecha, comercio_id)')
+          .eq('comercio_id', comercio.id) // usa el índice (comercio_id, id) de ventas_items
           .eq('ventas_ventas.comercio_id', comercio.id)
           .gte('ventas_ventas.fecha', desde)
           .limit(3000);

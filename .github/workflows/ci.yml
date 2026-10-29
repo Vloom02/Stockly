@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
 
+# Solo lectura del repo: el CI no necesita escribir nada.
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

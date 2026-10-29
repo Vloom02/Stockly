@@ -264,10 +264,10 @@ export function cantidadConDelta(cantidad: number, delta: number): number {
 export async function bajarCambios(comercioId: string): Promise<number> {
   const ultimaSync = await getMeta('ultima-sync');
   const desdeBase = ultimaSync || '1970-01-01T00:00:00Z';
-  // Overlap de 1s: re-bajamos una ventana chica para no perder filas cuyo timestamp
-  // sea EXACTAMENTE el watermark (el filtro es > estricto) ni por empates de timestamp.
+  // Overlap de 10 s: re-bajamos una ventana chica para no perder filas con el mismo timestamp que
+  // el watermark ni las de una transacción que tardó en confirmarse (su hora es de antes del commit).
   // Los put locales son idempotentes (upsert por id), así re-bajar no duplica.
-  const desde = new Date(new Date(desdeBase).getTime() - 1000).toISOString();
+  const desde = new Date(new Date(desdeBase).getTime() - 10_000).toISOString();
 
   // Pull INCREMENTAL: productos/lotes/sucursales por updated_at (trigger server);
   // movimientos por creado_en (timestamp del SERVIDOR, no el reloj del cliente).
@@ -337,7 +337,7 @@ export async function bajarCambios(comercioId: string): Promise<number> {
     if (!ts) return;
     const t = new Date(ts).getTime();
     if (!Number.isFinite(t)) return;
-    // shortcut: lo re-bajado por el overlap de 1 s no cuenta como nuevo; si una fila con el mismo
+    // shortcut: lo re-bajado por el overlap no cuenta como nuevo; si una fila con el mismo
     // timestamp que el watermark entra recién ahí, se ve en el próximo cambio real.
     if (t > baseEpoch) nuevas++;
     if (t > maxEpoch) { maxEpoch = t; maxIso = ts; }
