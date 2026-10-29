@@ -18,7 +18,6 @@ const PreciosPage     = lazy(() => import('./pages/PreciosPage'));
 const PedidoPage      = lazy(() => import('./pages/PedidoPage'));
 const ConfigPage      = lazy(() => import('./pages/ConfigPage'));
 const AuthPage        = lazy(() => import('./pages/AuthPage'));
-const SoportePage     = lazy(() => import('./pages/SoportePage'));
 // Ventas (antes una app aparte): mismas cuentas, mismo stock.
 const VentaPage           = lazy(() => import('./ventas/pages/VentaPage'));
 const VentasMasPage       = lazy(() => import('./ventas/pages/MasPage'));
@@ -100,7 +99,9 @@ const ConTurno: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 // ─── App autenticada (con datos) ──────────────────────────────────────────
 const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; estadoPlan: EstadoPlan }> = ({ isDark, onThemeToggle, estadoPlan }) => {
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const { comercio } = useAuth();
+  const { comercio, esDueno } = useAuth();
+  // El empleado en turno solo cobra (Vender) y cambia la vista (Ajustes): lo demás es del dueño.
+  const soloDueno = (pagina: React.ReactNode) => esDueno ? <Suspense fallback={<Cargando />}>{pagina}</Suspense> : <Redirect to="/ventas" />;
 
   // Tutorial solo para comercios VACÍOS: si la cuenta ya tiene productos
   // (usuario existente en un dispositivo nuevo), va directo al stock.
@@ -150,18 +151,17 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
       <ConTurno>
       <IonReactRouter>
         <IonRouterOutlet id="main">
-          <Route path="/dashboard" exact><Suspense fallback={<Cargando />}><DashboardPage /></Suspense></Route>
-          <Route path="/stock" exact><Suspense fallback={<Cargando />}><StockPage /></Suspense></Route>
-          <Route path="/producto/:id" exact><Suspense fallback={<Cargando />}><ProductoPage /></Suspense></Route>
-          <Route path="/lote/:id" exact><Suspense fallback={<Cargando />}><LotePage /></Suspense></Route>
-          <Route path="/movimientos" exact><Suspense fallback={<Cargando />}><MovimientosPage /></Suspense></Route>
-          <Route path="/reportes" exact><Suspense fallback={<Cargando />}><ReportesPage /></Suspense></Route>
-          <Route path="/sucursales" exact><Suspense fallback={<Cargando />}><SucursalesPage /></Suspense></Route>
-          <Route path="/etiquetas" exact><Suspense fallback={<Cargando />}><EtiquetasPage /></Suspense></Route>
-          <Route path="/inventario" exact><Suspense fallback={<Cargando />}><InventarioPage /></Suspense></Route>
-          <Route path="/precios" exact><Suspense fallback={<Cargando />}><PreciosPage /></Suspense></Route>
-          <Route path="/pedido" exact><Suspense fallback={<Cargando />}><PedidoPage /></Suspense></Route>
-          <Route path="/soporte" exact><Suspense fallback={<Cargando />}><SoportePage /></Suspense></Route>
+          <Route path="/dashboard" exact>{soloDueno(<DashboardPage />)}</Route>
+          <Route path="/stock" exact>{soloDueno(<StockPage />)}</Route>
+          <Route path="/producto/:id" exact>{soloDueno(<ProductoPage />)}</Route>
+          <Route path="/lote/:id" exact>{soloDueno(<LotePage />)}</Route>
+          <Route path="/movimientos" exact>{soloDueno(<MovimientosPage />)}</Route>
+          <Route path="/reportes" exact>{soloDueno(<ReportesPage />)}</Route>
+          <Route path="/sucursales" exact>{soloDueno(<SucursalesPage />)}</Route>
+          <Route path="/etiquetas" exact>{soloDueno(<EtiquetasPage />)}</Route>
+          <Route path="/inventario" exact>{soloDueno(<InventarioPage />)}</Route>
+          <Route path="/precios" exact>{soloDueno(<PreciosPage />)}</Route>
+          <Route path="/pedido" exact>{soloDueno(<PedidoPage />)}</Route>
           <Route path="/config" exact><Suspense fallback={<Cargando />}><ConfigPage onThemeToggle={onThemeToggle} isDark={isDark} /></Suspense></Route>
           <Route path="/ventas" exact>{enVentas(<><VentaPage /><OnboardingVentas /></>)}</Route>
           <Route path="/ventas/mas" exact>{enVentas(<VentasMasPage />)}</Route>

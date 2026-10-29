@@ -17,8 +17,6 @@ interface AuthContextValue {
    *  Lo que hace queda a su nombre en el historial. */
   cajeroEnTurno: string | null;
   setCajeroEnTurno: (nombre: string | null) => void;
-  /** Desarrollador / soporte de la plataforma (tabla plataforma_admins). */
-  esAdminPlataforma: boolean;
   cargando: boolean;
   registrarse: (email: string, password: string, nombre: string, nombreComercio: string) => Promise<{ error?: string }>;
   iniciarSesion: (email: string, password: string) => Promise<{ error?: string }>;
@@ -35,22 +33,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [session, setSession] = useState<Session | null>(null);
   const [comercio, setComercio] = useState<Comercio | null>(null);
   const [miembro, setMiembro] = useState<Miembro | null>(null);
-  const [esAdminPlataforma, setEsAdminPlataforma] = useState(false);
-  const adminConsultadoPara = useRef<string | null>(null); // es_admin_plataforma: una vez por usuario
   const [cargando, setCargando] = useState(true);
   const [cajeroEnTurno, setCajeroEnTurno] = useState<string | null>(null);
   const cargadoPara = useRef<string | null>(null); // usuario con datos ya traídos del servidor
 
   // Cargar comercio + membresía del usuario logueado
   const cargarDatosUsuario = async (userId: string) => {
-    // Rol de soporte: si la función no existe (migración 8 sin aplicar) queda en false.
-    if (adminConsultadoPara.current !== userId) {
-      adminConsultadoPara.current = userId;
-      supabase.rpc('es_admin_plataforma').then(({ data, error }) => {
-        if (error) adminConsultadoPara.current = null; // sin red: se vuelve a preguntar después
-        else setEsAdminPlataforma(data === true);
-      }, () => { adminConsultadoPara.current = null; });
-    }
     const { data: miembros, error } = await supabase
       .from('miembros')
       .select('*, comercios(*)')
@@ -153,10 +141,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setTimeout(() => { cargarDatosUsuario(uid).catch(e => console.warn('No se pudieron cargar datos del usuario', e)); }, 0);
       } else {
         cargadoPara.current = null;
-        adminConsultadoPara.current = null;
         setComercio(null);
         setMiembro(null);
-        setEsAdminPlataforma(false);
       }
     });
 
@@ -225,12 +211,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch { /* */ }
     // Pase lo que pase, limpiamos el estado local → vuelve al login
     cargadoPara.current = null;
-    adminConsultadoPara.current = null;
     setCajeroEnTurno(null);
     setSession(null);
     setComercio(null);
     setMiembro(null);
-    setEsAdminPlataforma(false);
   };
 
   // Volver a traer los datos del comercio (ej: tras activar la suscripción)
@@ -243,7 +227,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   return (
     <AuthContext.Provider value={{
       session, comercio, miembro, esDueno: miembro?.rol !== 'empleado' && !cajeroEnTurno, cajeroEnTurno, setCajeroEnTurno,
-      esAdminPlataforma, cargando,
+      cargando,
       registrarse, iniciarSesion, pedirCodigo, cambiarConCodigo, cerrarSesion, recargarComercio,
     }}>
       {children}

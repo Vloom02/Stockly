@@ -32,7 +32,7 @@ interface Props { onThemeToggle: () => void; isDark: boolean; }
 
 const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
   const { state, exportarBackup, importarBackup, estadoNube, sincronizarAhora, sincronizando, reintentarFallidos, lotesEnriquecidos } = useStore();
-  const { comercio, miembro, esDueno, esAdminPlataforma } = useAuth();
+  const { comercio, miembro, esDueno } = useAuth();
   const cerrarSesion = useCerrarSesion();
   const { cajero, cerrarTurno } = useEmpleado();
   const history = useHistory();
@@ -185,27 +185,21 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             <Logo size={28} />
           </div>
 
-          {/* Desarrollador / soporte: solo si el servidor lo reconoce como admin */}
-          {esAdminPlataforma && (
-            <Button variant="primary" size="lg" fullWidth onClick={() => history.push('/soporte')} style={{ marginBottom: 16 }}>
-              Panel de soporte (todos los comercios)
-            </Button>
-          )}
-
-          {/* Herramientas — acceso directo a las pantallas más usadas */}
+          {/* Herramientas — acceso directo a las pantallas más usadas (solo el dueño) */}
+          {esDueno && (<>
           <SectionTitle icon={<SwatchIcon width={16} height={16} />}>Herramientas</SectionTitle>
           <div className="lista-animada" style={{ borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', overflow: 'hidden', marginBottom: 18 }}>
             {[
-              { Icon: DocumentChartBarIcon, label: 'Resúmenes',             desc: 'Ventas y mercadería, Excel e imprimir', path: '/resumenes', soloDueno: true },
+              { Icon: DocumentChartBarIcon, label: 'Resúmenes',             desc: 'Ventas y mercadería, Excel e imprimir', path: '/resumenes' },
               { Icon: ClockIcon,          label: 'Historial',               desc: 'Todo lo que entró y salió',        path: '/movimientos' },
-              { Icon: CurrencyDollarIcon, label: 'Cambiar precios',         desc: 'Subir precios de a uno',           path: '/precios', soloDueno: true },
+              { Icon: CurrencyDollarIcon, label: 'Cambiar precios',         desc: 'Subir precios de a uno',           path: '/precios' },
               { Icon: ClipboardDocumentListIcon, label: 'Contar la mercadería', desc: 'Corregir lo que hay en góndola', path: '/inventario' },
               { Icon: ShoppingCartIcon,   label: 'Qué tengo que comprar',   desc: 'Lista para el proveedor',          path: '/pedido' },
-              { Icon: ChartBarIcon,       label: 'Reportes y pérdidas',     desc: 'Cuánto se venció este mes',        path: '/reportes', soloDueno: true },
+              { Icon: ChartBarIcon,       label: 'Reportes y pérdidas',     desc: 'Cuánto se venció este mes',        path: '/reportes' },
               { Icon: TagIcon,            label: 'Etiquetas de precio',     desc: 'Para imprimir y pegar',            path: '/etiquetas' },
-              { Icon: UserGroupIcon,      label: 'Empleados',               desc: 'Nombre y PIN de cada uno',         path: '/ventas/cajeros', soloDueno: true },
-              { Icon: BuildingStorefrontIcon, label: 'Locales',             desc: 'Si tenés más de un negocio',       path: '/sucursales', soloDueno: true },
-            ].filter(t => esDueno || !('soloDueno' in t)).map((t, i) => (
+              { Icon: UserGroupIcon,      label: 'Empleados',               desc: 'Nombre y PIN de cada uno',         path: '/ventas/cajeros' },
+              { Icon: BuildingStorefrontIcon, label: 'Locales',             desc: 'Si tenés más de un negocio',       path: '/sucursales' },
+            ].map((t, i) => (
               <button key={t.path} type="button" onClick={() => history.push(t.path)} className="pressable"
                 style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 14, minHeight: 64, padding: '12px 16px', border: 'none', borderTop: i ? '1px solid var(--border)' : 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', color: 'var(--text)' }}>
                 <t.Icon width={26} height={26} style={{ color: 'var(--brand-600)', flexShrink: 0 }} />
@@ -216,6 +210,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
               </button>
             ))}
           </div>
+          </>)}
 
           {/* Cuenta */}
           <Card padding="md" style={{ marginBottom: 12 }}>
@@ -230,7 +225,9 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 15 }}>{comercio?.nombre || 'Mi comercio'}</div>
                 <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
-                  {miembro?.nombre} · {miembro?.rol === 'dueno' ? 'Dueño' : 'Empleado'}
+                  {cajero && !cajero.admin
+                    ? `${cajero.nombre} · Empleado en turno`
+                    : `${miembro?.nombre ?? ''} · ${miembro?.rol === 'dueno' ? 'Dueño' : 'Empleado'}`}
                 </div>
                 {comercio?.plan === 'trial' && (
                   <div style={{ fontSize: 14, color: 'var(--level-urgente-fg)', fontWeight: 700, marginTop: 2 }}>
@@ -242,6 +239,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           </Card>
 
           {/* Stats */}
+          {esDueno && (
           <Card padding="md" style={{ marginBottom: 12 }}>
             <SectionTitle icon={<InformationCircleIcon width={16} height={16} />}>Resumen</SectionTitle>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginTop: 8 }}>
@@ -251,6 +249,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
               <Stat label="Registros" value={state.movimientos.length} />
             </div>
           </Card>
+          )}
 
           {/* Apariencia */}
           <Card padding="md" style={{ marginBottom: 12 }}>
@@ -315,6 +314,8 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             </div>
           </Card>
 
+          {/* Configuración del comercio: solo el dueño (un empleado en turno no la ve ni la cambia) */}
+          {esDueno && (<>
           {/* Estado de la nube (diagnóstico) */}
           <Card padding="md" style={{ marginBottom: 12 }}>
             <SectionTitle icon={<CloudIcon width={16} height={16} />}>
@@ -410,8 +411,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             </Field>
           </Card>
 
-          {/* Descuentos por vencimiento (solo dueño) */}
-          {esDueno && (
+          {/* Descuentos por vencimiento */}
           <Card padding="md" style={{ marginBottom: 12 }}>
             <SectionTitle icon={<BanknotesIcon width={16} height={16} />}>Descuentos para lo que está por vencer</SectionTitle>
             <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 12px' }}>
@@ -423,7 +423,6 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
               <DescField nivel="aviso" label="Aviso" value={descAviso} onChange={setDescAviso} />
             </div>
           </Card>
-          )}
 
           {/* Categorías */}
           <Card padding="md" style={{ marginBottom: 12 }}>
@@ -436,6 +435,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           <Button variant="primary" size="lg" fullWidth onClick={guardar} style={{ marginBottom: 12 }}>
             Guardar configuración
           </Button>
+          </>)}
 
           {/* Backup (solo dueño: tiene precios, y la importación crea productos) */}
           {esDueno && (

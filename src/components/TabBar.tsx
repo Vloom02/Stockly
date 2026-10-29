@@ -1,5 +1,6 @@
 import React from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import {
   HomeIcon, CubeIcon, PlusIcon, Cog6ToothIcon, ShoppingCartIcon,
 } from '@heroicons/react/24/outline';
@@ -16,20 +17,17 @@ interface TabConfig {
   IconActive: React.ComponentType<{ width?: number; height?: number; style?: React.CSSProperties }>;
   label: string;
   fab?: boolean;
+  ancho: number; // fr: "Mercadería" necesita más lugar que "Cargar"
+  empleado?: boolean; // la ve también un empleado en turno
 }
 
-// Ancho de cada pestaña (fr): "Mercadería" necesita más lugar que "Cargar".
-const ANCHOS = [1, 1, 0.8, 1.3, 1];
-const TOTAL = ANCHOS.reduce((a, b) => a + b, 0);
-const desde = (i: number) => ANCHOS.slice(0, i).reduce((a, b) => a + b, 0) / TOTAL;
-
 const TABS: TabConfig[] = [
-  { path: '/dashboard',   Icon: HomeIcon,    IconActive: HomeSolid,  label: 'Inicio' },
-  { path: '/ventas',      Icon: ShoppingCartIcon, IconActive: CartSolid, label: 'Vender' },
-  { path: '/lote/nuevo',  Icon: PlusIcon,    IconActive: PlusIcon,   label: 'Cargar', fab: true },
-  { path: '/stock',       Icon: CubeIcon,    IconActive: CubeSolid,  label: 'Mercadería' },
+  { path: '/dashboard',   Icon: HomeIcon,    IconActive: HomeSolid,  label: 'Inicio', ancho: 1 },
+  { path: '/ventas',      Icon: ShoppingCartIcon, IconActive: CartSolid, label: 'Vender', ancho: 1, empleado: true },
+  { path: '/lote/nuevo',  Icon: PlusIcon,    IconActive: PlusIcon,   label: 'Cargar', fab: true, ancho: 0.8 },
+  { path: '/stock',       Icon: CubeIcon,    IconActive: CubeSolid,  label: 'Mercadería', ancho: 1.3 },
   // Historial se abre desde Ajustes; caja y fiado, desde Vender.
-  { path: '/config',      Icon: Cog6ToothIcon, IconActive: CogSolid, label: 'Ajustes' },
+  { path: '/config',      Icon: Cog6ToothIcon, IconActive: CogSolid, label: 'Ajustes', ancho: 1, empleado: true },
 ];
 
 const estaActiva = (t: TabConfig, ruta: string) =>
@@ -39,7 +37,11 @@ const estaActiva = (t: TabConfig, ruta: string) =>
 const TabBar: React.FC = () => {
   const history = useHistory();
   const location = useLocation();
-  const activa = TABS.findIndex(t => estaActiva(t, location.pathname));
+  const { esDueno } = useAuth();
+  const tabs = esDueno ? TABS : TABS.filter(t => t.empleado);
+  const total = tabs.reduce((a, t) => a + t.ancho, 0);
+  const desde = (i: number) => tabs.slice(0, i).reduce((a, t) => a + t.ancho, 0) / total;
+  const activa = tabs.findIndex(t => estaActiva(t, location.pathname));
 
   return (
     <nav aria-label="Secciones" style={{
@@ -47,20 +49,20 @@ const TabBar: React.FC = () => {
       position: 'fixed', left: 0, right: 0, margin: '0 auto', width: 'calc(100% - 20px)', maxWidth: 640,
       bottom: 'calc(10px + var(--sab,env(safe-area-inset-bottom)))',
       height: 72, padding: 6, zIndex: 100,
-      display: 'grid', gridTemplateColumns: ANCHOS.map(a => `minmax(0, ${a}fr)`).join(' '),
+      display: 'grid', gridTemplateColumns: tabs.map(t => `minmax(0, ${t.ancho}fr)`).join(' '),
       background: 'var(--surface)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-lg)',
     }}>
       <span aria-hidden="true" style={{
         position: 'absolute', top: 6, bottom: 6,
         left: `calc(6px + (100% - 12px) * ${desde(Math.max(activa, 0))})`,
-        width: `calc((100% - 12px) * ${ANCHOS[Math.max(activa, 0)] / TOTAL})`,
+        width: `calc((100% - 12px) * ${tabs[Math.max(activa, 0)].ancho / total})`,
         // Lo elegido se marca por luminosidad (azul lleno, texto blanco), no por un tinte
         // pálido: a los mayores los tonos claros parecidos se les confunden.
         borderRadius: 20, background: 'var(--boton-marca)', boxShadow: 'var(--relieve), 0 2px 0 var(--boton-base)',
-        opacity: activa < 0 || TABS[activa]?.fab ? 0 : 1,
+        opacity: activa < 0 || tabs[activa]?.fab ? 0 : 1,
         transition: 'left var(--mov-base) var(--ease-salida), width var(--mov-base) var(--ease-salida), opacity var(--mov-rapido) ease',
       }} />
-      {TABS.map(t => {
+      {tabs.map(t => {
         const active = estaActiva(t, location.pathname);
         const Ico = active ? t.IconActive : t.Icon;
         return (

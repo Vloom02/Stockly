@@ -36,7 +36,7 @@ const C = createContext<Ctx | undefined>(undefined);
 
 export const EmpleadoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { comercio } = useAuth();
-  const { lockMin } = useOwner();
+  const { lockMin, lock } = useOwner();
   const [cajero, setCajero] = useState<CajeroActivo | null>(null);
   const [empleados, setEmpleados] = useState<EmpleadoVenta[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -152,6 +152,8 @@ export const EmpleadoProvider: React.FC<{ children: ReactNode }> = ({ children }
   // Con un cajero en turno, toda la app lo trata como empleado (sin precios, reportes, etc.).
   const { setCajeroEnTurno } = useAuthStockly();
   useEffect(() => { setCajeroEnTurno(cajero && !cajero.admin ? cajero.nombre : null); }, [cajero, setCajeroEnTurno]);
+  // Turno de un empleado: el modo dueño se cierra, así no hereda el PIN que el dueño dejó abierto.
+  useEffect(() => { if (cajero && !cajero.admin) lock(); }, [cajero, lock]);
 
   const hayEmpleados = empleados.some(e => e.activo !== false);
 
