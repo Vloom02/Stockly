@@ -74,3 +74,10 @@ export function sugerirLiquidacion(
     ahorroCliente: Math.max(0, precio - precioFinal),
   };
 }
+
+/** Precio que mantiene la misma ganancia en porcentaje cuando cambia el costo, redondeado a $10 para arriba.
+ *  null si no hay costo o precio anterior para comparar, o si el costo no cambió. */
+export function precioConMismaGanancia(costoAntes: number | null | undefined, precioAntes: number, costoNuevo: number): number | null {
+  if (!costoAntes || costoAntes <= 0 || !precioAntes || costoNuevo <= 0 || costoNuevo === costoAntes) return null;
+  return Math.ceil((costoNuevo * precioAntes / costoAntes) / 10) * 10;
+}

@@ -3,6 +3,7 @@ import {
   sugerirDescuentoPorNivel, precioLiquidacion, sugerirLiquidacion,
   DESCUENTO_DEFAULT, DescuentoConfig,
 } from './liquidacion';
+import { precioConMismaGanancia } from './liquidacion';
 
 describe('sugerirDescuentoPorNivel', () => {
   it('usa los defaults por nivel', () => {
@@ -55,5 +56,16 @@ describe('sugerirLiquidacion', () => {
   });
   it('usa DESCUENTO_DEFAULT cuando no se pasa config', () => {
     expect(sugerirLiquidacion('urgente', 500).pct).toBe(DESCUENTO_DEFAULT.urgente);
+  });
+});
+
+describe('precioConMismaGanancia', () => {
+  it('sube el precio en la misma proporción que el costo, redondeado a $10', () => {
+    expect(precioConMismaGanancia(800, 1000, 1000)).toBe(1250);
+    expect(precioConMismaGanancia(700, 1000, 777)).toBe(1110);
+  });
+  it('sin costo anterior o sin cambio no sugiere nada', () => {
+    expect(precioConMismaGanancia(null, 1000, 900)).toBeNull();
+    expect(precioConMismaGanancia(800, 1000, 800)).toBeNull();
   });
 });

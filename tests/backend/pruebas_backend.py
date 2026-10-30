@@ -363,6 +363,17 @@ def main():
     caso('el "antes" del ajuste lo pone el servidor (no el número viejo del equipo)',
          s == 200 and mv and mv[0]['cantidad_anterior'] == real and mv[0]['cantidad_nueva'] == real + 1, f'{s} {r} {mv} real={real}')
 
+    print('\n── K) Migración 15: ofertas de lo que está por vencer')
+    s, r = http('POST', '/rest/v1/ventas_liquidaciones', tok_d, {'comercio_id': comercio, 'producto_id': prod, 'pct': 30, 'hasta': '2027-01-01'})
+    caso('el dueño pone un producto en oferta por vencer', s == 201, f'{s} {r}')
+    s, r = http('POST', '/rest/v1/ventas_liquidaciones?on_conflict=comercio_id,producto_id', tok_e,
+                {'comercio_id': comercio, 'producto_id': prod, 'pct': 90, 'hasta': '2027-01-01'}, {'Prefer': 'resolution=merge-duplicates'})
+    _, lq = http('GET', f'/rest/v1/ventas_liquidaciones?producto_id=eq.{prod}&select=pct', tok_d)
+    caso('una cuenta de empleado no cambia la oferta', s >= 400 and lq and float(lq[0]['pct']) == 30, f'{s} {r} {lq}')
+    _, ajeno = http('GET', f'/rest/v1/ventas_liquidaciones?producto_id=eq.{prod}&select=pct', tok_v)
+    caso('otro comercio no ve las ofertas ajenas', ajeno == [], f'{ajeno}')
+    http('DELETE', f'/rest/v1/ventas_liquidaciones?producto_id=eq.{prod}', tok_d)
+
     fallas = [n for n, ok in resultados if not ok]
     print(f'\n{len(resultados) - len(fallas)}/{len(resultados)} pruebas OK')
     sys.exit(1 if fallas else 0)

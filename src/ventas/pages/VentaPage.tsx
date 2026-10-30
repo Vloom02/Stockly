@@ -132,6 +132,11 @@ const VentaPage: React.FC = () => {
         if (error) throw error;
         const ps: Promo[] = (data ?? []).map((r: { producto_id: string; tipo: Promo['tipo']; min_cant: number; pct: number }) =>
           ({ productoId: r.producto_id, tipo: r.tipo, minCant: r.min_cant, pct: Number(r.pct) }));
+        // Ofertas de lo que está por vencer (migración 15). Si la tabla todavía no existe, siguen las otras.
+        const { data: liq } = await supabase.from('ventas_liquidaciones').select('producto_id, pct, hasta')
+          .eq('comercio_id', comercio.id).gte('hasta', new Date().toLocaleDateString('sv-SE'));
+        for (const r of (liq ?? []) as { producto_id: string; pct: number; hasta: string }[])
+          ps.push({ productoId: r.producto_id, tipo: 'liquidacion', minCant: 1, pct: Number(r.pct), hasta: r.hasta });
         setPromos(ps);
         openDB().then(() => setLocalSetting('promos-cache', JSON.stringify(ps))).catch(() => {});
       } catch {

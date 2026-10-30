@@ -45,3 +45,17 @@ describe('descuentoPromos', () => {
     expect(r.monto).toBe(10); // 99.99 * 10% = 9.999 → 10
   });
 });
+
+describe('oferta por vencer', () => {
+  const item = { productoId: 'p', nombre: 'Yogur', precio: 1000, qty: 1 } as never;
+  it('descuenta desde la primera unidad y le gana a otra promo del mismo producto', () => {
+    const r = descuentoPromos([item], [
+      { productoId: 'p', tipo: 'liquidacion', minCant: 1, pct: 30, hasta: '2026-11-05' },
+      { productoId: 'p', tipo: '2x1', minCant: 2, pct: 0 },
+    ], '2026-10-30');
+    expect(r.monto).toBe(300);
+  });
+  it('pasada la fecha no descuenta (aunque esté guardada sin internet)', () => {
+    expect(descuentoPromos([item], [{ productoId: 'p', tipo: 'liquidacion', minCant: 1, pct: 30, hasta: '2026-10-29' }], '2026-10-30').monto).toBe(0);
+  });
+});

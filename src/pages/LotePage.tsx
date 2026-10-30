@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { sumarFecha } from '../lib/vencimientos';
+import { parseMonto } from '../lib/numeros';
+import { precioConMismaGanancia } from '../lib/liquidacion';
 import { IonContent, IonPage, IonToast } from '@ionic/react';
 import { useHistory, useParams, useLocation } from 'react-router-dom';
 import {
@@ -19,6 +21,7 @@ import { Header } from './ProductoPage';
 import { useAuth } from '../context/AuthContext';
 import { TagIcon as IcoTagIcon } from '@heroicons/react/24/outline';
 import { useLectorFisico } from '../lib/useLectorFisico';
+import { supabase } from '../lib/supabase';
 
 interface RouteParams { id?: string; }
 
@@ -32,9 +35,9 @@ const LotePage: React.FC = () => {
 };
 
 const LoteForm: React.FC = () => {
-  const { state, addLote, updateLote, retirarLote } = useStore();
+  const { state, addLote, updateLote, retirarLote, updateProducto } = useStore();
   const history = useHistory();
-  const { esDueno } = useAuth();
+  const { esDueno, comercio } = useAuth();
   const location = useLocation();
   const { id } = useParams<RouteParams>();
   const esNuevo = id === 'nuevo' || !id;
@@ -67,6 +70,9 @@ const LoteForm: React.FC = () => {
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [procesando, setProcesando] = useState(false); // anti doble-tap (guardar y retirar)
   const [listo, setListo] = useState<string | null>(null); // lo que se acaba de cargar
+  // Costo de esta compra (opcional, solo el dueño): con la inflación el de la ficha quedaba viejo y la ganancia daba mal.
+  const [costoTxt, setCostoTxt] = useState('');
+  const [usarPrecio, setUsarPrecio] = useState(true);
   // Mostrar el override de días de aviso si el lote ya lo tenía seteado.
   const [mostrarAvanzado, setMostrarAvanzado] = useState(!!loteExistente?.diasAviso &&
     loteExistente.diasAviso !== state.productos.find(p => p.id === loteExistente.productoId)?.diasAvisoDefault);
@@ -99,10 +105,35 @@ const LoteForm: React.FC = () => {
     setProcesando(true);
     try {
       if (loteExistente) { await updateLote({ ...loteExistente, ...datos }); history.goBack(); }
-      else { await addLote(datos); setListo(`${cant} de ${producto?.nombre ?? 'mercadería'}, vence ${formatearFecha(fechaVencimiento)}`); }
+      else {
+        await addLote(datos);
+        const costo = parseMonto(costoTxt);
+        if (esDueno && producto && costo > 0 && costo !== producto.costo) {
+          const precio = usarPrecio ? precioConMismaGanancia(producto.costo, producto.precio, costo) : null;
+          await updateProducto({ ...producto, costo, ...(precio ? { precio } : {}) });
+        }
+        setListo(`${cant} de ${producto?.nombre ?? 'mercadería'}, vence ${formatearFecha(fechaVencimiento)}`);
+      }
     } finally {
       setProcesando(false);
     }
+  };
+
+  // La oferta queda en la caja hasta el día que vence el lote. No baja del costo salvo en crítico (si no, se pierde plata).
+  const ponerEnOferta = async (pctSugerido: number) => {
+    if (!producto || !loteExistente) return;
+    const tope = producto.costo && producto.precio > 0 && nivel !== 'critico'
+      ? Math.floor((1 - producto.costo / producto.precio) * 100) : 90;
+    const pct = Math.min(pctSugerido, tope);
+    if (pct <= 0) { setToast({ show: true, msg: 'Con este costo no hay margen para descontar sin perder plata' }); return; }
+    setProcesando(true);
+    const { error } = await supabase.from('ventas_liquidaciones').upsert(
+      { comercio_id: comercio?.id, producto_id: producto.id, pct, hasta: loteExistente.fechaVencimiento },
+      { onConflict: 'comercio_id,producto_id' });
+    setProcesando(false);
+    setToast({ show: true, msg: error
+      ? (navigator.onLine ? 'No se pudo poner la oferta. Probá de nuevo.' : 'Sin internet: la oferta se pone con conexión')
+      : `En oferta en la caja: −${pct}% hasta el ${formatearFecha(loteExistente.fechaVencimiento)}` });
   };
 
   const handleRetirar = async () => {
@@ -228,6 +259,26 @@ const LoteForm: React.FC = () => {
                       </button>
                     ))}
                   </div>
+                  {esDueno && producto && (() => {
+                    const costo = parseMonto(costoTxt);
+                    const precio = costo > 0 ? precioConMismaGanancia(producto.costo, producto.precio, costo) : null;
+                    return (
+                      <div style={{ marginBottom: 20 }}>
+                        <Field label="¿Cuánto te costó cada uno? (si no lo sabés, dejalo vacío)">
+                          <Input value={costoTxt} onChange={e => setCostoTxt(e.target.value)} inputMode="decimal"
+                            placeholder={producto.costo ? `Antes: ${formatearMoneda(producto.costo)}` : 'Ej: 850'} />
+                        </Field>
+                        {precio && precio !== producto.precio && (
+                          <button type="button" onClick={() => setUsarPrecio(!usarPrecio)} aria-pressed={usarPrecio} className="pressable"
+                            style={{ width: '100%', minHeight: 56, marginTop: 8, padding: '10px 14px', borderRadius: 'var(--radius)', textAlign: 'left',
+                              border: usarPrecio ? '3px solid var(--brand-500)' : '2px solid var(--border)', background: usarPrecio ? 'var(--marca-suave)' : 'var(--surface)',
+                              color: 'var(--text)', fontSize: 16, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+                            {usarPrecio ? '✓ ' : ''}Cambiar el precio a {formatearMoneda(precio)} para ganar lo mismo que antes (hoy {formatearMoneda(producto.precio)})
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <Button variant="primary" size="lg" fullWidth disabled={cant <= 0} onClick={() => setPaso(3)}>Siguiente</Button>
                 </>
               )}
@@ -379,6 +430,11 @@ const LoteForm: React.FC = () => {
                       Rematalo antes de que venza para no perder el stock.
                     </div>
                   </div>
+                  {esDueno && producto && loteExistente && (
+                    <Button variant="primary" size="lg" fullWidth disabled={procesando} onClick={() => ponerEnOferta(liq.pct)}>
+                      Poner en oferta en la caja
+                    </Button>
+                  )}
                 </div>
               )}
             </Card>
