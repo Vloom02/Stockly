@@ -82,7 +82,7 @@ const SucursalesPage: React.FC = () => {
         }}>
           <Header title="Locales" onBack={() => history.goBack()} />
 
-          <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 16 }}>
+          <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 16 }}>
             El stock se gestiona por sucursal. Cambiá la activa para ver o cargar productos en otra.
           </p>
 
@@ -121,7 +121,7 @@ const SucursalesPage: React.FC = () => {
                           <span style={{ fontWeight: 600, fontSize: 15 }}>{s.nombre}</span>
                           {activa && <Badge variant="success" size="sm">Activa</Badge>}
                         </div>
-                        {s.direccion && <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 2 }}>{s.direccion}</div>}
+                        {s.direccion && <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 2 }}>{s.direccion}</div>}
                       </div>
                       {!activa && (
                         <Button variant="secondary" size="sm" onClick={() => seleccionar(s.id!)}>Usar</Button>

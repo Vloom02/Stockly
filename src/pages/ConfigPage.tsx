@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useConfirm } from '../lib/useConfirm';
 import { fechaLocalISO } from '../lib/vencimientos';
 import { Capacitor } from '@capacitor/core';
 import { IonContent, IonPage, IonToast } from '@ionic/react';
@@ -35,6 +36,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
   const { state, exportarBackup, importarBackup, estadoNube, sincronizarAhora, sincronizando, reintentarFallidos, lotesEnriquecidos } = useStore();
   const { comercio, miembro, esDueno, esAdminPlataforma } = useAuth();
   const cerrarSesion = useCerrarSesion();
+  const confirmar = useConfirm();
   const { cajero, cerrarTurno } = useEmpleado();
   const history = useHistory();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -78,7 +80,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
     }
   };
 
-  const guardar = () => {
+  const guardar = (silencioso = false) => {
     setSetting('dias-aviso-default', diasAviso || '15');
     setSetting('umbral-aviso', uAviso || '60');
     setSetting('umbral-urgente', uUrgente || '30');
@@ -87,8 +89,11 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
     setSetting('desc-urgente', descUrgente || '20');
     setSetting('desc-aviso', descAviso || '10');
     setSetting('categorias', categorias);
-    setToast({ show: true, msg: 'Configuración guardada' });
+    if (!silencioso) setToast({ show: true, msg: 'Configuración guardada' });
   };
+  // Se guarda sola al cambiar (antes dependía de un botón al fondo y si se salía antes se perdía).
+  useEffect(() => { const t = setTimeout(() => guardar(true), 600); return () => clearTimeout(t); },
+    [diasAviso, uAviso, uUrgente, uCritico, categorias, descCritico, descUrgente, descAviso]); 
 
   const cambiarColor = (id: string) => {
     setColorMarca(id);
@@ -117,6 +122,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
   };
 
   const salir = async () => {
+    if (!(await confirmar('¿Cerrar sesión en este equipo?', { okText: 'Cerrar sesión' }))) return;
     await Promise.all([sincronizarAhora(), flushOutbox()]); // lo que se pueda mandar, se manda antes de borrar
     await cerrarSesion();
   };
@@ -227,7 +233,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
               { Icon: ShoppingCartIcon,   label: 'Qué tengo que comprar',   desc: 'Lista para el proveedor',          path: '/pedido' },
               { Icon: ChartBarIcon,       label: 'Reportes y pérdidas',     desc: 'Cuánto se venció este mes',        path: '/reportes' },
               { Icon: TagIcon,            label: 'Etiquetas de precio',     desc: 'Para imprimir y pegar',            path: '/etiquetas' },
-              { Icon: UserGroupIcon,      label: 'Empleados',               desc: 'Nombre y PIN de cada uno',         path: '/ventas/cajeros' },
+              { Icon: UserGroupIcon,      label: 'Empleados',               desc: 'Nombre y clave de cada uno',         path: '/ventas/cajeros' },
               { Icon: BuildingStorefrontIcon, label: 'Locales',             desc: 'Si tenés más de un negocio',       path: '/sucursales' },
             ].map((t, i) => (
               <button key={t.path} type="button" onClick={() => history.push(t.path)} className="pressable"
@@ -254,7 +260,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 15 }}>{comercio?.nombre || 'Mi comercio'}</div>
-                <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
+                <div style={{ fontSize: 14, color: 'var(--text-2)' }}>
                   {cajero && !cajero.admin
                     ? `${cajero.nombre} · Empleado en turno`
                     : `${miembro?.nombre ?? ''} · ${miembro?.rol === 'dueno' ? 'Dueño' : 'Empleado'}`}
@@ -288,7 +294,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             </SectionTitle>
             <button type="button" onClick={onThemeToggle} style={rowBtn}>
               <span>{isDark ? 'Tema oscuro' : 'Tema claro'}</span>
-              <span style={{ color: 'var(--text-3)', fontSize: 13 }}>Cambiar</span>
+              <span style={{ color: 'var(--text-3)', fontSize: 14 }}>Cambiar</span>
             </button>
 
             {/* Selector de color de marca */}
@@ -317,7 +323,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
                         boxShadow: seleccionado ? `0 0 0 3px var(--surface), 0 0 0 5px ${c.tonos[1]}` : 'none',
                         transition: 'all 150ms',
                       }} />
-                      <span style={{ fontSize: 13, color: seleccionado ? 'var(--text)' : 'var(--text-3)', fontWeight: seleccionado ? 600 : 400 }}>
+                      <span style={{ fontSize: 14, color: seleccionado ? 'var(--text)' : 'var(--text-3)', fontWeight: seleccionado ? 600 : 400 }}>
                         {c.nombre}
                       </span>
                     </button>
@@ -351,7 +357,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             <SectionTitle icon={<CloudIcon width={16} height={16} />}>
               Sincronización
             </SectionTitle>
-            <div style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.7 }}>
+            <div style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.7 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Conexión a la nube</span>
                 <span style={{ fontWeight: 600, color: estadoNube.configurado ? 'var(--level-ok-fg)' : 'var(--level-vencido-fg)' }}>
@@ -370,23 +376,23 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
               )}
               {estadoNube.ultimaSyncOk && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Última sync OK</span>
+                  <span>Última vez que se subió todo</span>
                   <span style={{ fontWeight: 600 }}>{new Date(estadoNube.ultimaSyncOk).toLocaleString('es-AR')}</span>
                 </div>
               )}
               {estadoNube.ultimoError && (
-                <div style={{ marginTop: 8, padding: 10, borderRadius: 8, background: 'var(--level-vencido-bg)', color: 'var(--level-vencido-fg)', fontSize: 13 }}>
+                <div style={{ marginTop: 8, padding: 10, borderRadius: 8, background: 'var(--level-vencido-bg)', color: 'var(--level-vencido-fg)', fontSize: 14 }}>
                   Último error: {estadoNube.ultimoError}
                 </div>
               )}
             </div>
             <button type="button" onClick={sincronizarAhora} disabled={sincronizando} style={{ ...rowBtn, marginTop: 12, opacity: sincronizando ? 0.5 : 1 }}>
               <span>{sincronizando ? 'Sincronizando...' : 'Sincronizar ahora'}</span>
-              <span style={{ color: 'var(--brand-600)', fontSize: 13 }}>↻</span>
+              <span style={{ color: 'var(--brand-600)', fontSize: 14 }}>↻</span>
             </button>
             {state.bloqueadosSync > 0 && (
               <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: 'var(--level-vencido-bg)' }}>
-                <div style={{ fontSize: 13, color: 'var(--level-vencido-fg)', marginBottom: 8 }}>
+                <div style={{ fontSize: 14, color: 'var(--level-vencido-fg)', marginBottom: 8 }}>
                   Hay {state.bloqueadosSync} cambio{state.bloqueadosSync > 1 ? 's' : ''} que no se pudo sincronizar. No se perdieron: tocá para reintentar.
                 </div>
                 <Button variant="secondary" size="md" fullWidth onClick={reintentarFallidos} disabled={sincronizando}>
@@ -443,7 +449,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
                 
               </div>
             )}
-            <p style={{ marginTop: 12, fontSize: 13, color: 'var(--text-3)', lineHeight: 1.5 }}>
+            <p style={{ marginTop: 12, fontSize: 14, color: 'var(--text-3)', lineHeight: 1.5 }}>
               Aviso diario en tu celular con los productos vencidos o por vencer. Funciona sin internet.
             </p>
           </Card>
@@ -451,7 +457,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           {/* Umbrales */}
           <Card padding="md" style={{ marginBottom: 12 }}>
             <SectionTitle icon={<BellAlertIcon width={16} height={16} />}>Niveles de alerta</SectionTitle>
-            <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 12px' }}>
+            <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '0 0 12px' }}>
               Días de anticipación para cada nivel de escalado.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
@@ -467,7 +473,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           {/* Descuentos por vencimiento */}
           <Card padding="md" style={{ marginBottom: 12 }}>
             <SectionTitle icon={<BanknotesIcon width={16} height={16} />}>Descuentos para lo que está por vencer</SectionTitle>
-            <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 12px' }}>
+            <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '0 0 12px' }}>
               Descuento (%) sugerido para rematar lotes según su nivel de vencimiento. Poné 0 para desactivar uno.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
@@ -485,9 +491,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             </Field>
           </Card>
 
-          <Button variant="primary" size="lg" fullWidth onClick={guardar} style={{ marginBottom: 12 }}>
-            Guardar configuración
-          </Button>
+          <p style={{ fontSize: 15, color: 'var(--text-2)', margin: '0 0 12px', textAlign: 'center' }}>Los cambios se guardan solos.</p>
           </>)}
 
           {/* Backup (solo dueño: tiene precios, y la importación crea productos) */}
@@ -495,25 +499,25 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           <Card padding="none" style={{ marginBottom: 12, overflow: 'hidden' }}>
             <button type="button" onClick={exportarStockCSV} style={linkRow}>
               <span style={{ color: 'var(--brand-600)' }}><ArrowDownTrayIcon width={18} height={18} /></span>
-              <span style={{ flex: 1, textAlign: 'left' }}>Exportar stock (planilla CSV)</span>
+              <span style={{ flex: 1, textAlign: 'left' }}>Planilla de la mercadería (para Excel)</span>
               <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
             </button>
             <div style={{ height: 1, background: 'var(--border)' }} />
             <button type="button" onClick={exportarMovimientosCSV} style={linkRow}>
               <span style={{ color: 'var(--brand-600)' }}><ArrowDownTrayIcon width={18} height={18} /></span>
-              <span style={{ flex: 1, textAlign: 'left' }}>Exportar movimientos (planilla CSV)</span>
+              <span style={{ flex: 1, textAlign: 'left' }}>Planilla del historial (para Excel)</span>
               <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
             </button>
             <div style={{ height: 1, background: 'var(--border)' }} />
             <button type="button" onClick={exportar} style={linkRow}>
               <span style={{ color: 'var(--brand-600)' }}><ArrowDownTrayIcon width={18} height={18} /></span>
-              <span style={{ flex: 1, textAlign: 'left' }}>Exportar backup (JSON)</span>
+              <span style={{ flex: 1, textAlign: 'left' }}>Guardar una copia de todo</span>
               <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
             </button>
             <div style={{ height: 1, background: 'var(--border)' }} />
             <button type="button" onClick={() => fileInputRef.current?.click()} style={linkRow}>
               <span style={{ color: 'var(--brand-600)' }}><ArrowUpTrayIcon width={18} height={18} /></span>
-              <span style={{ flex: 1, textAlign: 'left' }}>Importar backup (JSON)</span>
+              <span style={{ flex: 1, textAlign: 'left' }}>Recuperar desde una copia</span>
               <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
             </button>
             <input
@@ -546,7 +550,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           </Button>
           )}
 
-          <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-3)', marginTop: 20 }}>
+          <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--text-3)', marginTop: 20 }}>
             Stockly v{__APP_VERSION__} · Datos en la nube
           </p>
         </div>
@@ -567,7 +571,7 @@ const SectionTitle: React.FC<{ icon: React.ReactNode; children: React.ReactNode 
 const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
   <div style={{ textAlign: 'center' }}>
     <div style={{ fontFamily: 'var(--font-display)', fontSize: 21, fontWeight: 800, letterSpacing: '-0.02em' }}>{value}</div>
-    <div style={{ fontSize: 13, color: 'var(--text-2)', }}>{label}</div>
+    <div style={{ fontSize: 14, color: 'var(--text-2)', }}>{label}</div>
   </div>
 );
 const UmbralField: React.FC<{ nivel: string; label: string; value: string; onChange: (v: string) => void }> =
@@ -575,10 +579,10 @@ const UmbralField: React.FC<{ nivel: string; label: string; value: string; onCha
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: `var(--level-${nivel}-fg)` }} />
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>{label}</span>
+        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-2)' }}>{label}</span>
       </div>
       <Input value={value} onChange={e => onChange(e.target.value)} inputMode="numeric" />
-      <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '4px 0 0', textAlign: 'center' }}>días</p>
+      <p style={{ fontSize: 14, color: 'var(--text-3)', margin: '4px 0 0', textAlign: 'center' }}>días</p>
     </div>
   );
 const DescField: React.FC<{ nivel: string; label: string; value: string; onChange: (v: string) => void }> =
@@ -586,10 +590,10 @@ const DescField: React.FC<{ nivel: string; label: string; value: string; onChang
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: `var(--level-${nivel}-fg)` }} />
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>{label}</span>
+        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-2)' }}>{label}</span>
       </div>
       <Input value={value} onChange={e => onChange(e.target.value)} inputMode="numeric" />
-      <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '4px 0 0', textAlign: 'center' }}>% desc.</p>
+      <p style={{ fontSize: 14, color: 'var(--text-3)', margin: '4px 0 0', textAlign: 'center' }}>% desc.</p>
     </div>
   );
 const rowBtn: React.CSSProperties = {

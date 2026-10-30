@@ -76,7 +76,7 @@ const TabBar: React.FC = () => {
               position: 'relative', background: 'none', border: 'none', cursor: 'pointer',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
               color: active && !t.fab ? 'var(--text-on-brand)' : active ? 'var(--marca-texto)' : 'var(--text-2)',
-              fontFamily: 'inherit', fontSize: 13, letterSpacing: '-0.01em', fontWeight: active ? 800 : 700, minWidth: 0,
+              fontFamily: 'inherit', fontSize: 14, letterSpacing: '-0.01em', fontWeight: active ? 800 : 700, minWidth: 0,
             }}
           >
             {t.fab ? (

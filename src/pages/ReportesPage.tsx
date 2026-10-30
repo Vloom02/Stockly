@@ -75,7 +75,7 @@ const ReportesPage: React.FC = () => {
               <SectionHeader icon={<ChartPieIcon width={16} height={16} />} title="Valor por categoría" />
               <Card padding="md" style={{ marginBottom: 16 }}>
                 {distribucion.length === 0 ? (
-                  <p style={{ textAlign: 'center', color: 'var(--text-2)', padding: 20, margin: 0, fontSize: 13 }}>
+                  <p style={{ textAlign: 'center', color: 'var(--text-2)', padding: 20, margin: 0, fontSize: 14 }}>
                     No hay stock cargado en esta sucursal
                   </p>
                 ) : (
@@ -110,20 +110,20 @@ const ReportesPage: React.FC = () => {
                   marginBottom: 16,
                 }}>
                   <div>
-                    <div style={{ fontSize: 13, color: 'var(--text-2)', }}>
+                    <div style={{ fontSize: 14, color: 'var(--text-2)', }}>
                       Total últimos 6 meses
                     </div>
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, color: 'var(--level-vencido-fg)', letterSpacing: '-0.02em' }}>
                       {formatearMoneda(totalPerdido)}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 12, fontSize: 13 }}>
+                  <div style={{ display: 'flex', gap: 12, fontSize: 14 }}>
                     <LegendDot color="var(--level-vencido-fg)" label="Vencido" />
                     <LegendDot color="var(--level-aviso-fg)" label="Roto" />
                   </div>
                 </div>
                 {totalPerdido === 0 ? (
-                  <p style={{ textAlign: 'center', color: 'var(--brand-600)', padding: 16, margin: 0, fontSize: 13, fontWeight: 500 }}>
+                  <p style={{ textAlign: 'center', color: 'var(--brand-600)', padding: 16, margin: 0, fontSize: 14, fontWeight: 500 }}>
                     Sin pérdidas registradas. ¡Buen trabajo!
                   </p>
                 ) : (
@@ -144,13 +144,13 @@ const ReportesPage: React.FC = () => {
               <SectionHeader icon={<ShoppingCartIcon width={16} height={16} />} title="Qué reponer" />
               <Card padding="md" style={{ marginBottom: 16 }}>
                 {reposicion.length === 0 ? (
-                  <p style={{ textAlign: 'center', color: 'var(--brand-600)', padding: 16, margin: 0, fontSize: 13, fontWeight: 500 }}>
+                  <p style={{ textAlign: 'center', color: 'var(--brand-600)', padding: 16, margin: 0, fontSize: 14, fontWeight: 500 }}>
                     Nada para reponer por ahora.
                   </p>
                 ) : (
                   <>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{reposicion.length} producto{reposicion.length !== 1 ? 's' : ''}</span>
+                      <span style={{ fontSize: 14, color: 'var(--text-2)' }}>{reposicion.length} producto{reposicion.length !== 1 ? 's' : ''}</span>
                       <button
                         type="button"
                         onClick={() => compartirTexto(reposicionATexto(reposicion), 'Lista de reposición')}
@@ -166,7 +166,7 @@ const ReportesPage: React.FC = () => {
                       </div>
                     ))}
                     {reposicion.length > 30 && (
-                      <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-3)', paddingTop: 8 }}>…y {reposicion.length - 30} más</div>
+                      <div style={{ textAlign: 'center', fontSize: 14, color: 'var(--text-3)', paddingTop: 8 }}>…y {reposicion.length - 30} más</div>
                     )}
                   </>
                 )}
@@ -184,7 +184,7 @@ const ReportesPage: React.FC = () => {
               {/* Detalle del día seleccionado */}
               {diaSeleccionado && lotesDelDia.length > 0 && (
                 <div className="animate-slide-up" style={{ marginTop: 12 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--text-2)' }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: 'var(--text-2)' }}>
                     Vencen el {formatearFecha(diaSeleccionado)}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -193,7 +193,7 @@ const ReportesPage: React.FC = () => {
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <div>
                             <div style={{ fontWeight: 600, fontSize: 14 }}>{nombre}</div>
-                            <div style={{ fontSize: 13, color: 'var(--text-2)' }}>{lote.cantidad} unid.</div>
+                            <div style={{ fontSize: 14, color: 'var(--text-2)' }}>{lote.cantidad} unid.</div>
                           </div>
                           <BanknotesIcon width={18} height={18} style={{ color: 'var(--text-3)' }} />
                         </div>
@@ -233,7 +233,7 @@ const MotivoBadge: React.FC<{ motivo: MotivoReposicion; cantidad: number }> = ({
   };
   const c = cfg[motivo];
   return (
-    <span style={{ flexShrink: 0, fontSize: 13, fontWeight: 600, color: c.fg, background: c.bg, padding: '3px 9px', borderRadius: 'var(--radius-full)', whiteSpace: 'nowrap' }}>
+    <span style={{ flexShrink: 0, fontSize: 14, fontWeight: 600, color: c.fg, background: c.bg, padding: '3px 9px', borderRadius: 'var(--radius-full)', whiteSpace: 'nowrap' }}>
       {c.txt}
     </span>
   );

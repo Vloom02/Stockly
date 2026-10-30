@@ -34,7 +34,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, description, actio
     }}>{title}</h3>
     {description && (
       <p style={{
-        fontSize: 13, color: 'var(--text-2)', margin: '4px 0 0',
+        fontSize: 14, color: 'var(--text-2)', margin: '4px 0 0',
         maxWidth: 320, lineHeight: 1.5,
       }}>{description}</p>
     )}

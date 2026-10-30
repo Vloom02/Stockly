@@ -27,7 +27,7 @@ const PRINCIPALES: Tile[] = [
 const OTRAS: Tile[] = [
   { Icon: SparklesIcon,  label: 'Lo más vendido',    desc: 'Productos y horarios con más venta', path: '/ventas/estadisticas' },
   { Icon: TagIcon,       label: 'Ofertas',           desc: '2x1 y descuentos por cantidad',      path: '/ventas/ofertas' },
-  { Icon: UserGroupIcon, label: 'Empleados',         desc: 'Nombre y PIN de cada uno',           path: '/ventas/cajeros' },
+  { Icon: UserGroupIcon, label: 'Empleados',         desc: 'Nombre y clave de cada uno',           path: '/ventas/cajeros' },
 ];
 
 const MasPage: React.FC = () => {
@@ -44,8 +44,8 @@ const MasPage: React.FC = () => {
     <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
       <div style={{ padding: 'var(--space-4)', maxWidth: 520, margin: '0 auto', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))', paddingTop: 'calc(var(--space-4) + var(--ion-safe-area-top, 0px))' }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>Caja y ventas</h1>
-        <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 16 }}>
-          {cajero && !cajero.admin ? `Estás en tu turno, ${cajero.nombre}` : 'Opciones del dueño (piden el PIN)'}
+        <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 16 }}>
+          {cajero && !cajero.admin ? `Estás en tu turno, ${cajero.nombre}` : 'Opciones del dueño (piden la clave)'}
         </p>
 
         {esDueno ? (
@@ -83,12 +83,12 @@ const MasPage: React.FC = () => {
               <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <LockClosedIcon size={22} color="var(--text-2)" />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 600 }}>Volver a pedir el PIN</div>
+                  <div style={{ fontSize: 15, fontWeight: 600 }}>Volver a pedir la clave</div>
                   <div style={{ fontSize: 14, color: 'var(--text-2)' }}>Después de estos minutos sin usar</div>
                 </div>
               </div>
               <div style={{ marginTop: 10 }}>
-                <Opciones etiqueta="Volver a pedir el PIN después de" columnas={3} valor={String(lockMin)}
+                <Opciones etiqueta="Volver a pedir la clave después de" columnas={3} valor={String(lockMin)}
                   onChange={v => setLockMin(Number(v))}
                   opciones={OPCIONES_LOCK.map(n => ({ valor: String(n), etiqueta: n < 60 ? `${n} min` : n === 60 ? '1 hora' : `${n / 60} horas` }))} />
               </div>

@@ -207,7 +207,7 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
             <div style={{ fontSize: 16, marginBottom: 8 }}>
               {error || 'Tu navegador no soporta el escaneo automático'}
             </div>
-            <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 24, maxWidth: 320 }}>
+            <div style={{ fontSize: 16, marginBottom: 24, maxWidth: 320 }}>
               {error === 'Permiso de cámara denegado'
                 ? 'Activá el permiso de cámara desde Ajustes de Android → Aplicaciones → Stockly → Permisos. Mientras tanto, podés ingresar el código manualmente.'
                 : 'Podés ingresar el código manualmente o instalar la app en tu celular para usar el escáner nativo'}

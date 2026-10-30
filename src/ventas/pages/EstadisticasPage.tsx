@@ -70,7 +70,7 @@ const EstadisticasPage: React.FC = () => {
       <div style={{ padding: 'var(--space-4)', maxWidth: 520, margin: '0 auto', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))' }}>
         <BotonVolver />
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Lo más vendido</h1>
-        <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 14 }}>Últimos 30 días (necesita conexión)</p>
+        <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 14 }}>Últimos 30 días (necesita conexión)</p>
 
         {loading ? (
           <><Skeleton height={80} style={{ marginBottom: 8 }} /><Skeleton height={200} /></>
@@ -81,11 +81,11 @@ const EstadisticasPage: React.FC = () => {
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 14 }}>
               <Card variant="bordered" style={{ padding: 10 }}>
-                <div style={{ fontSize: 13, color: 'var(--text-2)' }}>Ventas</div>
+                <div style={{ fontSize: 14, color: 'var(--text-2)' }}>Ventas</div>
                 <div style={{ fontSize: 20, fontWeight: 700 }}>{totales.ventas}</div>
               </Card>
               <Card variant="bordered" style={{ padding: 10 }}>
-                <div style={{ fontSize: 13, color: 'var(--text-2)' }}>Facturado</div>
+                <div style={{ fontSize: 14, color: 'var(--text-2)' }}>Facturado</div>
                 <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-mono)', paddingTop: 2 }}>{formatMoney(totales.plata)}</div>
               </Card>
             </div>
@@ -94,7 +94,7 @@ const EstadisticasPage: React.FC = () => {
             <Card variant="bordered" style={{ padding: '10px 14px' }}>
               {top.map((t, i) => (
                 <div key={t.nombre} style={{ padding: '6px 0', borderBottom: i < top.length - 1 ? '1px dashed var(--border)' : 'none' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 3 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 3 }}>
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       <b style={{ color: 'var(--text-3)', marginRight: 6 }}>{i + 1}.</b>{t.nombre}
                     </span>
@@ -123,7 +123,7 @@ const EstadisticasPage: React.FC = () => {
                   </div>
                 ))}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-3)', marginTop: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--text-3)', marginTop: 6 }}>
                 <span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>23 h</span>
               </div>
             </Card>

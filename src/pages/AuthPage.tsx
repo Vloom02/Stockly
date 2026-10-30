@@ -225,7 +225,7 @@ const AuthPage: React.FC = () => {
             </button>
           </div>
 
-          <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-3)', marginTop: 32 }}>
+          <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--text-3)', marginTop: 32 }}>
             Stockly · 14 días de prueba gratis
           </p>
         </div>

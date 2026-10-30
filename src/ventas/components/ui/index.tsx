@@ -15,17 +15,17 @@ interface ButtonProps {
   type?: 'button'|'submit';
   style?: React.CSSProperties;
   className?: string;
+  'aria-label'?: string;
 }
 
 export const Button: React.FC<ButtonProps> = ({
   children, onClick, variant='primary', size='md',
-  disabled, loading, fullWidth, type='button', style, className,
+  disabled, loading, fullWidth, type='button', style, className, 'aria-label': ariaLabel,
 }) => {
   const base: React.CSSProperties = {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     gap: 8, fontFamily: 'var(--font-sans)', fontWeight: 600,
     border: 'none', borderRadius: 'var(--radius)', cursor: disabled||loading ? 'default' : 'pointer',
-    outline: 'none',
     width: fullWidth ? '100%' : undefined,
     opacity: disabled ? .45 : 1,
     WebkitTapHighlightColor: 'transparent',
@@ -45,7 +45,7 @@ export const Button: React.FC<ButtonProps> = ({
   };
   const relieve: Partial<Record<BtnVariant, string>> = { primary: 'boton-marca', success: 'boton-marca', secondary: 'boton-blanco', danger: 'boton-peligro' };
   return (
-    <button type={type} onClick={!disabled&&!loading ? onClick : undefined} disabled={disabled}
+    <button type={type} onClick={!disabled&&!loading ? onClick : undefined} disabled={disabled} aria-label={ariaLabel}
       className={['pressable', relieve[variant], className].filter(Boolean).join(' ')}
       style={{ ...base, ...sizes[size], ...variants[variant], ...style }}>
       {loading
@@ -122,8 +122,8 @@ export const Input: React.FC<InputProps> = ({
           ...style,
         }}
       />
-      {error && <span style={{ fontSize: 13, color:'var(--color-danger)' }}>{error}</span>}
-      {hint && !error && <span style={{ fontSize: 13, color:'var(--text-3)' }}>{hint}</span>}
+      {error && <span style={{ fontSize: 14, color:'var(--color-danger)' }}>{error}</span>}
+      {hint && !error && <span style={{ fontSize: 14, color:'var(--text-3)' }}>{hint}</span>}
     </div>
   );
 };
@@ -164,7 +164,7 @@ export const Badge: React.FC<{ children: ReactNode; color?: BadgeColor; dot?: bo
     gray:   { background:'var(--surface-2)',         color:'var(--text-2)',             border:'1px solid var(--border)' },
   };
   return (
-    <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:'var(--radius-full)', fontSize: 13, fontWeight:600, ...colors[color], ...style }}>
+    <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:'var(--radius-full)', fontSize: 14, fontWeight:600, ...colors[color], ...style }}>
       {dot && <span style={{ width:6, height:6, borderRadius:'50%', background:'currentColor' }} />}
       {children}
     </span>
@@ -251,7 +251,7 @@ export const SectionTitle: React.FC<{ children: ReactNode }> = ({ children }) =>
 // ─── Stat card ────────────────────────────────────────────────────────────────
 export const StatCard: React.FC<{ label: string; value: ReactNode; color?: string }> = ({ label, value, color }) => (
   <div style={{ background:'var(--surface)', boxShadow:'var(--shadow-md)', borderRadius:'var(--radius-lg)', padding:'12px 14px' }}>
-    <div style={{ fontSize: 13, color:'var(--text-2)', marginBottom:3 }}>{label}</div>
+    <div style={{ fontSize: 14, color:'var(--text-2)', marginBottom:3 }}>{label}</div>
     <div style={{ fontSize:20, fontWeight:700, color: color || 'var(--text)' }}>{value}</div>
   </div>
 );

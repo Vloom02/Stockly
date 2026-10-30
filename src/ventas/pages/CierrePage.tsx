@@ -182,7 +182,7 @@ const CierrePage: React.FC = () => {
             <ArrowPathIcon size={22} color="var(--text-2)" />
           </button>
         </div>
-        <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 12 }}>
+        <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 12 }}>
           {sucursalActiva ? `${sucursalActiva.nombre} · ` : ''}Turno {turno.nombre.toLowerCase()} ({fmtHora(inicio)}–{fmtHora(fin)})
           {esTurnoActual && <span style={{ color: 'var(--color-primary-dark)', fontWeight: 600 }}> · en curso</span>}
         </p>
@@ -198,7 +198,7 @@ const CierrePage: React.FC = () => {
                   border: activo ? '1.5px solid var(--color-primary)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)',
                   background: activo ? 'var(--color-primary-bg)' : 'var(--surface)',
                   color: activo ? 'var(--color-primary-dark)' : 'var(--text-2)',
-                  fontWeight: 600, fontSize: 13, position: 'relative',
+                  fontWeight: 600, fontSize: 14, position: 'relative',
                 }}>
                 <div style={{ display: 'flex', justifyContent: 'center' }}><t.Icono width={22} height={22} /></div>
                 <div>{t.nombre}</div>
@@ -219,7 +219,7 @@ const CierrePage: React.FC = () => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
                 {([['manana', 'Mañana'], ['tarde', 'Tarde'], ['noche', 'Noche']] as [keyof HorasTurnos, string][]).map(([k, lbl]) => (
                   <div key={k}>
-                    <label style={{ fontSize: 13, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>{lbl} desde</label>
+                    <label style={{ fontSize: 14, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>{lbl} desde</label>
                     <select
                       value={horas[k]}
                       aria-label={`Hora de inicio de ${lbl}`}
@@ -236,7 +236,7 @@ const CierrePage: React.FC = () => {
                   </div>
                 ))}
               </div>
-              <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '10px 0 0', lineHeight: 1.5 }}>
+              <p style={{ fontSize: 14, color: 'var(--text-3)', margin: '10px 0 0', lineHeight: 1.5 }}>
                 La noche termina donde arranca la mañana del día siguiente. Los horarios deben ir en orden (mañana &lt; tarde &lt; noche); si una opción no se guarda, ajustá primero los otros turnos.
               </p>
             </Card>
@@ -273,7 +273,7 @@ const CierrePage: React.FC = () => {
 
             <Card>
               <SectionTitle>Contar el efectivo · turno {turno.nombre.toLowerCase()}</SectionTitle>
-              <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 10 }}>
+              <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 10 }}>
                 Contá el efectivo en la caja al cerrar este turno y anotalo para verificar que cuadre.
               </p>
               {([
@@ -289,7 +289,7 @@ const CierrePage: React.FC = () => {
                 <span style={{ fontSize: 14, color: 'var(--text-2)', fontWeight: 600 }}>Efectivo esperado</span>
                 <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{formatMoney(totalEfectivo)}</span>
               </div>
-              <label style={{ fontSize: 13, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Efectivo contado en caja</label>
+              <label style={{ fontSize: 14, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Efectivo contado en caja</label>
               <input className="campo" type="text" inputMode="decimal" value={efectivoContado} onChange={e => setEfectivoContado(e.target.value)}
                 placeholder="0.00"
                 style={{ width: '100%', padding: 12, fontSize: 18, textAlign: 'center', fontFamily: 'var(--font-mono)', color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none' }} />
@@ -322,9 +322,9 @@ const CierrePage: React.FC = () => {
               <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0', borderBottom: i < cierres.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{c.cajero_nombre || '—'}</div>
-                  <div style={{ fontSize: 13, color: 'var(--text-3)' }}>{new Date(c.hasta).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })} · {formatMoney(c.total)}</div>
+                  <div style={{ fontSize: 14, color: 'var(--text-3)' }}>{new Date(c.hasta).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })} · {formatMoney(c.total)}</div>
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)',
+                <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)',
                   color: Math.abs(c.diferencia) < 0.01 ? 'var(--color-primary-dark)' : c.diferencia < 0 ? 'var(--color-danger)' : 'var(--color-info-dark)' }}>
                   {Math.abs(c.diferencia) < 0.01 ? 'cuadra' : (c.diferencia > 0 ? '+' : '') + formatMoney(c.diferencia)}
                 </span>
@@ -350,7 +350,7 @@ const CierrePage: React.FC = () => {
             style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', minHeight: 48, marginTop: 8, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
             Gestionar cajeros
           </button>
-          <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 8, textAlign: 'center' }}>
+          <p style={{ fontSize: 14, color: 'var(--text-3)', marginTop: 8, textAlign: 'center' }}>
             El PIN protege Dashboard, Caja, Historial y Deudas. Los cajeros inician turno con legajo + contraseña.
           </p>
         </Card>
@@ -359,7 +359,7 @@ const CierrePage: React.FC = () => {
       {showPinPad && (
         <PinPad
           mode="create"
-          titulo="Nuevo PIN de dueño"
+          titulo="Nueva clave de dueño"
           onSuccess={async (pin) => {
             const ok = await setPin(pin);
             if (ok) { setShowPinPad(false); setPinToast(true); }
@@ -368,7 +368,7 @@ const CierrePage: React.FC = () => {
           onCancel={() => setShowPinPad(false)}
         />
       )}
-      <IonToast isOpen={pinToast} onDidDismiss={() => setPinToast(false)} message="PIN actualizado" duration={4500} position="top" color="success" />
+      <IonToast isOpen={pinToast} onDidDismiss={() => setPinToast(false)} message="Clave actualizada" duration={4500} position="top" color="success" />
     </IonContent>
   );
 };

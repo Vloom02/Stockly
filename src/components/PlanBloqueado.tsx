@@ -57,7 +57,7 @@ const PlanBloqueado: React.FC<Props> = ({ estado, onReintentar, onCerrarSesion }
             borderRadius: 'var(--radius-lg)', padding: 16, maxWidth: 340, width: '100%',
             marginBottom: 8,
           }}>
-            <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 4 }}>
+            <div style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 4 }}>
               Para activar tu cuenta, escribinos:
             </div>
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--brand-600)' }}>

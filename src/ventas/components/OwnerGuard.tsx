@@ -57,10 +57,10 @@ const OwnerGuard: React.FC<{ children: ReactNode; titulo: string }> = ({ childre
         </div>
         <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>{titulo}</h2>
         <p style={{ fontSize: 16, color: 'var(--text-2)', marginBottom: 20, maxWidth: 300, lineHeight: 1.5 }}>
-          {hasPin ? 'Esta sección es solo para el dueño. Ingresá tu PIN para verla.' : 'Esta sección es solo para el dueño. Creá un PIN para protegerla.'}
+          {hasPin ? 'Esta sección es solo para el dueño. Ingresá tu clave para verla.' : 'Esta sección es solo para el dueño. Creá una clave para protegerla.'}
         </p>
         <Button size="lg" onClick={() => setShowPad(true)}>
-          {hasPin ? 'Poner mi PIN' : 'Crear PIN de dueño'}
+          {hasPin ? 'Poner mi clave' : 'Crear clave de dueño'}
         </Button>
       </div>
     </IonContent>

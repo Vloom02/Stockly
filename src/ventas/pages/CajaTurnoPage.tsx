@@ -97,7 +97,7 @@ const CajaTurnoPage: React.FC = () => {
     <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
       <div style={{ padding: 'var(--space-4)', maxWidth: 520, margin: '0 auto', paddingBottom: 'calc(40px + var(--sab,env(safe-area-inset-bottom)))', paddingTop: 'calc(var(--space-4) + var(--ion-safe-area-top, 0px))' }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>Caja del turno</h1>
-        <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 16 }}>{cajero?.nombre ? `Turno de ${cajero.nombre}` : 'Entradas y salidas de plata'}</p>
+        <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 16 }}>{cajero?.nombre ? `Turno de ${cajero.nombre}` : 'Entradas y salidas de plata'}</p>
 
         {sinInternet && (
           <p role="status" style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-warning-dark, var(--text))', margin: '0 0 12px' }}>
@@ -109,7 +109,7 @@ const CajaTurnoPage: React.FC = () => {
         {!apertura || corrigiendo ? (
           <Card style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>{apertura ? 'Corregir el fondo' : 'Apertura de caja'}</div>
-            <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 10px' }}>Declará el efectivo con el que arrancás (fondo para dar cambio).</p>
+            <p style={{ fontSize: 14, color: 'var(--text-3)', margin: '0 0 10px' }}>Declará el efectivo con el que arrancás (fondo para dar cambio).</p>
             <div style={{ display: 'flex', gap: 8 }}>
               <input className="campo" type="text" inputMode="decimal" value={fondo} onChange={e => setFondo(e.target.value)} placeholder="Ej: 5000" aria-label="Efectivo con el que arrancás" style={{ ...inputStyle, flex: 1 }} />
               <Button onClick={guardarApertura} loading={busy}>{apertura ? 'Guardar' : 'Abrir caja'}</Button>
@@ -150,16 +150,16 @@ const CajaTurnoPage: React.FC = () => {
             <span style={{ fontSize: 14, color: 'var(--text-2)' }}>Efectivo de movimientos</span>
             <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{formatMoney(enCaja)}</span>
           </div>
-          <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 8px' }}>(apertura + ingresos − egresos; sin contar las ventas)</p>
+          <p style={{ fontSize: 14, color: 'var(--text-3)', margin: '0 0 8px' }}>(apertura + ingresos − egresos; sin contar las ventas)</p>
           {movs.filter(m => m.tipo !== 'apertura').length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--text-3)', textAlign: 'center', padding: 10 }}>Sin movimientos todavía.</p>
+            <p style={{ fontSize: 14, color: 'var(--text-3)', textAlign: 'center', padding: 10 }}>Sin movimientos todavía.</p>
           ) : movs.filter(m => m.tipo !== 'apertura').map(m => (
             <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderTop: '1px solid var(--border)' }}>
               <div>
                 <span style={{ fontSize: 14, fontWeight: 600, color: m.tipo === 'ingreso' ? 'var(--color-primary-dark)' : 'var(--color-danger)' }}>
                   {m.tipo === 'ingreso' ? '+' : '−'} {m.motivo || (m.tipo === 'ingreso' ? 'Ingreso' : 'Egreso')}
                 </span>
-                <div style={{ fontSize: 13, color: 'var(--text-3)' }}>{new Date(m.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</div>
+                <div style={{ fontSize: 14, color: 'var(--text-3)' }}>{new Date(m.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</div>
               </div>
               <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: m.tipo === 'ingreso' ? 'var(--color-primary-dark)' : 'var(--color-danger)' }}>
                 {m.tipo === 'ingreso' ? '+' : '−'}{formatMoney(m.monto)}

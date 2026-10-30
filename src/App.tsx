@@ -139,7 +139,7 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
         <div className="anim-bajar" style={{
           position: 'fixed', top: 'env(safe-area-inset-top)', left: 0, right: 0,
           zIndex: 500, background: 'var(--level-urgente-bg)', color: 'var(--level-urgente-fg)',
-          padding: '8px 16px', fontSize: 13, fontWeight: 600, textAlign: 'center',
+          padding: '8px 16px', fontSize: 14, fontWeight: 600, textAlign: 'center',
         }}>
           {estadoPlan.diasRestantes <= 0
             ? 'Tu prueba vence hoy'

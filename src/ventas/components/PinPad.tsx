@@ -9,7 +9,7 @@ import { LockClosedIcon } from './ui/icons';
 
 interface Props {
   mode: 'unlock' | 'create';
-  titulo?: string;        // opcional: reemplaza el título del primer paso (ej. "Nuevo PIN de dueño")
+  titulo?: string;        // opcional: reemplaza el título del primer paso (ej. "Nueva clave de dueño")
   subtitulo?: string;     // opcional: reemplaza el texto de ayuda del primer paso
   extra?: React.ReactNode; // opcional: contenido bajo el subtítulo (ej. botón "Usar mi huella")
   onSuccess: (pin: string) => Promise<boolean>;
@@ -30,12 +30,12 @@ const PinPad: React.FC<Props> = ({ mode, titulo: tituloProp, subtitulo: subtitul
   };
 
   const titulo =
-    mode === 'unlock' ? (tituloProp ?? 'Ingresá tu PIN') :
-    stage === 'first' ? (tituloProp ?? 'Creá un PIN de dueño') : 'Repetí el PIN';
+    mode === 'unlock' ? (tituloProp ?? 'Ingresá tu clave') :
+    stage === 'first' ? (tituloProp ?? 'Creá una clave de dueño') : 'Repetí la clave';
   const subtitulo =
     mode === 'unlock' ? (subtituloProp ?? 'Acceso a secciones del dueño') :
-    stage === 'first' ? (subtituloProp ?? 'Mínimo 4 dígitos. Lo vas a necesitar para ver caja, reportes y deudas.') :
-    'Confirmá el PIN para guardarlo';
+    stage === 'first' ? (subtituloProp ?? 'Mínimo 4 números. La vas a necesitar para ver caja, reportes y deudas.') :
+    'Confirmá la clave para guardarla';
 
   const press = async (d: string) => {
     if (busy) return;
@@ -56,19 +56,19 @@ const PinPad: React.FC<Props> = ({ mode, titulo: tituloProp, subtitulo: subtitul
         setStage('confirm'); return;
       }
       // confirm stage
-      if (confirm !== pin) { setError('Los PIN no coinciden'); setConfirm(''); return; }
+      if (confirm !== pin) { setError('Las claves no coinciden'); setConfirm(''); return; }
       setBusy(true);
       const ok = await onSuccess(pin);
       setBusy(false);
-      if (!ok) { setError('No se pudo guardar el PIN. Revisá que haya internet y probá de nuevo.'); setStage('first'); setPin(''); setConfirm(''); }
+      if (!ok) { setError('No se pudo guardar la clave. Revisá que haya internet y probá de nuevo.'); setStage('first'); setPin(''); setConfirm(''); }
       return;
     }
     // unlock
-    if (pin.length < 4) { setError('PIN incompleto'); return; }
+    if (pin.length < 4) { setError('Clave incompleta'); return; }
     setBusy(true);
     const ok = await onSuccess(pin);
     setBusy(false);
-    if (!ok) { setError('PIN incorrecto'); setPin(''); }
+    if (!ok) { setError('Clave incorrecta'); setPin(''); }
   };
 
   const dots = Math.max(current.length, 0);

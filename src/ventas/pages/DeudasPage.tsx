@@ -154,11 +154,11 @@ const DeudasPage: React.FC = () => {
       <div style={{ padding: 'var(--space-4)', maxWidth: 520, margin: '0 auto', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))' }}>
         <BotonVolver />
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Fiado</h1>
-        <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 14 }}>Clientes con fiado pendiente</p>
+        <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 14 }}>Clientes con fiado pendiente</p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 14 }}>
-          <Card variant="bordered" style={{ padding: 10 }}><div style={{ fontSize: 13, color: 'var(--text-2)' }}>Deudas activas</div><div style={{ fontSize: 20, fontWeight: 700 }}>{deudas.length}</div></Card>
-          <Card variant="bordered" style={{ padding: 10 }}><div style={{ fontSize: 13, color: 'var(--text-2)' }}>Total adeudado</div><div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-mono)', paddingTop: 2, color: 'var(--color-danger)' }}>{formatMoney(total)}</div></Card>
+          <Card variant="bordered" style={{ padding: 10 }}><div style={{ fontSize: 14, color: 'var(--text-2)' }}>Deudas activas</div><div style={{ fontSize: 20, fontWeight: 700 }}>{deudas.length}</div></Card>
+          <Card variant="bordered" style={{ padding: 10 }}><div style={{ fontSize: 14, color: 'var(--text-2)' }}>Total adeudado</div><div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-mono)', paddingTop: 2, color: 'var(--color-danger)' }}>{formatMoney(total)}</div></Card>
         </div>
 
         {deudas.length > 0 && (
@@ -184,15 +184,15 @@ const DeudasPage: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 15 }}>{d.cliente}</div>
-                  <div style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 2 }}>{new Date(d.fecha).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}</div>
-                  {abonado > 0 && <div style={{ fontSize: 13, color: 'var(--color-primary-dark)', marginTop: 3 }}>Abonado {formatMoney(abonado)} de {formatMoney(d.monto)}</div>}
+                  <div style={{ fontSize: 14, color: 'var(--text-3)', marginTop: 2 }}>{new Date(d.fecha).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}</div>
+                  {abonado > 0 && <div style={{ fontSize: 14, color: 'var(--color-primary-dark)', marginTop: 3 }}>Abonado {formatMoney(abonado)} de {formatMoney(d.monto)}</div>}
                   {porCliente[clave(d.cliente)]?.count > 1 && <Badge color="yellow" style={{ marginTop: 4 }}>Total cliente: {formatMoney(porCliente[clave(d.cliente)].total)}</Badge>}
                 </div>
                 <span style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-danger)', fontFamily: 'var(--font-mono)' }}>{formatMoney(saldo)}</span>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={() => pedirPago(d)} className="pressable" style={{ flex: 1, minHeight: 48, padding: '8px', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>$ Pago</button>
-                <button onClick={() => saldar(d)} className="pressable" style={{ flex: 1, minHeight: 48, padding: '8px', border: '1px solid var(--color-primary-border)', borderRadius: 'var(--radius)', background: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><CheckIcon size={15} /> Saldar</button>
+                <button onClick={() => pedirPago(d)} className="pressable" style={{ flex: 1, minHeight: 48, padding: '8px', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}>$ Pago</button>
+                <button onClick={() => saldar(d)} className="pressable" style={{ flex: 1, minHeight: 48, padding: '8px', border: '1px solid var(--color-primary-border)', borderRadius: 'var(--radius)', background: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)', cursor: 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><CheckIcon size={15} /> Saldar</button>
                 <button onClick={() => recordar(d)} aria-label={`Recordar a ${d.cliente} por WhatsApp`} className="pressable" style={{ width: 48, minHeight: 48, padding: '8px', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', cursor: 'pointer', fontSize: 15 }}><IcoChatBubbleLeftRightIcon width={22} height={22} /></button>
               </div>
             </Card>

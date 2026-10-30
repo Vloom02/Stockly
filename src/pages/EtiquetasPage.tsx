@@ -61,7 +61,7 @@ const EtiquetasPage: React.FC = () => {
                 <PrinterIcon width={17} height={17} /> Imprimir
               </button>
             </div>
-            <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 14px' }}>
+            <p style={{ fontSize: 14, color: 'var(--text-3)', margin: '0 0 14px' }}>
               {productos.length} etiqueta{productos.length !== 1 ? 's' : ''}. Tocá Imprimir para mandar a la impresora o guardar como PDF.
             </p>
           </div>
@@ -72,14 +72,14 @@ const EtiquetasPage: React.FC = () => {
             <div id="etiquetas-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
               {productos.map(p => (
                 <div key={p.id} className="etiqueta" style={{ background: '#fff', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', padding: '12px 12px 14px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.25, minHeight: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#111' }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.25, minHeight: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#111' }}>
                     {p.nombre}
                   </div>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', color: '#111', marginTop: 4 }}>
                     {formatearMoneda(p.precio)}
                   </div>
                   {p.codigoBarras && (
-                    <div style={{ fontFamily: 'monospace', fontSize: 13, letterSpacing: '0.08em', color: '#555', marginTop: 6 }}>
+                    <div style={{ fontFamily: 'monospace', fontSize: 14, letterSpacing: '0.08em', color: '#555', marginTop: 6 }}>
                       {p.codigoBarras}
                     </div>
                   )}

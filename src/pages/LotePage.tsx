@@ -49,7 +49,7 @@ const LoteForm: React.FC = () => {
   const [cantidad, setCantidad] = useState(loteExistente?.cantidad.toString() || '1');
   // Lo que había al abrir: si mientras tanto se vendió, se guarda el cambio de la persona (no el número viejo).
   const [cantidadAlAbrir] = useState(loteExistente?.cantidad ?? 0);
-  const [fechaVencimiento, setFechaVencimiento] = useState(loteExistente?.fechaVencimiento || fechaTresMeses());
+  const [fechaVencimiento, setFechaVencimiento] = useState(loteExistente?.fechaVencimiento || ''); // sin elegir: venía en "3 meses" y se guardaba sin mirar el envase
   const [diasAviso, setDiasAviso] = useState(loteExistente?.diasAviso.toString() || '');
   const [numeroLote, setNumeroLote] = useState(loteExistente?.numeroLote || '');
 
@@ -66,6 +66,7 @@ const LoteForm: React.FC = () => {
   const lectorRef = useLectorFisico<HTMLIonContentElement>(codigo => { if (esNuevo && paso === 1) elegirPorCodigo(codigo); });
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [procesando, setProcesando] = useState(false); // anti doble-tap (guardar y retirar)
+  const [listo, setListo] = useState<string | null>(null); // lo que se acaba de cargar
   // Mostrar el override de días de aviso si el lote ya lo tenía seteado.
   const [mostrarAvanzado, setMostrarAvanzado] = useState(!!loteExistente?.diasAviso &&
     loteExistente.diasAviso !== state.productos.find(p => p.id === loteExistente.productoId)?.diasAvisoDefault);
@@ -97,9 +98,8 @@ const LoteForm: React.FC = () => {
     };
     setProcesando(true);
     try {
-      if (loteExistente) await updateLote({ ...loteExistente, ...datos });
-      else await addLote(datos);
-      history.goBack();
+      if (loteExistente) { await updateLote({ ...loteExistente, ...datos }); history.goBack(); }
+      else { await addLote(datos); setListo(`${cant} de ${producto?.nombre ?? 'mercadería'}, vence ${formatearFecha(fechaVencimiento)}`); }
     } finally {
       setProcesando(false);
     }
@@ -109,7 +109,7 @@ const LoteForm: React.FC = () => {
     if (!loteExistente?.id || procesando) return;
     const cant = parseInt(cantRetirar, 10);
     if (!Number.isFinite(cant) || cant <= 0 || cant > loteExistente.cantidad) {
-      setToast({ show: true, msg: 'Cantidad inválida' }); return;
+      setToast({ show: true, msg: `Poné cuántas sacás: un número de 1 a ${loteExistente.cantidad}` }); return;
     }
     setProcesando(true);
     try {
@@ -134,6 +134,23 @@ const LoteForm: React.FC = () => {
     const cant = parseInt(cantidad, 10) || 0;
     const sumar = (n: number) => setCantidad(String(Math.max(1, cant + n)));
     const atras = () => (paso > 1 ? setPaso((paso - 1) as 1 | 2) : history.goBack());
+    // Guardado: se dice qué se cargó y se sigue (antes volvía atrás sin avisar y había que empezar de cero).
+    if (listo) return (
+      <IonPage>
+        <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
+          <div style={{ padding: '20px 16px calc(110px + var(--sab,env(safe-area-inset-bottom))) 16px', maxWidth: 640, margin: '0 auto' }}>
+            <Header title="Cargar mercadería" onBack={() => history.goBack()} />
+            <div role="status" className="tarjeta anim-pop" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 18, marginBottom: 18 }}>
+              <CheckIcon width={34} height={34} style={{ color: 'var(--level-ok-fg)', flexShrink: 0 }} aria-hidden="true" />
+              <span style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.3 }}>Listo: {listo}</span>
+            </div>
+            <Button variant="primary" size="lg" fullWidth style={{ marginBottom: 10 }}
+              onClick={() => history.replace(`/lote/nuevo?otro=${Date.now()}`)}>Cargar otro</Button>
+            <Button variant="secondary" size="lg" fullWidth onClick={() => history.goBack()}>Terminé</Button>
+          </div>
+        </IonContent>
+      </IonPage>
+    );
     const titulos = { 1: '¿Qué producto entró?', 2: '¿Cuántas unidades entraron?', 3: '¿Cuándo vence?' };
 
     return (
@@ -206,7 +223,7 @@ const LoteForm: React.FC = () => {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 20 }}>
                     {[6, 12, 24, 48].map(n => (
                       <button key={n} type="button" onClick={() => setCantidad(String(n))} className="pressable" aria-pressed={cant === n}
-                        style={{ minHeight: 52, borderRadius: 'var(--radius)', border: cant === n ? '3px solid var(--brand-500)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: cant === n ? 'var(--brand-50)' : 'var(--surface)', fontSize: 18, fontWeight: 700, color: 'var(--text)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                        style={{ minHeight: 52, borderRadius: 'var(--radius)', border: cant === n ? '3px solid var(--brand-500)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: cant === n ? 'var(--marca-suave)' : 'var(--surface)', fontSize: 18, fontWeight: 700, color: 'var(--text)', cursor: 'pointer', fontFamily: 'inherit' }}>
                         {n}
                       </button>
                     ))}
@@ -223,7 +240,7 @@ const LoteForm: React.FC = () => {
                       const activo = valor === fechaVencimiento;
                       return (
                         <button key={a.label} type="button" onClick={() => setFechaVencimiento(valor)} aria-pressed={activo} className="pressable"
-                          style={{ minHeight: 56, borderRadius: 'var(--radius)', border: activo ? '3px solid var(--brand-500)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: activo ? 'var(--brand-50)' : 'var(--surface)', color: 'var(--text)', fontSize: 17, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          style={{ minHeight: 56, borderRadius: 'var(--radius)', border: activo ? '3px solid var(--brand-500)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: activo ? 'var(--marca-suave)' : 'var(--surface)', color: 'var(--text)', fontSize: 17, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                           {a.label}
                         </button>
                       );
@@ -337,7 +354,7 @@ const LoteForm: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <NivelBadge nivel={nivel} size="md" />
-                  <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 6 }}>
+                  <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 6 }}>
                     {textoEstado(fechaVencimiento)}
                   </div>
                 </div>
@@ -352,13 +369,13 @@ const LoteForm: React.FC = () => {
                   display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
                 }}>
                   <IcoTagIcon width={22} height={22} />
-                  <div style={{ fontSize: 13, lineHeight: 1.4 }}>
+                  <div style={{ fontSize: 14, lineHeight: 1.4 }}>
                     <strong>Para que no se venza:</strong> vendé a{' '}
                     <strong style={{ color: 'var(--brand-600)' }}>{formatearMoneda(liq.precioFinal)}</strong>{' '}
                     <span style={{ color: 'var(--text-2)' }}>
                       (−{liq.pct}%, en vez de {formatearMoneda(liq.precioOriginal)})
                     </span>
-                    <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 2 }}>
+                    <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 2 }}>
                       Rematalo antes de que venza para no perder el stock.
                     </div>
                   </div>
@@ -379,9 +396,9 @@ const LoteForm: React.FC = () => {
               </p>
             )}
             {!loteExistente && esDueno && (
-              <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '-6px 0 12px' }}>
+              <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '-6px 0 12px' }}>
                 ¿No está? <button type="button" onClick={() => history.push('/producto/nuevo')}
-                  style={{ background: 'none', border: 'none', color: 'var(--brand-600)', fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontSize: 13 }}>
+                  style={{ background: 'none', border: 'none', color: 'var(--brand-600)', fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontSize: 14 }}>
                   Crear producto nuevo</button>
               </p>
             )}
@@ -398,7 +415,7 @@ const LoteForm: React.FC = () => {
                   const activo = valor === fechaVencimiento;
                   return (
                     <button key={a.label} type="button" onClick={() => setFechaVencimiento(valor)} aria-pressed={activo}
-                      style={{ minHeight: 48, borderRadius: 'var(--radius)', border: activo ? '2px solid var(--brand-500)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: activo ? 'var(--brand-50)' : 'var(--surface)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      style={{ minHeight: 48, borderRadius: 'var(--radius)', border: activo ? '2px solid var(--brand-500)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: activo ? 'var(--marca-suave)' : 'var(--surface)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                       {a.label}
                     </button>
                   );
@@ -411,11 +428,11 @@ const LoteForm: React.FC = () => {
                 default por producto y un umbral global; mostrarlo siempre confundía). */}
             {!mostrarAvanzado ? (
               <button type="button" onClick={() => setMostrarAvanzado(true)}
-                style={{ background: 'none', border: 'none', color: 'var(--brand-600)', fontWeight: 600, cursor: 'pointer', padding: '2px 0 6px', fontFamily: 'inherit', fontSize: 13 }}>
+                style={{ background: 'none', border: 'none', color: 'var(--brand-600)', fontWeight: 600, cursor: 'pointer', padding: '2px 0 6px', fontFamily: 'inherit', fontSize: 14 }}>
                 + Avisar con otros días para esta compra
               </button>
             ) : (
-              <Field label="Días de aviso (solo este lote)" hint={`Default del producto: ${producto?.diasAvisoDefault ?? 7}`}>
+              <Field label="Días de aviso (solo este lote)" hint={`Si lo dejás vacío, avisa ${producto?.diasAvisoDefault ?? 7} días antes (lo que dice el producto)`}>
                 <Input value={diasAviso} onChange={e => setDiasAviso(e.target.value)} inputMode="numeric"
                   placeholder={producto?.diasAvisoDefault.toString()} />
               </Field>
@@ -425,7 +442,7 @@ const LoteForm: React.FC = () => {
               <Input value={numeroLote} onChange={e => setNumeroLote(e.target.value)} placeholder="Opcional" />
             </Field>
             {producto?.proveedor && (
-              <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '-4px 0 4px' }}>
+              <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '-4px 0 4px' }}>
                 Proveedor: <strong>{producto.proveedor}</strong> <span style={{ color: 'var(--text-3)' }}>(se edita en el producto)</span>
               </p>
             )}
@@ -471,8 +488,5 @@ const ATAJOS_VENCIMIENTO = [
   { label: '1 año', dias: 0, meses: 12 },
 ];
 
-function fechaTresMeses(): string {
-  return sumarFecha(0, 3);
-}
 
 export default LotePage;

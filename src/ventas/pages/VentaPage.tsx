@@ -250,13 +250,13 @@ const VentaPage: React.FC = () => {
                   opciones={sucursales.map(s => ({ valor: s.id, etiqueta: s.nombre }))} />
               </div>
             ) : (
-              <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 2 }}>{sucursalActiva?.nombre}</div>
+              <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 2 }}>{sucursalActiva?.nombre}</div>
             )}
             {cajero && (
               <button type="button"
                 onClick={async () => { if (await confirmar(`¿Cerrar el turno de ${cajero.nombre}?`, { okText: 'Cerrar turno' })) cerrarTurno(); }}
                 className="pressable"
-                style={{ marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', minHeight: 44, borderRadius: 'var(--radius-full)', border: '1px solid var(--color-primary-border)', background: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', minHeight: 44, borderRadius: 'var(--radius-full)', border: '1px solid var(--color-primary-border)', background: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                 <IcoUserIcon width={16} height={16} /> {cajero.nombre} · salir
               </button>
             )}
@@ -265,7 +265,7 @@ const VentaPage: React.FC = () => {
             {totalItems > 0 && (
               <div style={{ position: 'relative' }}>
                 <ShoppingCartIcon size={26} color="var(--color-primary)" />
-                <span key={totalItems} className="anim-rebote" style={{ position: 'absolute', top: -6, right: -8, background: 'var(--color-danger)', color: '#fff', fontSize: 13, fontWeight: 700, borderRadius: 'var(--radius-full)', padding: '1px 6px', minWidth: 16, textAlign: 'center' }}>{totalItems}</span>
+                <span key={totalItems} className="anim-rebote" style={{ position: 'absolute', top: -6, right: -8, background: 'var(--color-danger)', color: '#fff', fontSize: 14, fontWeight: 700, borderRadius: 'var(--radius-full)', padding: '1px 6px', minWidth: 16, textAlign: 'center' }}>{totalItems}</span>
               </div>
             )}
             {isUnlocked && (
@@ -318,7 +318,7 @@ const VentaPage: React.FC = () => {
                   style={{ width: '100%', padding: '10px 14px', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', textAlign: 'left', fontFamily: 'inherit' }}>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{p.nombre}</div>
-                    <div style={{ fontSize: 13, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{p.codigo_barras}</div>
+                    <div style={{ fontSize: 14, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{p.codigo_barras}</div>
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-primary-dark)' }}>{formatMoney(p.precio)}</div>
                 </button>
@@ -330,12 +330,12 @@ const VentaPage: React.FC = () => {
         {/* Favoritos: acceso rápido a los más vendidos (con carrito vacío, o siempre si hay lugar al lado) */}
         {(state.cart.length === 0 || ancha) && favoritos.length > 0 && (
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)', marginBottom: 8 }}>Más vendidos</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-2)', marginBottom: 8 }}>Más vendidos</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
               {favoritos.map(p => (
                 <button key={p.id} onClick={() => pickProduct(p)} className="pressable"
                   style={{ padding: '10px 12px', border: 'none', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', gap: 3, boxShadow: 'var(--shadow-sm)' }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre}</span>
                   <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-primary-dark)', fontFamily: 'var(--font-mono)' }}>{formatMoney(p.precio)}</span>
                 </button>
               ))}
@@ -419,7 +419,7 @@ const VentaPage: React.FC = () => {
                 </div>
               ))}
               {promosCalc.lineas.map(l => (
-                <div key={l.nombre} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '2px 0', color: 'var(--color-primary-dark)' }}>
+                <div key={l.nombre} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '2px 0', color: 'var(--color-primary-dark)' }}>
                   <span>{l.nombre} <span style={{ opacity: 0.7 }}>({l.etiqueta})</span></span>
                   <span style={{ fontFamily: 'var(--font-mono)' }}>-{formatMoney(l.monto)}</span>
                 </div>
@@ -528,7 +528,7 @@ const VentaPage: React.FC = () => {
               <h2 className="anim-entrar" style={{ '--i': 4, fontSize: 24, fontWeight: 800 } as React.CSSProperties}>¡Venta registrada!</h2>
             </div>
             <pre style={{
-              fontFamily: 'var(--font-mono)', fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre',
+              fontFamily: 'var(--font-mono)', fontSize: 14.5, lineHeight: 1.5, whiteSpace: 'pre',
               background: 'var(--surface-2)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)',
               padding: 'var(--space-4)', overflowX: 'auto', color: 'var(--text)', margin: 0, marginBottom: 16,
             }}>{ticket}</pre>

@@ -127,7 +127,7 @@ const CajeroCierrePage: React.FC = () => {
     <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
       <div style={{ padding: 'var(--space-4)', maxWidth: 520, margin: '0 auto', paddingBottom: 'calc(40px + var(--sab,env(safe-area-inset-bottom)))', paddingTop: 'calc(var(--space-4) + var(--ion-safe-area-top, 0px))' }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>Cerrar caja</h1>
-        <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 16 }}>
+        <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 16 }}>
           Turno de <b>{cajero?.nombre ?? '—'}</b> · desde {desde.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
         </p>
 
@@ -169,7 +169,7 @@ const CajeroCierrePage: React.FC = () => {
                 </div>
               ) : (
                 <>
-                  <label style={{ fontSize: 13, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Fondo inicial (lo que había al empezar)</label>
+                  <label style={{ fontSize: 14, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Fondo inicial (lo que había al empezar)</label>
                   <input className="campo" type="text" inputMode="decimal" value={fondo} onChange={e => setFondo(e.target.value)} placeholder="0" style={{ ...inputStyle, marginBottom: 12 }} />
                 </>
               )}

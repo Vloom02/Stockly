@@ -68,7 +68,7 @@ const CalendarioVencimientos: React.FC<CalendarioProps> = ({ vencimientos, onDia
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 8 }}>
         {DIAS_SEMANA.map((d, i) => (
           <div key={i} style={{
-            textAlign: 'center', fontSize: 13, fontWeight: 600,
+            textAlign: 'center', fontSize: 14, fontWeight: 600,
             color: 'var(--text-3)', textTransform: 'uppercase',
           }}>{d}</div>
         ))}
@@ -110,7 +110,7 @@ const CalendarioVencimientos: React.FC<CalendarioProps> = ({ vencimientos, onDia
               }}
             >
               <span style={{
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: esHoy ? 700 : info ? 600 : 400,
                 color: info ? `var(--level-${info.nivelPeor}-fg)` : esHoy ? 'var(--brand-600)' : 'var(--text-2)',
               }}>{dia}</span>

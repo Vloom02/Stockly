@@ -55,7 +55,7 @@ const PreciosPage: React.FC = () => {
       <IonContent ref={lectorRef} style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
         <div style={{ padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px', maxWidth: 760, margin: '0 auto' }}>
           <Header title="Suba de precios" onBack={() => history.goBack()} />
-          <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 14px', lineHeight: 1.5 }}>
+          <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '0 0 14px', lineHeight: 1.5 }}>
             Buscá el producto, tocalo y poné el precio nuevo. Los chips te calculan el aumento.
           </p>
 
@@ -95,7 +95,7 @@ const PreciosPage: React.FC = () => {
                           {AUMENTOS.map(a => (
                             <button key={a} type="button"
                               onClick={() => setNuevo(String(Math.round(p.precio * (1 + a / 100) * 100) / 100))}
-                              style={{ flex: 1, padding: '7px 0', borderRadius: 'var(--radius-full)', border: '1px solid var(--brand-200)', background: 'var(--brand-50)', color: 'var(--brand-700)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                              style={{ flex: 1, padding: '7px 0', borderRadius: 'var(--radius-full)', border: '1px solid var(--brand-200)', background: 'var(--brand-50)', color: 'var(--brand-700)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                               +{a}%
                             </button>
                           ))}
@@ -114,7 +114,7 @@ const PreciosPage: React.FC = () => {
                           </button>
                         </div>
                         {cambio !== null && cambio !== 0 && (
-                          <p style={{ margin: '8px 0 0', fontSize: 13, color: cambio > 0 ? 'var(--brand-600)' : 'var(--level-vencido-fg)', fontWeight: 600 }}>
+                          <p style={{ margin: '8px 0 0', fontSize: 14, color: cambio > 0 ? 'var(--brand-600)' : 'var(--level-vencido-fg)', fontWeight: 600 }}>
                             {cambio > 0 ? '▲' : '▼'} {Math.abs(cambio)}% vs precio actual
                           </p>
                         )}

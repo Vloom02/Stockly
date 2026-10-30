@@ -187,13 +187,13 @@ const DashboardPage: React.FC = () => {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div>
-                  <div style={{ fontSize: 13, color: 'var(--text-3)' }}>Vencido</div>
+                  <div style={{ fontSize: 14, color: 'var(--text-3)' }}>Vencido</div>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800, color: 'var(--level-vencido-fg)' }}>
                     {formatearMoneda(res.valorVencido)}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, color: 'var(--text-3)' }}>En peligro</div>
+                  <div style={{ fontSize: 14, color: 'var(--text-3)' }}>En peligro</div>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800, color: 'var(--level-urgente-fg)' }}>
                     {formatearMoneda(res.valorEnRiesgo)}
                   </div>
@@ -214,8 +214,8 @@ const DashboardPage: React.FC = () => {
 
           {/* ─── Acciones rápidas ─────────────────────────────────────── */}
           <div className="lista-animada" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 24 }}>
-            <AccionCard icon={<PlusCircleIcon width={22} height={22} />} label="Nuevo lote" onClick={() => history.push('/lote/nuevo')} />
-            <AccionCard icon={<ArchiveBoxIcon width={22} height={22} />} label="Ver stock" onClick={() => history.push('/stock')} />
+            <AccionCard icon={<PlusCircleIcon width={22} height={22} />} label="Cargar" onClick={() => history.push('/lote/nuevo')} />
+            <AccionCard icon={<ArchiveBoxIcon width={22} height={22} />} label="Mercadería" onClick={() => history.push('/stock')} />
             <AccionCard icon={<ChartBarSquareIcon width={22} height={22} />} label="Reportes" onClick={() => history.push('/reportes')} />
           </div>
 
@@ -229,19 +229,7 @@ const DashboardPage: React.FC = () => {
                 ))}
               </div>
             </>
-          ) : state.productos.length > 0 ? (
-            <Card padding="md" style={{ borderColor: 'var(--level-ok-border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 'var(--radius)', background: 'var(--level-ok-bg)', color: 'var(--level-ok-fg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <CheckCircleIcon width={24} height={24} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 14, fontFamily: 'var(--font-display)' }}>Todo en orden</div>
-                  <div style={{ fontSize: 13, color: 'var(--text-2)' }}>No hay productos próximos a vencer</div>
-                </div>
-              </div>
-            </Card>
-          ) : (
+          ) : state.productos.length > 0 ? null /* el "Todo en orden" ya está arriba */ : (
             <EmptyState
               icon={<ArchiveBoxIcon width={32} height={32} />}
               title="Tu stock está vacío"
@@ -267,7 +255,7 @@ const DashboardPage: React.FC = () => {
                         <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {p.producto.nombre}
                         </div>
-                        <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
+                        <div style={{ fontSize: 14, color: 'var(--text-2)' }}>
                           Quedan <b style={{ color: 'var(--warning)' }}>{p.cantidadTotal}</b> · mínimo {p.producto.stockMinimo}
                           {p.producto.proveedor ? ` · ${p.producto.proveedor}` : ''}
                         </div>
@@ -310,8 +298,14 @@ const SecHeader: React.FC<{ title: string; tag?: string; onAction?: () => void }
   </div>
 );
 
-const NivelChip: React.FC<{ nivel: NivelAlerta; cantidad: number }> = ({ nivel, cantidad }) => (
-  <div style={{
+// Parece una tarjeta, así que se puede tocar: abre la lista de ese nivel.
+const NivelChip: React.FC<{ nivel: NivelAlerta; cantidad: number }> = ({ nivel, cantidad }) => {
+  const history = useHistory();
+  return (
+  <button type="button" className="pressable" onClick={() => history.push(`/stock?nivel=${nivel}&vista=lotes`)}
+    aria-label={`${cantidad} ${etiquetaNivel(nivel)}: ver la lista`}
+    style={{
+    border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'inherit',
     background: 'var(--surface)',
     borderRadius: 'var(--radius-lg)', padding: '14px 6px', textAlign: 'center',
     boxShadow: 'var(--shadow-md)',
@@ -320,8 +314,9 @@ const NivelChip: React.FC<{ nivel: NivelAlerta; cantidad: number }> = ({ nivel, 
     <div style={{ width: 9, height: 9, borderRadius: '50%', background: `var(--level-${nivel}-fg)`, marginBottom: 5, boxShadow: `0 0 0 3px var(--level-${nivel}-bg)` }} />
     <div style={{ fontFamily: 'var(--font-display)', fontSize: 21, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1, letterSpacing: '-0.02em' }}>{cantidad}</div>
     <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 2, fontWeight: 700 }}>{etiquetaNivel(nivel)}</div>
-  </div>
-);
+  </button>
+  );
+};
 
 // Tarjeta "¿qué hago hoy?": un mensaje, un color y un botón. Pensada para leer de un vistazo.
 const AvisoDeHoy: React.FC<{ vencidos: number; pronto: number; onVer: (nivel: 'vencido' | 'pronto') => void }> =
@@ -344,7 +339,7 @@ const AvisoDeHoy: React.FC<{ vencidos: number; pronto: number; onVer: (nivel: 'v
       return (
         <div role="status" className="tarjeta anim-pop" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', marginBottom: 16 }}>
           {icono('linear-gradient(160deg, #4cc38a, #1f8f5c)', '#fff', <path d="m5 12 5 5 9-10" />)}
-          <span style={{ fontSize: 19, fontWeight: 800 }}>Todo en orden: no hay nada por vencer.</span>
+          <span style={{ fontSize: 19, fontWeight: 800 }}>Todo en orden: no hay nada urgente.</span>
         </div>
       );
     }
@@ -392,18 +387,18 @@ export const LoteListItem: React.FC<{ lote: LoteConProducto; onClick: () => void
         <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>
           {lote.productoNombre}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-2)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-2)' }}>
           <span>{lote.cantidad} unid.</span>
           <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--text-3)' }} />
           <span>{lote.productoCategoria}</span>
         </div>
         <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <NivelBadge nivel={lote.nivelAlerta} />
-          <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>
+          <span style={{ fontSize: 14, color: 'var(--text-2)', fontWeight: 500 }}>
             {textoEstado(lote.fechaVencimiento)}
           </span>
           {liq.aplicar && (
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--level-ok-fg)', border: '1px solid var(--level-ok-border)', borderRadius: 'var(--radius-full)', padding: '1px 8px', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--level-ok-fg)', border: '1px solid var(--level-ok-border)', borderRadius: 'var(--radius-full)', padding: '1px 8px', whiteSpace: 'nowrap' }}>
               Liquidar {formatearMoneda(liq.precioFinal)} −{liq.pct}%
             </span>
           )}
@@ -413,7 +408,7 @@ export const LoteListItem: React.FC<{ lote: LoteConProducto; onClick: () => void
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.011em' }}>
           {formatearFecha(lote.fechaVencimiento)}
         </div>
-        <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>
+        <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>
           {formatearMoneda(lote.valorLote)}
         </div>
       </div>

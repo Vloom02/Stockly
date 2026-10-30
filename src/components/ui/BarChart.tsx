@@ -54,7 +54,7 @@ const BarChart: React.FC<BarChartProps> = ({
               {/* Valor arriba de la barra */}
               {tieneValor && (
                 <div style={{
-                  fontSize: 13, fontWeight: 600, color: 'var(--text-2)',
+                  fontSize: 14, fontWeight: 600, color: 'var(--text-2)',
                   marginBottom: 4, fontFamily: 'var(--font-mono)',
                   whiteSpace: 'nowrap',
                 }}>
@@ -80,7 +80,7 @@ const BarChart: React.FC<BarChartProps> = ({
               </div>
               {/* Etiqueta */}
               <div style={{
-                fontSize: 13, color: 'var(--text-2)', marginTop: 8,
+                fontSize: 14, color: 'var(--text-2)', marginTop: 8,
                 fontWeight: 500,
               }}>
                 {b.etiqueta}

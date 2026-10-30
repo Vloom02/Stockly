@@ -146,7 +146,7 @@ const CajeroGate: React.FC = () => {
         <PinPad
           mode="unlock"
           titulo="Hola, dueño"
-          subtitulo="Poné tu PIN para entrar a todo"
+          subtitulo="Poné tu clave para entrar a todo"
           extra={huellaDueno.activa ? (
             <BotonHuella onClick={async () => { if (await huellaDueno.entrar(entrarDueno)) setShowPinDueno(false); }} />
           ) : undefined}

@@ -1,3 +1,4 @@
+import { useConfirm } from '../lib/useConfirm';
 import React, { useState, useEffect } from 'react';
 import { IonContent, IonPage, IonToast } from '@ionic/react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -58,7 +59,7 @@ const ProductoForm: React.FC = () => {
   );
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [showScanner, setShowScanner] = useState(false);
-  const [confirmarBorrado, setConfirmarBorrado] = useState(false);
+  const confirmar = useConfirm();
   const [guardando, setGuardando] = useState(false);
 
   const lotes = productoId ? fefoSugeridos(productoId) : [];
@@ -149,12 +150,7 @@ const ProductoForm: React.FC = () => {
   const handleEliminar = async () => {
     if (!productoExistente?.id) return;
     if (lotes.length > 0) { setToast({ show: true, msg: 'Eliminá primero todos los lotes' }); return; }
-    if (!confirmarBorrado) {
-      setConfirmarBorrado(true);
-      setToast({ show: true, msg: 'Tocá de nuevo "Eliminar" para confirmar' });
-      setTimeout(() => setConfirmarBorrado(false), 4000);
-      return;
-    }
+    if (!(await confirmar(`¿Eliminar "${productoExistente.nombre}"?`, { peligro: true, okText: 'Eliminar' }))) return;
     await deleteProducto(productoExistente.id);
     history.goBack();
   };
@@ -272,7 +268,7 @@ const ProductoForm: React.FC = () => {
                   onClick={() => history.push(`/lote/nuevo?productoId=${productoExistente.id}`)}
                   icon={<PlusIcon width={16} height={16} />}>Cargar más</Button>
               </div>
-              <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 12px' }}>
+              <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '0 0 12px' }}>
                 Vendé primero las de arriba: son las que vencen antes
               </p>
               {faltan > 0 && (
@@ -295,7 +291,7 @@ const ProductoForm: React.FC = () => {
                             width: 28, height: 28, borderRadius: 'var(--radius-sm)',
                             background: colorNivel(nivel), color: '#fff',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontWeight: 700, fontSize: 13, flexShrink: 0,
+                            fontWeight: 700, fontSize: 14, flexShrink: 0,
                           }}>{i + 1}</div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 14, fontWeight: 600 }}>
@@ -303,12 +299,12 @@ const ProductoForm: React.FC = () => {
                             </div>
                             <div style={{ marginTop: 4 }}>
                               <NivelBadge nivel={nivel} />
-                              <span style={{ fontSize: 13, color: 'var(--text-2)', marginLeft: 8 }}>
+                              <span style={{ fontSize: 14, color: 'var(--text-2)', marginLeft: 8 }}>
                                 {textoEstado(l.fechaVencimiento)}
                               </span>
                             </div>
                           </div>
-                          <div style={{ fontSize: 13, fontWeight: 600 }}>{formatearFecha(l.fechaVencimiento)}</div>
+                          <div style={{ fontSize: 14, fontWeight: 600 }}>{formatearFecha(l.fechaVencimiento)}</div>
                         </div>
                       </Card>
                     );
@@ -329,7 +325,7 @@ const ProductoForm: React.FC = () => {
                       return (
                         <div key={i} style={{
                           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                          gap: 8, fontSize: 13, padding: '6px 4px',
+                          gap: 8, fontSize: 14, padding: '6px 4px',
                           borderBottom: i < historialPrecios.length - 1 ? '1px dashed var(--border)' : 'none',
                         }}>
                           <span style={{ color: 'var(--text-2)' }}>
@@ -339,7 +335,7 @@ const ProductoForm: React.FC = () => {
                             {formatearMoneda(Number(h.precio_anterior))} → <b>{formatearMoneda(Number(h.precio_nuevo))}</b>
                           </span>
                           <span style={{
-                            fontWeight: 700, fontSize: 13,
+                            fontWeight: 700, fontSize: 14,
                             color: subio ? 'var(--danger)' : 'var(--level-ok-fg)',
                           }}>
                             {subio ? '+' : ''}{pct}%
@@ -378,17 +374,19 @@ const ProductoForm: React.FC = () => {
 
 export const Header: React.FC<{ title: string; onBack: () => void; action?: React.ReactNode }> =
   ({ title, onBack, action }) => (
-    <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-      <button type="button" onClick={onBack}
+    <header style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, rowGap: 8, marginBottom: 20 }}>
+      {/* Con la palabra y grande (48 px): una flecha sola de 40 px no se entendía ni se acertaba. */}
+      <button type="button" onClick={onBack} className="pressable"
         style={{
-          width: 40, height: 40, borderRadius: 'var(--radius)',
+          minHeight: 48, padding: '0 16px 0 10px', borderRadius: 'var(--radius-full)',
           background: 'var(--surface)', border: 'none', boxShadow: 'var(--shadow-sm)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          display: 'inline-flex', alignItems: 'center', gap: 8,
           cursor: 'pointer', color: 'var(--text)', flexShrink: 0,
+          fontSize: 17, fontWeight: 600, fontFamily: 'inherit',
         }}>
-        <ArrowLeftIcon width={20} height={20} />
+        <ArrowLeftIcon width={22} height={22} aria-hidden="true" /> Volver
       </button>
-      <h1 style={{ fontSize: 20, fontWeight: 700, flex: 1, letterSpacing: '-0.02em' }}>{title}</h1>
+      <h1 style={{ fontSize: 20, fontWeight: 700, flex: 1, minWidth: 160, letterSpacing: '-0.02em' }}>{title}</h1>
       {action}
     </header>
   );
