@@ -2,6 +2,7 @@
 // Estado de ventas con FEFO. La venta descuenta stock real de lotes.
 // ═══════════════════════════════════════════════════════════════════════════
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
+import { formatearPlata } from '../../lib/numeros';
 import { Producto, Lote, CartItem, OutboxItem } from '../types';
 import { useAuth } from './AuthContext';
 import {
@@ -19,11 +20,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 async function hapticOk()  { try { await Haptics.impact({ style: ImpactStyle.Medium }); } catch { /* no-op */ } }
 async function hapticTap() { try { await Haptics.impact({ style: ImpactStyle.Light });  } catch { /* no-op */ } }
 
-export const formatMoney = (n: number) => {
-  const v = Number(n);
-  const d = Number.isInteger(Math.round(v * 100) / 100) ? 0 : 2; // "$1.000" se lee mejor que "$1.000,00"
-  return '$' + v.toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: 2 });
-};
+export const formatMoney = formatearPlata;
 
 interface VentasState {
   cart: CartItem[];
@@ -103,7 +100,7 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const cartRef = useRef(state.cart);
   cartRef.current = state.cart;
   // Tras una venta que llegó al servidor, Mercadería baja el stock nuevo.
-  const { sincronizarAhora } = useStore();
+  const { state: stock, sincronizarAhora } = useStore();
 
   // Carrito guardado: se recupera al entrar al comercio y se guarda en cada cambio.
   const carritoListo = useRef(false);
@@ -142,7 +139,7 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     window.addEventListener('offline', onOffline);
     // Reintento cada 30 s: con señal floja el aviso "online" no llega nunca y las ventas
     // guardadas quedaban en el celular (la caja no cerraba).
-    const t = setInterval(() => { if (navigator.onLine) doFlush(); }, 30_000);
+    const t = setInterval(() => { if (navigator.onLine && !document.hidden) doFlush(); }, 30_000);
     return () => {
       clearInterval(t);
       window.removeEventListener('online', onOnline);
@@ -150,27 +147,25 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     };
   }, [doFlush]);
 
-  // Baja catálogo + lotes de la sucursal (las dos consultas a la vez) para vender offline.
-  const refrescarCatalogo = useCallback(async () => {
-    if (!comercio || !sucursalActiva) return;
-    const [{ data: productos }, { data: lotes }] = await Promise.all([
-      supabase.from('productos').select('*').eq('comercio_id', comercio.id).eq('activo', true),
-      supabase.from('lotes').select('*').eq('comercio_id', comercio.id)
-        .eq('sucursal_id', sucursalActiva.id).eq('retirado', false).gt('cantidad', 0),
-    ]);
-    if (productos && lotes) await cacheCatalogo(productos, lotes);
-  }, [comercio, sucursalActiva]);
-
-  // Precarga al entrar o cambiar de sucursal (limpia el cache FEFO). Espera 2 s para no
-  // competir con el arranque de la app (primera pantalla y sync de Stockly).
+  // El catálogo para vender sin internet sale del de Stockly, que ya está en el equipo y se sincroniza de a
+  // poco (incluye lo cargado sin internet y los precios recién cambiados). Antes cada venta volvía a bajar
+  // del servidor todos los productos y lotes, en cada equipo.
   useEffect(() => {
+    if (!comercio || !sucursalActiva || !stock.loaded) return;
     lotesCacheRef.current = {};
-    if (!navigator.onLine) return;
-    const t = setTimeout(refrescarCatalogo, 2000);
+    const t = setTimeout(() => {
+      cacheCatalogo(
+        stock.productos.map(p => ({ id: p.id, comercio_id: comercio.id, nombre: p.nombre, codigo_barras: p.codigoBarras ?? '', categoria: p.categoria, precio: p.precio, activo: true })),
+        stock.lotes.filter(l => l.sucursalId === sucursalActiva.id && l.cantidad > 0).map(l => ({
+          id: l.id, comercio_id: comercio.id, producto_id: l.productoId, sucursal_id: l.sucursalId,
+          cantidad: l.cantidad, fecha_vencimiento: l.fechaVencimiento, retirado: false,
+        })),
+      ).catch(() => { /* queda el catálogo anterior */ });
+    }, 1000);
     return () => clearTimeout(t);
-  }, [refrescarCatalogo]);
+  }, [comercio, sucursalActiva, stock.loaded, stock.productos, stock.lotes]);
 
-  // Realtime: si Stockly cambia el stock (lotes), refrescar el cache local.
+  // Realtime: si otro equipo cambia el stock, Stockly baja solo lo nuevo (y eso actualiza el catálogo).
   // No bloquea nada; si Realtime no está activado, simplemente no llega nada.
   useEffect(() => {
     if (!comercio || !sucursalActiva) return;
@@ -183,12 +178,12 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           // Una venta toca varios lotes y llega un aviso por cada uno: se refresca una sola vez.
           lotesCacheRef.current = {};
           clearTimeout(t);
-          t = setTimeout(refrescarCatalogo, 1500);
+          t = setTimeout(() => { sincronizarAhora(); }, 1500);
         }
       )
       .subscribe();
     return () => { clearTimeout(t); supabase.removeChannel(canal); };
-  }, [comercio, sucursalActiva, refrescarCatalogo]);
+  }, [comercio, sucursalActiva, sincronizarAhora]);
 
   // ── Catálogo: primero lo guardado en el celular (al instante), después el servidor ──
   const agregarProducto = useCallback(async (prod: Producto) => {

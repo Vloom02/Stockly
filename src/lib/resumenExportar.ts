@@ -1,5 +1,6 @@
 // Resúmenes → Excel con formato (ExcelJS, se carga solo al exportar) y hoja para imprimir (HTML A4).
 import type { Worksheet } from 'exceljs';
+import { formatearPlata } from './numeros';
 import { Rango, ResumenVentas, Perdidas, Fila, ControlEmpleado, fechaCorta } from './resumen';
 import { METODOS } from '../ventas/lib/exportar';
 // La misma letra de la app, metida en la hoja: el visor de impresión de Android no ve las fuentes de la app.
@@ -18,7 +19,7 @@ export interface DatosResumen {
   productosStock: ProductoStock[];
 }
 
-const plata = (n: number) => '$' + Math.round(n).toLocaleString('es-AR');
+const plata = formatearPlata;
 const hora = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 const pct = (parte: number, todo: number) => (todo > 0 ? parte / todo : 0);
 

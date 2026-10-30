@@ -19,3 +19,11 @@ export function parseMonto(texto: string): number {
   }
   return /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : NaN;
 }
+
+/** La plata, igual en toda la app: "$1.000", "$999,50", "-$200". Antes Mercadería redondeaba y Vender no,
+ *  y el mismo precio se veía distinto en cada pantalla. */
+export function formatearPlata(n: number): string {
+  const v = Math.round(Number(n) * 100) / 100;
+  const d = Number.isInteger(v) ? 0 : 2;
+  return (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: 2 });
+}

@@ -18,6 +18,12 @@ export default defineConfig({
     // (TDZ) y pantalla en blanco en el build de producción de Ventas. El chunking
     // por defecto + lazy-load de rutas ya divide bien el bundle.
     chunkSizeWarningLimit: 2000,
+    // Ionic no marca sus componentes como "sin efectos al importarse" y entraban los ~90, aunque la app usa
+    // unos pocos: así queda solo lo que se importa (el paquete principal baja ~38%). No cambia cómo se
+    // parte el paquete (el problema de manualChunks era ese).
+    rollupOptions: {
+      treeshake: { moduleSideEffects: id => !/@ionic[\\/]core[\\/]components[\\/]ion-[^\\/]+\.js$/.test(id) },
+    },
   },
   test: {
     environment: 'node',

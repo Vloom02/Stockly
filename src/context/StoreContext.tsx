@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode, useCallback, useMemo, useState, useRef } from 'react';
+import { formatearPlata } from '../lib/numeros';
 import {
   Producto, Lote, Sucursal, Movimiento,
   NivelAlerta, Resumen, ProductoConLotes, LoteConProducto,
@@ -68,9 +69,7 @@ export function formatearFecha(iso: string): string {
   const [y, m, d] = iso.split('-');
   return `${d}/${m}/${y.slice(2)}`;
 }
-export function formatearMoneda(n: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
-}
+export const formatearMoneda = formatearPlata;
 export function textoEstado(fechaVencimiento: string): string {
   const d = diasRestantes(fechaVencimiento);
   if (d < 0) return `Vencido hace ${-d} día${-d === 1 ? '' : 's'}`;
@@ -204,7 +203,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const activos = productos.filter(p => p.activo);
     const lotesActivos = lotes.filter(l => !l.retirado);
     const sucursalesActivas = sucursales.filter(s => s.activa);
-    movimientos.sort((a, b) => b.fecha.localeCompare(a.fecha));
+    movimientos.sort((a, b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0)); // más nuevo primero (localeCompare era 2,5 veces más lento)
 
     const guardada = getSetting('sucursal-activa', '');
     const sucursalActivaId = sucursalesActivas.find(s => s.id === guardada)?.id || sucursalesActivas[0]?.id || '';
@@ -271,16 +270,24 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return () => window.removeEventListener('online', alVolver);
   }, [comercioId, sincronizarYRecargar]);
 
-  // ─── Sincronización periódica (cada 30s si hay internet) ──────────────────
+  // ─── Sincronización periódica: cada 30 s con la app a la vista ─────────────
+  // En segundo plano no gasta batería ni datos (al volver sincroniza de una). Si falla (Wi-Fi sin salida),
+  // espera cada vez más, hasta 10 min: antes reintentaba cada 30 s y en una hora mandaba todo a cuarentena.
   useEffect(() => {
     if (!comercioId) return;
-    const intervalo = setInterval(async () => {
-      if (!navigator.onLine || sincronizandoRef.current) return;
-      try {
-        await sincronizarYRecargar(comercioId);
-      } catch { /* */ }
-    }, 30000);
-    return () => clearInterval(intervalo);
+    let espera = 0;
+    let proximo = 0;
+    const ciclo = async () => {
+      if (!navigator.onLine || document.hidden || sincronizandoRef.current || Date.now() < proximo) return;
+      let error: string | null | undefined;
+      try { error = (await sincronizarYRecargar(comercioId)).error; } catch (e) { error = String(e); }
+      espera = error ? Math.min(Math.max(espera * 2, 30000), 600000) : 0;
+      proximo = Date.now() + espera;
+    };
+    const intervalo = setInterval(ciclo, 30000);
+    const alVolverALaApp = () => { if (!document.hidden) { proximo = 0; ciclo(); } };
+    document.addEventListener('visibilitychange', alVolverALaApp);
+    return () => { clearInterval(intervalo); document.removeEventListener('visibilitychange', alVolverALaApp); };
   }, [comercioId, sincronizarYRecargar]);
 
   const sincronizarAhora = useCallback(async () => {
