@@ -527,7 +527,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const i = idx.get(fechaLocalISO(new Date(m.fecha)).slice(0, 7));
       if (i === undefined) continue;
       const prod = state.productos.find(p => p.id === m.productoId);
-      const valor = Math.abs(m.cantidad) * (prod?.precio || 0);
+      const valor = Math.abs(m.cantidad) * (prod?.costo || prod?.precio || 0); // al costo: la plata perdida
       if (m.tipo === 'retiro_vencido') { res[i].valorVencido += valor; res[i].unidadesVencidas += Math.abs(m.cantidad); }
       else res[i].valorRoto += valor;
     }

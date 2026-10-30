@@ -165,9 +165,10 @@ export function resumirVentas(ventas: VentaRes[], items: ItemRes[], nombres: Rec
 
 export interface Perdidas { vencido: { unidades: number; valor: number }; roto: { unidades: number; valor: number } }
 
-/** Lo que se tiró en el período (retiros por vencido o roto), valuado a precio de venta. */
+/** Lo que se tiró en el período (retiros por vencido o roto), valuado al costo: es la plata que se perdió
+ *  (a precio de venta se veía más grande). Sin costo cargado, al precio. */
 export function perdidasEntre(movs: Movimiento[], productos: Producto[], desde: Date, hasta: Date): Perdidas {
-  const precio = new Map(productos.map(p => [p.id, p.precio || 0]));
+  const precio = new Map(productos.map(p => [p.id, p.costo || p.precio || 0]));
   const r: Perdidas = { vencido: { unidades: 0, valor: 0 }, roto: { unidades: 0, valor: 0 } };
   for (const m of movs) {
     if (m.tipo !== 'retiro_vencido' && m.tipo !== 'retiro_roto') continue;

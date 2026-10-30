@@ -94,7 +94,7 @@ describe('resumirVentas', () => {
 });
 
 describe('perdidasEntre', () => {
-  it('suma retiros por vencido y roto del período, a precio de venta', () => {
+  it('suma retiros por vencido y roto del período (sin costo: a precio de venta)', () => {
     const prods = [{ id: 'p1', precio: 100 }] as Producto[];
     const mov = (tipo: string, cantidad: number, fecha: string) => ({ tipo, cantidad, fecha, productoId: 'p1' }) as unknown as Movimiento;
     const p = perdidasEntre([
@@ -104,6 +104,12 @@ describe('perdidasEntre', () => {
       mov('retiro_vencido', -9, iso(2026, 8, 1)), // fuera del rango
     ], prods, new Date(2026, 9, 1), new Date(2026, 10, 1));
     expect(p).toEqual({ vencido: { unidades: 3, valor: 300 }, roto: { unidades: 1, valor: 100 } });
+  });
+
+  it('con costo cargado, la pérdida va al costo (la plata que se perdió)', () => {
+    const prods = [{ id: 'p1', precio: 100, costo: 60 }] as Producto[];
+    const m = { tipo: 'retiro_vencido', cantidad: -2, fecha: iso(2026, 9, 26), productoId: 'p1' } as unknown as Movimiento;
+    expect(perdidasEntre([m], prods, new Date(2026, 9, 1), new Date(2026, 10, 1)).vencido.valor).toBe(120);
   });
 });
 
