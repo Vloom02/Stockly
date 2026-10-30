@@ -3,7 +3,7 @@
 // lote por lote. Al aplicar, usa updateLote (registra movimiento 'ajuste').
 // ═══════════════════════════════════════════════════════════════════════════
 import React, { useMemo, useState } from 'react';
-import { IonContent, IonPage, IonToast } from '@ionic/react';
+import { IonContent, IonPage, IonToast, useIonViewWillEnter } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import { ClipboardDocumentCheckIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useStore, formatearFecha } from '../context/StoreContext';
@@ -13,7 +13,7 @@ import { useLectorFisico } from '../lib/useLectorFisico';
 import { useVentas } from '../ventas/context/VentasContext';
 
 const InventarioPage: React.FC = () => {
-  const { state, lotesEnriquecidos, updateLote } = useStore();
+  const { state, lotesEnriquecidos, updateLote, sincronizarAhora } = useStore();
   const { state: ventas } = useVentas();
   const history = useHistory();
   const [q, setQ] = useState('');
@@ -23,6 +23,8 @@ const InventarioPage: React.FC = () => {
   const [base, setBase] = useState<Record<string, number>>({});
   const [guardando, setGuardando] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: '' });
+  // Lo que vendió el otro equipo tiene que estar antes de contar: si no, el ajuste lo restaba otra vez.
+  useIonViewWillEnter(() => { sincronizarAhora().catch(() => {}); });
 
   const todos = useMemo(() => [...lotesEnriquecidos()]
     .sort((a, b) => a.productoNombre.localeCompare(b.productoNombre) || a.fechaVencimiento.localeCompare(b.fechaVencimiento)),

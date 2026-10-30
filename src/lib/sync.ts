@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import {
   obtenerPendientes, quitarDeOutbox, actualizarIntentos, bloquearItem,
-  put, getAll, setMeta, getMeta, ItemOutbox, TablaSync,
+  put, putVarios, getAll, setMeta, getMeta, ItemOutbox, TablaSync,
 } from './localDb';
 
 /**
@@ -86,6 +86,20 @@ export function agruparParaSubir(items: ItemOutbox[]): [string, ItemOutbox[]][] 
   return [...grupos].filter(([, g]) => g.length > 0);
 }
 
+/** Cambios viejos de un registro que tiene otro más nuevo en la cola (cada uno lleva la fila entera, así que
+ *  vale el último). Dos del mismo id en un upsert hacían fallar la tanda entera ("cannot affect row a second
+ *  time") y la cola quedaba trabada; uno viejo en cuarentena, al reintentarlo, pisaba al nuevo. */
+export function cambiosReemplazados(items: ItemOutbox[]): ItemOutbox[] {
+  const ultimo = new Map<string, ItemOutbox>();
+  for (const it of items) {
+    if (it.operacion !== 'update') continue;
+    const k = `${it.tabla}:${it.registroId}`;
+    const prev = ultimo.get(k);
+    if (!prev || it.creadoEn >= prev.creadoEn) ultimo.set(k, it);
+  }
+  return items.filter(it => it.operacion === 'update' && ultimo.get(`${it.tabla}:${it.registroId}`) !== it);
+}
+
 /** Lotes con el alta todavía en la cola: sus cambios esperan (un update o ajuste antes del alta lo crearía en 0). */
 async function lotesSinAlta(): Promise<Set<string>> {
   return new Set((await getAll<ItemOutbox>('outbox'))
@@ -93,6 +107,7 @@ async function lotesSinAlta(): Promise<Set<string>> {
 }
 
 export async function subirPendientes(comercioId: string): Promise<number> {
+  for (const viejo of cambiosReemplazados(await getAll<ItemOutbox>('outbox'))) await quitarDeOutbox(viejo.id);
   const pendientes = await obtenerPendientes();
   if (pendientes.length === 0) return 0;
 
@@ -304,14 +319,12 @@ export async function bajarCambios(comercioId: string): Promise<number> {
   }
 
   // Actualizar local (mapeando a camelCase via los mappers del store)
-  if (prods.data) {
-    for (const r of prods.data) await put('productos', mapProductoLocal(r));
-  }
+  if (prods.data) await putVarios('productos', prods.data.map(mapProductoLocal));
   if (lotes.data) {
     // La cantidad del servidor todavía no incluye los ajustes locales sin subir
     // (pendientes o en cuarentena): se suman encima para no "deshacerlos" en pantalla.
     const deltaPendiente = deltasPendientesPorLote(await getAll<ItemOutbox>('outbox'));
-    for (const r of lotes.data) {
+    await putVarios('lotes', lotes.data.map(r => {
       const local = mapLoteLocal(r);
       const delta = deltaPendiente.get(local.id);
       if (delta) {
@@ -319,13 +332,11 @@ export async function bajarCambios(comercioId: string): Promise<number> {
         local.cantidad = cantidadConDelta(local.cantidad, delta);
         local.retirado = local.retirado || local.cantidad === 0;
       }
-      await put('lotes', local);
-    }
+      return local;
+    }));
   }
-  if (sucs.data) {
-    for (const r of sucs.data) await put('sucursales', mapSucursalLocal(r));
-  }
-  for (const r of movsData) await put('movimientos', mapMovimientoLocal(r));
+  if (sucs.data) await putVarios('sucursales', sucs.data.map(mapSucursalLocal));
+  await putVarios('movimientos', movsData.map(mapMovimientoLocal));
 
   // Watermark = mayor timestamp del SERVIDOR visto, comparado por EPOCH (no como
   // string: ISO con distinto offset/decimales no ordenan lexicográficamente bien).

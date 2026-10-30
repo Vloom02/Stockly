@@ -77,6 +77,18 @@ export function put<T>(tabla: string, obj: T): Promise<void> {
   });
 }
 
+/** Varios de una vez, en una sola transacción: fila por fila, bajar 3.000 lotes tardaba 5 veces más. */
+export function putVarios<T>(tabla: string, objs: T[]): Promise<void> {
+  if (objs.length === 0) return Promise.resolve();
+  return new Promise((res, rej) => {
+    const s = store(tabla, 'readwrite');
+    for (const o of objs) s.put(o);
+    s.transaction.oncomplete = () => res();
+    s.transaction.onerror = () => rej(s.transaction.error);
+    s.transaction.onabort = () => rej(s.transaction.error);
+  });
+}
+
 export function del(tabla: string, id: string): Promise<void> {
   return new Promise((res, rej) => {
     const r = store(tabla, 'readwrite').delete(id);
