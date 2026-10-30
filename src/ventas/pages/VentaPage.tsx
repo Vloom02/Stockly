@@ -101,17 +101,11 @@ const VentaPage: React.FC = () => {
     if (!comercio) return;
     (async () => {
       try {
-        const desde = new Date(Date.now() - 30 * 86400000).toISOString();
-        const { data: items, error } = await supabase.from('ventas_items')
-          .select('producto_id, ventas_ventas!inner(fecha, comercio_id)')
-          .eq('comercio_id', comercio.id) // usa el índice (comercio_id, id) de ventas_items
-          .eq('ventas_ventas.comercio_id', comercio.id)
-          .gte('ventas_ventas.fecha', desde)
-          .limit(3000);
+        // Sumado en el servidor (migración 14): antes se bajaban hasta 3.000 renglones y el tope de 1.000
+        // del servidor dejaba "más vendidos" sacados de una parte cualquiera de las ventas.
+        const { data, error } = await supabase.rpc('vendido_por_producto', { p_comercio: comercio.id, p_dias: 30, p_limite: 8 });
         if (error) throw error; // sin internet: los guardados (abajo)
-        const conteo = new Map<string, number>();
-        for (const it of items ?? []) if (it.producto_id) conteo.set(it.producto_id, (conteo.get(it.producto_id) ?? 0) + 1);
-        const topIds = [...conteo.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(e => e[0]);
+        const topIds = ((data ?? []) as { producto_id: string }[]).map(r => r.producto_id);
         if (topIds.length === 0) { setFavoritos([]); return; }
         const { data: prods, error: e2 } = await supabase.from('productos').select('*').in('id', topIds).eq('activo', true);
         if (e2) throw e2;

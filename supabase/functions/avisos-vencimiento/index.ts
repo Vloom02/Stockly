@@ -68,16 +68,24 @@ Deno.serve(async (req) => {
     const limite = new Date(); limite.setDate(hoy.getDate() + DIAS_AVISO);
     const limiteISO = limite.toISOString().slice(0, 10);
 
-    const { data: lotes, error } = await supa
-      .from('lotes')
-      .select('comercio_id, fecha_vencimiento')
-      .eq('retirado', false).gt('cantidad', 0)
-      .not('fecha_vencimiento', 'is', null)
-      .lte('fecha_vencimiento', limiteISO);
-    if (error) return json({ error: error.message }, 500);
+    // De a 1.000 (el tope del servidor): con más lotes por vencer entre todos los comercios,
+    // los últimos se quedaban sin aviso.
+    const lotes: { comercio_id: string; fecha_vencimiento: string }[] = [];
+    for (let desde = 0; ; desde += 1000) {
+      const { data, error } = await supa
+        .from('lotes')
+        .select('comercio_id, fecha_vencimiento')
+        .eq('retirado', false).gt('cantidad', 0)
+        .not('fecha_vencimiento', 'is', null)
+        .lte('fecha_vencimiento', limiteISO)
+        .order('id').range(desde, desde + 999);
+      if (error) return json({ error: error.message }, 500);
+      lotes.push(...(data ?? []));
+      if (!data || data.length < 1000) break;
+    }
 
     const porComercio = new Map<string, { total: number; vencidos: number }>();
-    for (const l of lotes ?? []) {
+    for (const l of lotes) {
       const e = porComercio.get(l.comercio_id) ?? { total: 0, vencidos: 0 };
       e.total++;
       if (new Date(l.fecha_vencimiento + 'T00:00:00') < hoy) e.vencidos++;
@@ -89,8 +97,15 @@ Deno.serve(async (req) => {
     const fcmUrl = `https://fcm.googleapis.com/v1/projects/${SA.project_id}/messages:send`;
     let enviados = 0, borrados = 0;
 
+    // Los celulares de todos los comercios en una sola consulta (antes, una por comercio).
+    const { data: todos, error: errTokens } = await supa.from('push_tokens').select('token, comercio_id')
+      .in('comercio_id', [...porComercio.keys()]);
+    if (errTokens) return json({ error: errTokens.message }, 500);
+    const tokensDe = new Map<string, { token: string }[]>();
+    for (const t of todos ?? []) tokensDe.set(t.comercio_id, [...(tokensDe.get(t.comercio_id) ?? []), { token: t.token }]);
+
     for (const [comercioId, info] of porComercio) {
-      const { data: tokens } = await supa.from('push_tokens').select('token').eq('comercio_id', comercioId);
+      const tokens = tokensDe.get(comercioId);
       if (!tokens?.length) continue;
 
       const partes: string[] = [];

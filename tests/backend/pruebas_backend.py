@@ -335,6 +335,34 @@ def main():
          s in (200, 204) and pt and pt[0]['comercio_id'] == comercio and pt[0]['user_id'] == uid_d, f'{s} {r} {pt}')
     http('DELETE', f'/rest/v1/push_tokens?token=eq.{tok}', tok_d)
 
+    print('\n── J) Migración 14: ventas firmes y sumas en el servidor')
+    _, its = http('GET', f'/rest/v1/ventas_items?producto_id=eq.{prod}&select=cantidad,ventas_ventas!inner(anulada,fecha)', tok_d)
+    esperado = sum(i['cantidad'] for i in its if not i['ventas_ventas']['anulada'])
+    s, r = http('POST', '/rest/v1/rpc/vendido_por_producto', tok_d, {'p_comercio': comercio, 'p_dias': 3650})
+    fila = next((x for x in (r if s == 200 else []) if x['producto_id'] == prod), None)
+    caso('vendido_por_producto suma las unidades vendidas (sin anuladas)', fila is not None and float(fila['unidades']) == esperado,
+         f'{s} {fila} esperado={esperado}')
+    s, r = http('POST', '/rest/v1/rpc/vendido_por_producto', tok_v, {'p_comercio': comercio, 'p_dias': 3650})
+    caso('otro comercio no ve lo vendido ajeno', s == 200 and r == [], f'{s} {r}')
+
+    vid = str(uuid.uuid4())
+    s, r = http('POST', '/rest/v1/rpc/registrar_venta', tok_e, {'p': {
+        'id': vid, 'comercio_id': comercio, 'sucursal_id': sucursal, 'usuario': 'Juan', 'metodo_pago': 'efectivo',
+        'fecha': '2099-01-01T10:00:00Z', 'items': [{'producto_id': None, 'nombre': 'Varios', 'cantidad': 1, 'precio': 10}]}})
+    _, v = http('GET', f'/rest/v1/ventas_ventas?id=eq.{vid}&select=fecha', tok_d)
+    caso('una venta con la fecha del equipo adelantada queda con la hora del servidor',
+         s == 200 and v and v[0]['fecha'] < '2099', f'{s} {r} {v}')
+
+    _, l = http('GET', f'/rest/v1/lotes?id=eq.{lote}&select=cantidad', tok_d)
+    real = l[0]['cantidad']
+    mid = str(uuid.uuid4())
+    s, r = http('POST', '/rest/v1/rpc/ajustar_stock', tok_e, {'p': {
+        'mov_id': mid, 'comercio_id': comercio, 'lote_id': lote, 'tipo': 'ajuste', 'delta': 1,
+        'cantidad_anterior': 999, 'usuario': 'Juan', 'notas': 'antes viejo'}})
+    _, mv = http('GET', f'/rest/v1/movimientos?id=eq.{mid}&select=cantidad_anterior,cantidad_nueva', tok_d)
+    caso('el "antes" del ajuste lo pone el servidor (no el número viejo del equipo)',
+         s == 200 and mv and mv[0]['cantidad_anterior'] == real and mv[0]['cantidad_nueva'] == real + 1, f'{s} {r} {mv} real={real}')
+
     fallas = [n for n, ok in resultados if not ok]
     print(f'\n{len(resultados) - len(fallas)}/{len(resultados)} pruebas OK')
     sys.exit(1 if fallas else 0)

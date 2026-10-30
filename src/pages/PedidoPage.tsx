@@ -6,7 +6,6 @@ import { useStore } from '../context/StoreContext';
 import { useAuth } from '../context/AuthContext';
 import { compartirTexto } from '../lib/compartir';
 import { supabase } from '../lib/supabase';
-import { todas } from '../lib/todas';
 import { pedidoSugerido, ItemPedido } from '../lib/pedido';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -35,12 +34,11 @@ const PedidoPage: React.FC = () => {
       const m = new Map<string, number>();
       try {
         if (comercio && state.sucursalActivaId && navigator.onLine) {
-          const desde = new Date(Date.now() - DIAS_VENTAS * 86400000).toISOString();
-          const items = await todas<{ producto_id: string | null; cantidad: number }>((a, b) => supabase.from('ventas_items')
-            .select('producto_id, cantidad, ventas_ventas!inner(fecha, sucursal_id, anulada)')
-            .eq('comercio_id', comercio.id).eq('ventas_ventas.sucursal_id', state.sucursalActivaId)
-            .eq('ventas_ventas.anulada', false).gte('ventas_ventas.fecha', desde).order('id').range(a, b));
-          for (const i of items) if (i.producto_id) m.set(i.producto_id, (m.get(i.producto_id) ?? 0) + Number(i.cantidad));
+          // Sumado en el servidor (migración 14): antes se bajaban todos los renglones de 28 días.
+          const { data, error } = await supabase.rpc('vendido_por_producto',
+            { p_comercio: comercio.id, p_sucursal: state.sucursalActivaId, p_dias: DIAS_VENTAS });
+          if (error) throw error;
+          for (const r of (data ?? []) as { producto_id: string; unidades: number }[]) m.set(r.producto_id, Number(r.unidades));
         }
       } catch { /* sin datos de ventas: queda el stock mínimo */ }
       if (vigente) setVendido(m);
