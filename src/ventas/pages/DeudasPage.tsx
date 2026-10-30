@@ -16,6 +16,7 @@ import { BookOpenIcon, CheckIcon, MagnifyingGlass } from '../components/ui/icons
 
 import { parseMonto } from '../../lib/numeros';
 import BotonVolver from '../components/BotonVolver';
+import { repartirPago } from '../lib/fiado';
 import { ChatBubbleLeftRightIcon as IcoChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 interface DeudaRow { id: string; cliente: string; monto: number; pagada: boolean; fecha: string; }
 
@@ -133,6 +134,16 @@ const DeudasPage: React.FC = () => {
     registrarPago(d, saldoDe(d));
   };
 
+  // Entrega a cuenta de un cliente con varias deudas: se reparte pagando primero lo más viejo.
+  const cobrarACuenta = async (cliente: string) => {
+    const suyas = deudas.filter(d => clave(d.cliente) === clave(cliente));
+    const total = suyas.reduce((s, d) => s + saldoDe(d), 0);
+    const txt = window.prompt(`Entrega de ${cliente}. Debe en total ${formatMoney(total)}.\n¿Cuánto entrega?`, String(total));
+    if (txt === null) return;
+    const monto = Math.min(total, Math.round(parseMonto(txt) || 0));
+    for (const { deuda, monto: m } of repartirPago(suyas, saldoDe, monto)) await registrarPago(deuda, m);
+  };
+
   const recordar = (d: DeudaRow) => {
     const msg = `Hola ${d.cliente}! Te recuerdo que tenés una cuenta pendiente de ${formatMoney(saldoDe(d))} en ${comercio?.nombre ?? 'el almacén'}. ¡Gracias!`;
     window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
@@ -184,9 +195,19 @@ const DeudasPage: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 15 }}>{d.cliente}</div>
-                  <div style={{ fontSize: 14, color: 'var(--text-3)', marginTop: 2 }}>{new Date(d.fecha).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}</div>
+                  <div style={{ fontSize: 14, color: 'var(--text-3)', marginTop: 2 }}>
+                    {new Date(d.fecha).toLocaleDateString('es-AR')} · {(() => { const n = Math.floor((Date.now() - new Date(d.fecha).getTime()) / 86400000); return n <= 0 ? 'de hoy' : `hace ${n} día${n === 1 ? '' : 's'}`; })()}
+                  </div>
                   {abonado > 0 && <div style={{ fontSize: 14, color: 'var(--color-primary-dark)', marginTop: 3 }}>Abonado {formatMoney(abonado)} de {formatMoney(d.monto)}</div>}
-                  {porCliente[clave(d.cliente)]?.count > 1 && <Badge color="yellow" style={{ marginTop: 4 }}>Total cliente: {formatMoney(porCliente[clave(d.cliente)].total)}</Badge>}
+                  {porCliente[clave(d.cliente)]?.count > 1 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+                      <Badge color="yellow">Total cliente: {formatMoney(porCliente[clave(d.cliente)].total)}</Badge>
+                      <button type="button" onClick={() => cobrarACuenta(d.cliente)} className="pressable"
+                        style={{ minHeight: 44, padding: '0 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        Entrega a cuenta
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <span style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-danger)', fontFamily: 'var(--font-mono)' }}>{formatMoney(saldo)}</span>
               </div>

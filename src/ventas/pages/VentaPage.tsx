@@ -5,6 +5,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { IonContent, IonModal, IonToast, useIonAlert } from '@ionic/react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { useStore } from '../../context/StoreContext';
+import { saldosPorCliente, claveCliente, SaldoCliente } from '../lib/fiado';
 import { useVentas, formatMoney } from '../context/VentasContext';
 import { useAuth } from '../context/AuthContext';
 import { useEmpleado } from '../context/EmpleadoContext';
@@ -86,6 +87,21 @@ const VentaPage: React.FC = () => {
   const [recibido, setRecibido]   = useState(''); // efectivo recibido → vuelto
   const [fiado, setFiado]         = useState(false);
   const [masOpciones, setMasOpciones] = useState(false); // descuento / cliente / fiado
+  // Fiado: los clientes que ya deben, para elegirlos de una lista y ver cuánto deben antes de fiarles más.
+  const [deben, setDeben] = useState<SaldoCliente[]>([]);
+  useEffect(() => {
+    if (!fiado || !comercio || !navigator.onLine) return;
+    (async () => {
+      const { data: ds } = await supabase.from('ventas_deudas').select('id, cliente, monto').eq('comercio_id', comercio.id).eq('pagada', false);
+      const ids = (ds ?? []).map(d => d.id);
+      const pagado: Record<string, number> = {};
+      if (ids.length) {
+        const { data: ps } = await supabase.from('ventas_pagos').select('deuda_id, monto').in('deuda_id', ids);
+        for (const p of ps ?? []) pagado[p.deuda_id] = (pagado[p.deuda_id] ?? 0) + Number(p.monto);
+      }
+      setDeben(saldosPorCliente(ds ?? [], pagado));
+    })().catch(() => { /* sin la lista: se escribe el nombre */ });
+  }, [fiado, comercio]);
   const [processing, setProc]     = useState(false);
   const [ticket, setTicket]       = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
@@ -496,6 +512,24 @@ const VentaPage: React.FC = () => {
                     Escribí el nombre para anotar la deuda.
                   </div>
                 )}
+                {fiado && (() => {
+                  const k = claveCliente(cliente);
+                  const igual = deben.find(d => claveCliente(d.cliente) === k);
+                  const parecidos = deben.filter(d => !k || claveCliente(d.cliente).includes(k)).filter(d => d !== igual).slice(0, 6);
+                  return (<>
+                    {igual && <div role="status" style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-danger)', marginBottom: 10 }}>{igual.cliente} ya debe {formatMoney(igual.saldo)}</div>}
+                    {parecidos.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                        {parecidos.map(d => (
+                          <button key={d.cliente} type="button" onClick={() => setCliente(d.cliente)} className="pressable"
+                            style={{ minHeight: 44, padding: '0 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-full)', background: 'var(--surface)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                            {d.cliente} · debe {formatMoney(d.saldo)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>);
+                })()}
 
                 <label style={{ fontSize: 15, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Descuento ($)</label>
                 <input className="campo" type="text" inputMode="decimal" value={descuento} onChange={e => setDescuento(e.target.value)} placeholder="0"
