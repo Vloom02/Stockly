@@ -27,6 +27,11 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+        # Claves del Supabase LOCAL de demo (públicas, iguales en toda instalación): sin claves la app
+        # muestra "falta configurar" en vez del login y la prueba de arranque no tiene qué mirar.
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
       # El zip de cada actualización baja a todas las tablets: que no crezca sin darnos cuenta
       # (por ejemplo, ExcelJS entrando en el paquete principal). Hoy: ~283 KB comprimido.
       - name: Tope de tamaño
