@@ -3,7 +3,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { IonContent, IonModal, IonToast, useIonAlert } from '@ionic/react';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
+import { useStore } from '../../context/StoreContext';
 import { useVentas, formatMoney } from '../context/VentasContext';
 import { useAuth } from '../context/AuthContext';
 import { useEmpleado } from '../context/EmpleadoContext';
@@ -51,6 +52,17 @@ const VentaPage: React.FC = () => {
     return () => mq.removeEventListener('change', f);
   }, []);
   const history = useHistory();
+  // "Vender" desde Mercadería (/ventas?producto=ID): entra al carrito y la venta pasa por la caja.
+  const location = useLocation();
+  const { state: stock } = useStore();
+  useEffect(() => {
+    const id = new URLSearchParams(location.search).get('producto');
+    if (!id) return;
+    history.replace('/ventas');
+    const p = stock.productos.find(x => x.id === id);
+    if (p) agregarProducto({ id, comercio_id: comercio?.id ?? '', nombre: p.nombre, codigo_barras: p.codigoBarras ?? '', precio: p.precio, activo: true })
+      .then(r => toast$(r.msg, r.ok));
+  }, [location.search]);
   // Lector físico: suma al carrito aunque el cursor no esté en "Escaneá el código".
   const lectorRef = useLectorFisico(codigo => handleScan(codigo));
 
@@ -141,6 +153,7 @@ const VentaPage: React.FC = () => {
   const toast$ = (msg: string, ok = true) => setToast({ show: true, msg, color: ok ? 'success' : 'danger' });
 
   const handleScan = async (codigo: string) => {
+    setTicket(null); // el cliente siguiente ya está pasando sus cosas
     const r = await escanear(codigo);
     toast$(r.msg, r.ok);
     setScan('');
@@ -513,7 +526,7 @@ const VentaPage: React.FC = () => {
       </IonModal>
 
       {/* Ticket / comprobante tras la venta */}
-      <IonModal isOpen={!!ticket} onDidDismiss={() => setTicket(null)} breakpoints={[0, 1]} initialBreakpoint={1}>
+      <IonModal className="deja-leer" isOpen={!!ticket} onDidDismiss={() => setTicket(null)} breakpoints={[0, 1]} initialBreakpoint={1}>
         <IonContent>
           <div style={{ padding: 'var(--space-5)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, marginBottom: 16 }}>

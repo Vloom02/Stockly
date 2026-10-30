@@ -141,12 +141,13 @@ const DeudasPage: React.FC = () => {
   const filtered = useMemo(() => deudas.filter(d => !search || d.cliente.toLowerCase().includes(search.toLowerCase())), [deudas, search]);
   const total = useMemo(() => deudas.reduce((s, d) => s + saldoDe(d), 0), [deudas, pagos]);
 
-  // Agrupar por cliente
+  // Agrupar por cliente: lo que todavía debe (no lo fiado), y "Marta" = "marta " (se escribe a mano en cada venta).
+  const clave = (c: string) => c.trim().toLowerCase();
   const porCliente = useMemo(() => {
     const m: Record<string, { total: number; count: number }> = {};
-    for (const d of filtered) { (m[d.cliente] ??= { total: 0, count: 0 }); m[d.cliente].total += d.monto; m[d.cliente].count++; }
+    for (const d of filtered) { const k = clave(d.cliente); (m[k] ??= { total: 0, count: 0 }); m[k].total += saldoDe(d); m[k].count++; }
     return m;
-  }, [filtered]);
+  }, [filtered, pagos]);
 
   return (
     <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
@@ -185,7 +186,7 @@ const DeudasPage: React.FC = () => {
                   <div style={{ fontWeight: 600, fontSize: 15 }}>{d.cliente}</div>
                   <div style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 2 }}>{new Date(d.fecha).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}</div>
                   {abonado > 0 && <div style={{ fontSize: 13, color: 'var(--color-primary-dark)', marginTop: 3 }}>Abonado {formatMoney(abonado)} de {formatMoney(d.monto)}</div>}
-                  {porCliente[d.cliente]?.count > 1 && <Badge color="yellow" style={{ marginTop: 4 }}>Total cliente: {formatMoney(porCliente[d.cliente].total)}</Badge>}
+                  {porCliente[clave(d.cliente)]?.count > 1 && <Badge color="yellow" style={{ marginTop: 4 }}>Total cliente: {formatMoney(porCliente[clave(d.cliente)].total)}</Badge>}
                 </div>
                 <span style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-danger)', fontFamily: 'var(--font-mono)' }}>{formatMoney(saldo)}</span>
               </div>

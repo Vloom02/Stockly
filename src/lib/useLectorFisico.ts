@@ -40,7 +40,8 @@ export function useLectorFisico<T extends HTMLElement = HTMLDivElement>(alLeer: 
     const onKey = (e: KeyboardEvent) => {
       const pagina = ref.current?.closest('.ion-page');
       if (!pagina || pagina.classList.contains('ion-page-hidden')) return;
-      if (document.querySelector('ion-modal:not(.overlay-hidden), ion-alert:not(.overlay-hidden)')) return;
+      // `.deja-leer`: un diálogo que no frena el lector (el comprobante de Vender se cierra con el próximo código).
+      if (document.querySelector('ion-modal:not(.overlay-hidden):not(.deja-leer), ion-alert:not(.overlay-hidden)')) return;
       if (esEditable(document.activeElement)) return;
       const codigo = detectar(e.key, e.timeStamp);
       if (codigo) {

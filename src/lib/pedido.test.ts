@@ -17,6 +17,14 @@ describe('pedidoSugerido', () => {
     expect([...r.entries()]).toEqual([['Sin proveedor', [{ nombre: 'arroz', sugerido: 7, tenes: 1, porSemana: 0 }]]]);
   });
 
+  it('lo vencido no cuenta como que lo tenés', () => {
+    const leche = { producto: { id: 'leche', nombre: 'leche' }, cantidadTotal: 10,
+      lotes: [{ cantidad: 8, fechaVencimiento: '2026-10-01' }, { cantidad: 2, fechaVencimiento: '2026-12-01' }] } as unknown as ProductoConLotes;
+    // 1 por día, 15 días → 15; tengo 2 que sirven (los 8 vencidos no) → pedir 13
+    const r = pedidoSugerido([leche], new Map([['leche', 28]]), 28, 15, '2026-10-29');
+    expect(r.get('Sin proveedor')).toEqual([{ nombre: 'leche', sugerido: 13, tenes: 2, porSemana: 7 }]);
+  });
+
   it('si lo que hay alcanza para los días, no aparece', () => {
     expect(pedidoSugerido([prod('leche', 30)], new Map([['leche', 28]]), 28, 15).size).toBe(0);
   });

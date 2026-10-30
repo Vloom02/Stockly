@@ -283,12 +283,13 @@ const LoteForm: React.FC = () => {
             <Card padding="md" style={{ marginBottom: 12, border: vencidaPrimero ? '2px solid var(--level-vencido-fg)' : undefined }}>
               <h2 style={{ fontSize: 19, fontWeight: 700, marginBottom: 4 }}>{vencidaPrimero ? 'Esta mercadería está vencida' : 'Sacar mercadería'}</h2>
               <p style={{ fontSize: 16, color: 'var(--text-2)', margin: '0 0 12px' }}>
-                {vencidaPrimero ? 'Sacala de la góndola y tocá "Vencido" para anotarla.' : 'Anotá si se vendió, se venció o se rompió. Queda en el historial.'}
+                {vencidaPrimero ? 'Sacala de la góndola y tocá "Vencido" para anotarla.' : 'Vendela por la caja, o anotá si se venció o se rompió. Queda en el historial.'}
               </p>
               {!showRetirar ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                  <RetiroBtn icon={<BanknotesIcon width={20} height={20} />} label="Venta" color="var(--brand-600)"
-                    onClick={() => { setTipoRetiro('retiro_venta'); setShowRetirar(true); }} />
+                  {/* Vender va por la caja: así entra al arqueo, a la ganancia y al pedido sugerido. */}
+                  <RetiroBtn icon={<BanknotesIcon width={20} height={20} />} label="Vender" color="var(--brand-600)"
+                    onClick={() => history.push(`/ventas?producto=${loteExistente.productoId}`)} />
                   <RetiroBtn icon={<TrashIcon width={20} height={20} />} label="Vencido" color="var(--danger)"
                     onClick={() => { setTipoRetiro('retiro_vencido'); setCantRetirar(loteExistente.cantidad.toString()); setShowRetirar(true); }} />
                   <RetiroBtn icon={<HeartIcon width={20} height={20} />} label="Roto" color="var(--warning)"
