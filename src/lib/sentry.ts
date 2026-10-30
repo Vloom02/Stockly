@@ -16,9 +16,13 @@ export function initSentry(): void {
   Sentry.init({
     dsn: DSN,
     environment: import.meta.env.MODE,
+    release: `stockly@${__APP_VERSION__}`, // ver errores por versión antes de soltarla a todos
     sendDefaultPii: false,   // no enviar IP ni datos personales por defecto (privacidad)
     tracesSampleRate: 0,     // sin performance tracing → cuida la cuota del plan gratis
     // Ruido esperable en una app offline-first: no lo reportamos.
     ignoreErrors: ['Failed to fetch', 'NetworkError', 'Load failed', 'AbortError', 'Timeout'],
+    // Los toques guardan el nombre del botón ("Cobrar a Marta", un empleado) y la consola puede llevar
+    // datos de una fila: nada de eso viaja (datos personales de clientes de fiado y empleados).
+    beforeBreadcrumb: (b) => (b.category === 'ui.click' || b.category === 'console' ? null : b),
   });
 }

@@ -48,11 +48,11 @@ En el CSS de la app, las barras fijas usan `var(--sab, env(safe-area-inset-botto
 ## 2. Firma release (keystore)
 
 En `android/app/build.gradle`, dentro de `android { }`, leer el keystore externo
-(que vive fuera del repo en `C:\Users\alanm\Downloads\APKs\keystore\`):
+(que vive fuera del repo en `D:\Claude\firmas\`; ver también docs/PUBLICAR.md):
 
 ```gradle
-def ksFile = file("C:/Users/alanm/Downloads/APKs/keystore/apps.keystore")
-def ksProps = file("C:/Users/alanm/Downloads/APKs/keystore/keystore.properties")
+def ksFile = file("D:/Claude/firmas/apps.keystore")
+def ksProps = file("D:/Claude/firmas/keystore.properties")
 if (ksFile.exists() && ksProps.exists()) {
     def props = new Properties()
     ksProps.withInputStream { props.load(it) }
