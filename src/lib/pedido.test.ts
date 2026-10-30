@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { pedidoSugerido } from './pedido';
-import { ProductoConLotes } from '../types';
+import { pedidoSugerido, vendidoDesdeMovimientos } from './pedido';
+import { ProductoConLotes, Movimiento } from '../types';
 
 const prod = (id: string, cantidadTotal: number, extra: { stockMinimo?: number; proveedor?: string } = {}) =>
   ({ producto: { id, nombre: id, ...extra }, cantidadTotal }) as unknown as ProductoConLotes;
@@ -27,5 +27,18 @@ describe('pedidoSugerido', () => {
 
   it('si lo que hay alcanza para los días, no aparece', () => {
     expect(pedidoSugerido([prod('leche', 30)], new Map([['leche', 28]]), 28, 15).size).toBe(0);
+  });
+});
+
+describe('vendidoDesdeMovimientos', () => {
+  it('suma las ventas del local en el período y resta las devoluciones', () => {
+    const mv = (tipo: string, cantidad: number, fecha: string, notas = '', sucursalId = 's1') =>
+      ({ tipo, cantidad, fecha, notas, sucursalId, productoId: 'p' }) as unknown as Movimiento;
+    const m = vendidoDesdeMovimientos([
+      mv('retiro_venta', 3, '2026-10-20'), mv('retiro_venta', 2, '2026-10-21'),
+      mv('ajuste', 1, '2026-10-22', 'Devolución venta 1234'), mv('ajuste', 5, '2026-10-22', 'Conteo'),
+      mv('retiro_venta', 9, '2026-09-01'), mv('retiro_venta', 4, '2026-10-21', '', 's2'),
+    ], 's1', new Date('2026-10-01'));
+    expect(m.get('p')).toBe(4);
   });
 });

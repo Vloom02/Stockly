@@ -54,11 +54,15 @@ async function revisar(): Promise<Resultado> {
   const { CapacitorUpdater } = await import('@capgo/capacitor-updater');
   const nativa = (await CapacitorUpdater.getBuiltinVersion()).version;
   const plan = planDeActualizacion(rel, __APP_VERSION__, nativa);
+  const { bundles } = await CapacitorUpdater.list();
+  // Freno: si se despublicó una versión, lo que ya se había bajado de ella no se aplica.
+  const ultima = rel.tag_name?.replace(/^v/, '');
+  for (const b of bundles) if (ultima && esMasNueva(b.version, ultima)) await CapacitorUpdater.delete({ id: b.id }).catch(() => {});
   if (plan.tipo === 'apk') return { tipo: 'apk', version: plan.version, url: plan.url };
-  if (plan.tipo === 'nada') return plan;
+  // Una versión que ya falló en este equipo (Capgo volvió atrás) no se vuelve a bajar en cada arranque.
+  if (plan.tipo === 'nada' || fallidas().includes(plan.version)) return { tipo: 'nada' };
   // Si ya se bajó en otra apertura, no se vuelve a bajar. NO se usa next(): aplicaba la versión
   // al pasar a segundo plano y la recarga vaciaba el carrito (ir a WhatsApp o a Mercado Pago).
-  const { bundles } = await CapacitorUpdater.list();
   if (!bundles.some(b => b.version === plan.version && listo(b.status))) {
     await CapacitorUpdater.download({ url: plan.url, version: plan.version, checksum: plan.checksum });
   }
@@ -82,6 +86,17 @@ export async function buscarAhora(): Promise<Resultado> {
   return revisar();
 }
 
+const KEY_INTENTO = 'actualizacion:intento';
+const KEY_FALLIDAS = 'actualizacion:fallidas';
+function fallidas(): string[] {
+  try { return JSON.parse(localStorage.getItem(KEY_FALLIDAS) ?? '[]'); } catch { return []; }
+}
+
+/** Si se intentó aplicar `intento` y la app arrancó en una versión más vieja, esa versión falló. */
+export function anotarSiFallo(intento: string | null, actual: string, lista: string[]): string[] {
+  return intento && esMasNueva(intento, actual) && !lista.includes(intento) ? [...lista, intento] : lista;
+}
+
 const listo = (s: string) => s !== 'error' && s !== 'deleted' && s !== 'deleting' && s !== 'downloading';
 
 /** La versión bajada más nueva que la actual, o null. */
@@ -99,7 +114,8 @@ export async function aplicarPendiente(): Promise<boolean> {
   try {
     const { CapacitorUpdater } = await import('@capgo/capacitor-updater');
     const sig = versionParaAplicar((await CapacitorUpdater.list()).bundles, __APP_VERSION__);
-    if (!sig) return false;
+    if (!sig || fallidas().includes(sig.version)) return false;
+    try { localStorage.setItem(KEY_INTENTO, sig.version); } catch { /* */ }
     await CapacitorUpdater.set({ id: sig.id });
     return true;
   } catch (e) { console.warn('[actualizacion]', e); return false; }
@@ -108,6 +124,10 @@ export async function aplicarPendiente(): Promise<boolean> {
 /** Avisa que esta versión arrancó bien; si no se llama, Capgo vuelve a la anterior. */
 export async function marcarArranqueOk(): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
+  try {
+    localStorage.setItem(KEY_FALLIDAS, JSON.stringify(anotarSiFallo(localStorage.getItem(KEY_INTENTO), __APP_VERSION__, fallidas())));
+    localStorage.removeItem(KEY_INTENTO);
+  } catch { /* */ }
   const { CapacitorUpdater } = await import('@capgo/capacitor-updater');
   await CapacitorUpdater.notifyAppReady();
 }

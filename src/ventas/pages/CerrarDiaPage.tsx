@@ -4,7 +4,8 @@
 // Solo lee: los cierres de caja los sigue haciendo cada empleado al terminar su turno.
 // ═══════════════════════════════════════════════════════════════════════════
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { IonContent, IonToast, useIonViewWillEnter } from '@ionic/react';
+import { IonContent, IonToast } from '@ionic/react';
+import { useAlVolver } from '../../lib/useAlVolver';
 import { useHistory } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
@@ -52,7 +53,7 @@ const CerrarDiaPage: React.FC = () => {
     if (!rc.error) setCierres((rc.data ?? []) as Cierre[]);
   }, [comercio, sucursalActiva]);
   useEffect(() => { cargar(); }, [cargar]);
-  useIonViewWillEnter(() => { cargar(); });
+  useAlVolver(() => { cargar(); });
 
   const porMetodo = useMemo(() => totalesPorMetodo(ventas), [ventas]);
   const total = ventas.reduce((s, v) => s + Number(v.total), 0);

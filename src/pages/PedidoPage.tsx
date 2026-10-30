@@ -6,7 +6,8 @@ import { useStore } from '../context/StoreContext';
 import { useAuth } from '../context/AuthContext';
 import { compartirTexto } from '../lib/compartir';
 import { supabase } from '../lib/supabase';
-import { pedidoSugerido, ItemPedido } from '../lib/pedido';
+import { pedidoSugerido, ItemPedido, vendidoDesdeMovimientos } from '../lib/pedido';
+import { leerUnidadesPendientes } from '../ventas/lib/outbox';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
@@ -40,11 +41,16 @@ const PedidoPage: React.FC = () => {
           if (error) throw error;
           for (const r of (data ?? []) as { producto_id: string; unidades: number }[]) m.set(r.producto_id, Number(r.unidades));
         }
-      } catch { /* sin datos de ventas: queda el stock mínimo */ }
+      } catch { /* sin internet: lo de abajo */ }
+      // Sin internet (o sin la suma del servidor): del historial que ya está en el equipo, más lo vendido sin subir.
+      if (m.size === 0 && state.sucursalActivaId) {
+        for (const [k, v] of vendidoDesdeMovimientos(state.movimientos, state.sucursalActivaId, new Date(Date.now() - DIAS_VENTAS * 86400000))) m.set(k, v);
+        for (const [k, v] of await leerUnidadesPendientes(state.sucursalActivaId).catch(() => new Map<string, number>())) m.set(k, (m.get(k) ?? 0) + v);
+      }
       if (vigente) setVendido(m);
     })();
     return () => { vigente = false; };
-  }, [comercio, state.sucursalActivaId]);
+  }, [comercio, state.sucursalActivaId, state.movimientos]);
 
   const porProveedor = useMemo(
     () => [...pedidoSugerido(productosConLotes(), vendido ?? new Map(), DIAS_VENTAS, dias).entries()].map(([proveedor, items]) => ({ proveedor, items })),

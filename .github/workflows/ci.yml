@@ -26,3 +26,19 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      # El zip de cada actualización baja a todas las tablets: que no crezca sin darnos cuenta
+      # (por ejemplo, ExcelJS entrando en el paquete principal). Hoy: ~283 KB comprimido.
+      - name: Tope de tamaño
+        run: |
+          principal=$(ls -S dist/assets/index-*.js | head -1)
+          gz=$(gzip -c "$principal" | wc -c)
+          total=$(du -sb dist | cut -f1)
+          echo "principal: $gz bytes comprimido · dist: $total bytes"
+          [ "$gz" -le 340000 ] || { echo "El paquete principal pasó los 340 KB comprimido"; exit 1; }
+          [ "$total" -le 3700000 ] || { echo "dist pasó los 3,7 MB"; exit 1; }
+      - name: Prueba de arranque sobre el paquete
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test
+        env:
+          CI: true

@@ -1,6 +1,6 @@
 // Pedido sugerido: cuánto pedir de cada producto para cubrir N días según lo que se vendió,
 // y como piso el stock mínimo (reponer hasta el doble). Los negativos suman a lo que falta.
-import { ProductoConLotes } from '../types';
+import { ProductoConLotes, Movimiento } from '../types';
 import { fechaLocalISO } from './vencimientos';
 
 export interface ItemPedido { nombre: string; sugerido: number; tenes: number; porSemana: number; }
@@ -24,4 +24,16 @@ export function pedidoSugerido(productos: ProductoConLotes[], vendido: Map<strin
   }
   for (const items of grupos.values()) items.sort((a, b) => b.sugerido - a.sugerido);
   return new Map([...grupos.entries()].sort(([a], [b]) => a.localeCompare(b, 'es')));
+}
+
+/** Sin internet: lo vendido sale del historial que ya está en el equipo (cada venta deja un retiro_venta
+ *  por lote; las anulaciones vuelven como ajuste "Devolución venta…"). */
+export function vendidoDesdeMovimientos(movs: Movimiento[], sucursalId: string, desde: Date): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const x of movs) {
+    if (x.sucursalId !== sucursalId || new Date(x.fecha) < desde) continue;
+    const signo = x.tipo === 'retiro_venta' ? 1 : x.tipo === 'ajuste' && (x.notas ?? '').startsWith('Devolución venta') ? -1 : 0;
+    if (signo) m.set(x.productoId, (m.get(x.productoId) ?? 0) + signo * Math.abs(x.cantidad));
+  }
+  return m;
 }

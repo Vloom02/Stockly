@@ -2,6 +2,7 @@ import React from 'react';
 import { CloudIcon, ArrowPathIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { useOnline } from '../utils/useOnline';
 import { useStore } from '../context/StoreContext';
+import { useVentas } from '../ventas/context/VentasContext';
 
 /**
  * Banner que informa el estado de conexión y sincronización.
@@ -11,7 +12,13 @@ import { useStore } from '../context/StoreContext';
  */
 const SyncBanner: React.FC = () => {
   const online = useOnline();
-  const { sincronizando, state, sincronizarAhora, reintentarFallidos } = useStore();
+  const { sincronizando, state: stock, sincronizarAhora, reintentarFallidos } = useStore();
+  const { state: ventas, sincronizar: mandarVentas } = useVentas();
+  // Las dos colas juntas: antes Inicio decía "todo bien" con ventas sin subir.
+  const state = {
+    pendientesSync: stock.pendientesSync + Math.max(0, ventas.outboxLen - ventas.bloqueados),
+    bloqueadosSync: stock.bloqueadosSync + ventas.bloqueados,
+  };
 
   // Si todo OK y sin pendientes, no mostrar nada
   if (online && !sincronizando && state.pendientesSync === 0 && state.bloqueadosSync === 0) return null;
@@ -21,7 +28,7 @@ const SyncBanner: React.FC = () => {
   let icon = <CloudIcon width={16} height={16} />;
   let texto = '';
   let clickable = false;
-  let accion = () => { sincronizarAhora(); };
+  let accion = () => { sincronizarAhora(); mandarVentas(); };
 
   // En cuarentena: no se mandan solos (el servidor los rechazó). Antes no se veían en ningún lado.
   const n = state.bloqueadosSync;
@@ -31,7 +38,7 @@ const SyncBanner: React.FC = () => {
     icon = <ExclamationTriangleIcon width={18} height={18} />;
     texto = `${n} cambio${n !== 1 ? 's' : ''} no se pudo guardar en internet · tocá acá para reintentar`;
     clickable = true;
-    accion = () => { reintentarFallidos(); };
+    accion = () => { reintentarFallidos(); mandarVentas(); };
   } else if (!online) {
     bg = 'var(--level-aviso-bg)';
     color = 'var(--level-aviso-fg)';

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { esMasNueva, planDeActualizacion, versionParaAplicar } from './actualizacion';
+import { esMasNueva, planDeActualizacion, versionParaAplicar, anotarSiFallo } from './actualizacion';
 
 describe('esMasNueva', () => {
   it('compara número por número (no como texto)', () => {
@@ -43,5 +43,15 @@ describe('versionParaAplicar', () => {
   });
   it('si no hay nada más nuevo, no aplica nada', () => {
     expect(versionParaAplicar([b('1.2.4', 'success'), b('1.2.0', 'pending')], '1.2.4')).toBeNull();
+  });
+});
+
+describe('anotarSiFallo', () => {
+  it('si se intentó la 1.3.0 y arrancó la 1.2.9, la 1.3.0 falló', () => {
+    expect(anotarSiFallo('1.3.0', '1.2.9', [])).toEqual(['1.3.0']);
+  });
+  it('si arrancó la que se intentó, no falló; sin intento, nada', () => {
+    expect(anotarSiFallo('1.3.0', '1.3.0', [])).toEqual([]);
+    expect(anotarSiFallo(null, '1.3.0', ['1.2.0'])).toEqual(['1.2.0']);
   });
 });

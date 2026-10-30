@@ -289,7 +289,7 @@ const ProductoForm: React.FC = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <div style={{
                             width: 28, height: 28, borderRadius: 'var(--radius-sm)',
-                            background: colorNivel(nivel), color: '#fff',
+                            background: `var(--level-${nivel}-bg)`, color: colorNivel(nivel), // en oscuro el color del nivel es claro: no va de fondo
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             fontWeight: 700, fontSize: 14, flexShrink: 0,
                           }}>{i + 1}</div>

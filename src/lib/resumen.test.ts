@@ -125,8 +125,19 @@ describe('controlEmpleados', () => {
        { cajero_nombre: 'Rosa', diferencia: 200, hasta: iso(2026, 9, 21), creado_en: iso(2026, 9, 21) }],
       desde, hasta);
     expect(r).toEqual([
-      { nombre: 'Rosa', ventas: 10, vendido: 5000, unidadesSinStock: 2, cierres: 2, diferenciaCaja: -300 },
-      { nombre: 'Juan', ventas: 0, vendido: 0, unidadesSinStock: 1, cierres: 0, diferenciaCaja: 0 },
+      { nombre: 'Rosa', ventas: 10, vendido: 5000, unidadesSinStock: 2, cierres: 2, diferenciaCaja: -300, faltantes: 0, paraMirar: false },
+      { nombre: 'Juan', ventas: 0, vendido: 0, unidadesSinStock: 1, cierres: 0, diferenciaCaja: 0, faltantes: 0, paraMirar: false },
     ]);
+  });
+
+  it('marca para mirar a quien saca mucho más que el resto al contar o por roturas', () => {
+    const desde = new Date(2026, 9, 1), hasta = new Date(2026, 10, 1);
+    const mov = (usuario: string, tipo: string, cantidad: number, notas = '') =>
+      ({ usuario, cantidad, notas, fecha: iso(2026, 9, 20), tipo, productoId: 'p' }) as unknown as Movimiento;
+    const r = controlEmpleados([{ nombre: 'Rosa', cantidad: 1, total: 10 }, { nombre: 'Juan', cantidad: 1, total: 10 }, { nombre: 'Ana', cantidad: 1, total: 10 }], [
+      mov('Rosa', 'ajuste', -6), mov('Rosa', 'retiro_roto', 2), mov('Juan', 'ajuste', -1),
+      mov('Ana', 'ajuste', 4, 'Devolución venta 12'), mov('Automático', 'ajuste', -20),
+    ], [], desde, hasta);
+    expect(r.map(e => [e.nombre, e.faltantes, e.paraMirar])).toEqual([['Rosa', 8, true], ['Juan', 1, false], ['Ana', 0, false]]);
   });
 });

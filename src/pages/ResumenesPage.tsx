@@ -4,7 +4,8 @@
 // Ventas: del servidor (hace falta internet). Mercadería: lo local, siempre al día.
 // ═══════════════════════════════════════════════════════════════════════════
 import React, { useEffect, useMemo, useState } from 'react';
-import { IonContent, useIonToast, useIonViewWillEnter } from '@ionic/react';
+import { IonContent, useIonToast } from '@ionic/react';
+import { useAlVolver } from '../lib/useAlVolver';
 import { useHistory } from 'react-router-dom';
 import { ArrowDownTrayIcon, PrinterIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, WifiIcon } from '@heroicons/react/24/outline';
 import { useStore } from '../context/StoreContext';
@@ -30,7 +31,7 @@ const ResumenesPage: React.FC = () => {
   const [cierres, setCierres] = useState<CierreRes[]>([]);
   const [recarga, setRecarga] = useState(0);
   const [ocupado, setOcupado] = useState<'' | 'excel' | 'imprimir'>('');
-  useIonViewWillEnter(() => setRecarga(n => n + 1)); // al volver puede haber ventas nuevas
+  useAlVolver(() => setRecarga(n => n + 1)); // al volver puede haber ventas nuevas
 
   const rango = useMemo(() => rangoDe(periodo), [periodo, recarga]);
   const sucursalId = state.sucursalActivaId;
@@ -223,6 +224,11 @@ const ResumenesPage: React.FC = () => {
                       </div>
                       {e.unidadesSinStock > 0 && (
                         <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--danger)', margin: '4px 0 0' }}>Vendió {e.unidadesSinStock} unid. sin stock cargado</p>
+                      )}
+                      {e.faltantes > 0 && (
+                        <p style={{ fontSize: 16, fontWeight: 700, margin: '4px 0 0', color: e.paraMirar ? 'var(--danger)' : 'var(--text-2)' }}>
+                          Bajó {e.faltantes} unid. al contar o por roturas{e.paraMirar ? ' · mucho más que el resto, para mirar' : ''}
+                        </p>
                       )}
                       {e.cierres > 0 && (
                         <p style={{ fontSize: 16, fontWeight: 700, margin: '4px 0 0', color: e.diferenciaCaja < 0 ? 'var(--danger)' : 'var(--text-2)' }}>

@@ -19,7 +19,7 @@ const ventas = resumirVentas(
 const datos: DatosResumen = {
   comercio: 'Almacén Don Juan', sucursal: 'Principal', rango, ventas,
   stock: { valorTotal: 50000, lotesVencidos: 1, valorVencido: 1200, lotesPorVencer: 2, valorEnRiesgo: 3000, productosEnNegativo: 1, unidadesFaltantes: 2, valorCosto: 30000 },
-  empleados: [{ nombre: 'Rosa', ventas: 10, vendido: 5000, unidadesSinStock: 2, cierres: 3, diferenciaCaja: -500 }],
+  empleados: [{ nombre: 'Rosa', ventas: 10, vendido: 5000, unidadesSinStock: 2, cierres: 3, diferenciaCaja: -500, faltantes: 0, paraMirar: false }],
   perdidas: { vencido: { unidades: 2, valor: 400 }, roto: { unidades: 0, valor: 0 } },
   productosStock: [{ nombre: 'Leche 1L', categoria: 'Lácteos', cantidad: 10, precio: 1200, valor: 12000, vence: '2026-11-02', estado: 'Bien' }],
 };

@@ -3,7 +3,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { fechaLocalISO } from '../../lib/vencimientos';
-import { IonContent, IonToast, useIonViewWillEnter } from '@ionic/react';
+import { IonContent, IonToast } from '@ionic/react';
+import { useAlVolver } from '../../lib/useAlVolver';
 import { supabase } from '../lib/supabase';
 import { todas } from '../../lib/todas';
 import { openDB, enqueueOutbox } from '../lib/outbox';
@@ -132,7 +133,7 @@ const HistorialPage: React.FC = () => {
 
   useEffect(() => { cargar(); }, [cargar]);
   // Refrescar al volver a la pestaña (puede haber ventas nuevas).
-  useIonViewWillEnter(() => { cargar(); });
+  useAlVolver(() => { cargar(); });
 
   const filtered = useMemo(() => ventas
     .filter(v => !filters.metodoPago || v.metodo_pago === filters.metodoPago)
@@ -144,14 +145,23 @@ const HistorialPage: React.FC = () => {
 
   const total = useMemo(() => filtered.filter(v => !v.anulada).reduce((s, v) => s + Number(v.total), 0), [filtered]); // las anuladas no suman
 
+  // De a 60: 30 días de un almacén con movimiento son miles de tarjetas dibujadas de una.
+  const [cuantas, setCuantas] = useState(60);
+  useEffect(() => { setCuantas(60); }, [filtered]);
+  const diaDe = (v: VentaRow) => new Date(v.fecha).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const totalDia = useMemo(() => {
+    const t: Record<string, number> = {};
+    for (const v of filtered) if (!v.anulada) t[diaDe(v)] = (t[diaDe(v)] ?? 0) + Number(v.total);
+    return t;
+  }, [filtered]);
   const grouped = useMemo(() => {
     const g: Record<string, VentaRow[]> = {};
-    for (const v of filtered) {
+    for (const v of filtered.slice(0, cuantas)) {
       const k = new Date(v.fecha).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
       (g[k] ??= []).push(v);
     }
     return g;
-  }, [filtered]);
+  }, [filtered, cuantas]);
 
   // CSV unificado con la lib compartida (en Android guarda en Documentos).
   const exportCSV = async () => {
@@ -204,7 +214,7 @@ const HistorialPage: React.FC = () => {
           <EmptyState icon={<ClipboardIcon size={44} color="var(--text-3)" />} title={activeFilters > 0 ? 'Sin resultados' : 'Sin ventas'} description={activeFilters > 0 ? 'Probá con otros filtros' : 'Todavía no registraste ventas'} />
         ) : (
           Object.entries(grouped).map(([day, vs]) => {
-            const dayTotal = vs.filter(v => !v.anulada).reduce((s, v) => s + Number(v.total), 0);
+            const dayTotal = totalDia[day] ?? 0;
             return (
               <div key={day} style={{ marginBottom: 18 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -216,6 +226,11 @@ const HistorialPage: React.FC = () => {
               </div>
             );
           })
+        )}
+        {!loading && filtered.length > cuantas && (
+          <Button variant="secondary" size="lg" fullWidth onClick={() => setCuantas(n => n + 60)}>
+            Ver más ({filtered.length - cuantas} ventas más)
+          </Button>
         )}
       </div>
     </IonContent>

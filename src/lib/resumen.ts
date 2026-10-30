@@ -182,21 +182,29 @@ export function perdidasEntre(movs: Movimiento[], productos: Producto[], desde: 
 }
 
 export interface CierreRes { cajero_nombre: string | null; diferencia: number | null; hasta: string | null; creado_en: string; }
-export interface ControlEmpleado { nombre: string; ventas: number; vendido: number; unidadesSinStock: number; cierres: number; diferenciaCaja: number; }
+export interface ControlEmpleado {
+  nombre: string; ventas: number; vendido: number; unidadesSinStock: number; cierres: number; diferenciaCaja: number;
+  /** Unidades que sacó al contar (ajustes para abajo) o anotó como rotas. */ faltantes: number;
+  /** Muchos más faltantes que el resto: no acusa a nadie, es para mirar. */ paraMirar: boolean;
+}
 
-/** Por empleado: ventas, lo vendido sin stock (Historial) y las diferencias de caja de sus cierres. */
+/** Por empleado: ventas, lo vendido sin stock (Historial), lo que bajó al contar o anotó roto, y las
+ *  diferencias de caja de sus cierres. */
 export function controlEmpleados(porEmpleado: Fila[], movs: Movimiento[], cierres: CierreRes[], desde: Date, hasta: Date): ControlEmpleado[] {
   const m = new Map<string, ControlEmpleado>();
   const fila = (nombre: string) => {
     let f = m.get(nombre);
-    if (!f) m.set(nombre, f = { nombre, ventas: 0, vendido: 0, unidadesSinStock: 0, cierres: 0, diferenciaCaja: 0 });
+    if (!f) m.set(nombre, f = { nombre, ventas: 0, vendido: 0, unidadesSinStock: 0, cierres: 0, diferenciaCaja: 0, faltantes: 0, paraMirar: false });
     return f;
   };
   for (const e of porEmpleado) { const f = fila(e.nombre); f.ventas = e.cantidad; f.vendido = e.total; }
   for (const mv of movs) {
     const f = new Date(mv.fecha);
-    if (f < desde || f >= hasta || !mv.notas?.startsWith('Venta sin stock')) continue;
-    fila(mv.usuario || 'Sin nombre').unidadesSinStock += Math.abs(mv.cantidad);
+    if (f < desde || f >= hasta) continue;
+    if (mv.notas?.startsWith('Venta sin stock')) fila(mv.usuario || 'Sin nombre').unidadesSinStock += Math.abs(mv.cantidad);
+    // Lo que "desaparece": conteos para abajo y roturas (no las devoluciones ni lo que hace el sistema solo).
+    const bajaConteo = mv.tipo === 'ajuste' && mv.cantidad < 0 && !mv.notas?.startsWith('Devolución venta');
+    if ((bajaConteo || mv.tipo === 'retiro_roto') && mv.usuario !== 'Automático') fila(mv.usuario || 'Sin nombre').faltantes += Math.abs(mv.cantidad);
   }
   for (const c of cierres) {
     const f = new Date(c.hasta ?? c.creado_en);
@@ -205,5 +213,10 @@ export function controlEmpleados(porEmpleado: Fila[], movs: Movimiento[], cierre
     e.cierres++;
     e.diferenciaCaja += Number(c.diferencia || 0);
   }
-  return [...m.values()].sort((a, b) => b.vendido - a.vendido);
+  // Para mirar: al menos 5 unidades y más del triple de lo que es normal en el comercio (la mediana).
+  const lista = [...m.values()];
+  const orden = lista.map(e => e.faltantes).sort((a, b) => a - b);
+  const mediana = orden.length ? orden[Math.floor((orden.length - 1) / 2)] : 0;
+  for (const e of lista) e.paraMirar = lista.length > 1 && e.faltantes >= 5 && e.faltantes > 3 * mediana;
+  return lista.sort((a, b) => b.vendido - a.vendido);
 }

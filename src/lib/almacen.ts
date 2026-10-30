@@ -28,10 +28,9 @@ export async function hidratarAlmacenamiento(): Promise<void> {
   try {
     if (esNativo()) {
       const { keys } = await Preferences.keys();
-      for (const k of keys) {
-        const { value } = await Preferences.get({ key: k });
-        if (value !== null) cache.set(k, value);
-      }
+      // Todas a la vez: de a una, cada clave era una ida y vuelta al lado nativo antes de mostrar la app.
+      const valores = await Promise.all(keys.map(k => Preferences.get({ key: k })));
+      keys.forEach((k, i) => { const v = valores[i].value; if (v !== null) cache.set(k, v); });
     } else {
       // Web: copiar localStorage a la caché
       for (let i = 0; i < localStorage.length; i++) {

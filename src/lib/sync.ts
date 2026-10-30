@@ -3,6 +3,8 @@ import {
   obtenerPendientes, quitarDeOutbox, actualizarIntentos, bloquearItem,
   put, putVarios, getAll, setMeta, getMeta, ItemOutbox, TablaSync,
 } from './localDb';
+// Errores que no se resuelven reintentando (validación, RLS): el mismo criterio que la cola de ventas.
+import { esErrorPermanente } from '../ventas/lib/outbox';
 
 /**
  * Motor de sincronización offline-first.
@@ -229,15 +231,6 @@ async function procesarItem(item: ItemOutbox, comercioId: string): Promise<strin
   return error ? error.message : null;
 }
 
-// Errores que NO se resuelven reintentando (validación, RLS, constraint): van
-// directo a cuarentena. El resto (red, timeout, 5xx) se reintenta.
-function esErrorPermanente(msg?: string): boolean {
-  if (!msg) return false;
-  const m = msg.toLowerCase();
-  return ['no pertenece', 'no autorizado', 'permission denied', 'row-level security',
-          'violates', 'duplicate key', 'invalid input', 'constraint', 'inexistente']
-    .some(p => m.includes(p));
-}
 
 // NUNCA borra un item no confirmado. Si el error es permanente o se superó el
 // máximo de reintentos, lo pone en CUARENTENA (se conserva) para reintento manual.

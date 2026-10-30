@@ -19,7 +19,7 @@ const Badge: React.FC<BadgeProps> = ({
     success:  { background: 'var(--level-ok-bg)', color: 'var(--level-ok-fg)', border: '1px solid var(--level-ok-border)' },
     warning:  { background: 'var(--level-aviso-bg)', color: 'var(--level-aviso-fg)', border: '1px solid var(--level-aviso-border)' },
     danger:   { background: 'var(--level-vencido-bg)', color: 'var(--level-vencido-fg)', border: '1px solid var(--level-vencido-border)' },
-    info:     { background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd' },
+    info:     { background: 'var(--marca-suave)', color: 'var(--marca-texto)', border: '1px solid var(--border)' }, // tokens: se leen también en oscuro
     subtle:   { background: 'transparent', color: 'var(--text-2)' },
   };
 

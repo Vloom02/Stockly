@@ -2,7 +2,8 @@
 // Deudas / Fiado — lee y actualiza ventas_deudas.
 // ═══════════════════════════════════════════════════════════════════════════
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { IonContent, IonToast, useIonViewWillEnter } from '@ionic/react';
+import { IonContent, IonToast } from '@ionic/react';
+import { useAlVolver } from '../../lib/useAlVolver';
 import { supabase } from '../lib/supabase';
 import { openDB, enqueueOutbox, idbGetAll, esErrorPermanente, OfflinePagoPayload } from '../lib/outbox';
 import { OutboxItem } from '../types';
@@ -65,7 +66,7 @@ const DeudasPage: React.FC = () => {
 
   useEffect(() => { load(); }, [comercio]);
   // Recargar cada vez que se entra a la pestaña (puede haber nuevos fiados desde Venta).
-  useIonViewWillEnter(() => { load(); });
+  useAlVolver(() => { load(); });
 
   const saldoDe = (d: DeudaRow) => Math.max(0, d.monto - (pagos[d.id] ?? 0));
 

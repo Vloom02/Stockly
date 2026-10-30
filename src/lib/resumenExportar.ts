@@ -179,10 +179,10 @@ export async function resumenAExcel(d: DatosResumen): Promise<Uint8Array> {
       [undefined, 'entero', 'plata'], [1, 2]);
   }
 
-  if (d.empleados.length) hojaDetalle(wb, 'Empleados', [22, 10, 16, 16, 12, 18],
-    ['Empleado', 'Ventas', 'Vendido', 'Unid. sin stock', 'Cierres', 'Diferencia de caja'],
-    d.empleados.map(e => [e.nombre, e.ventas, e.vendido, e.unidadesSinStock, e.cierres, e.diferenciaCaja]),
-    [undefined, 'entero', 'plata', 'entero', 'entero', 'plata'], [1, 2, 3, 4, 5]);
+  if (d.empleados.length) hojaDetalle(wb, 'Empleados', [22, 10, 16, 16, 18, 12, 18],
+    ['Empleado', 'Ventas', 'Vendido', 'Unid. sin stock', 'Bajas al contar/rotas', 'Cierres', 'Diferencia de caja'],
+    d.empleados.map(e => [e.nombre, e.ventas, e.vendido, e.unidadesSinStock, e.faltantes, e.cierres, e.diferenciaCaja]),
+    [undefined, 'entero', 'plata', 'entero', 'entero', 'entero', 'plata'], [1, 2, 3, 4, 5, 6]);
 
   hojaDetalle(wb, 'Mercadería', [36, 18, 11, 14, 16, 13, 12],
     ['Producto', 'Categoría', 'Cantidad', 'Precio', 'Valor', 'Vence', 'Estado'],

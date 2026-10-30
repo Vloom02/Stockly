@@ -44,11 +44,12 @@ const EstadisticasPage: React.FC = () => {
         // Top productos (items de esas ventas)
         const ids = vs.map(v => v.id);
         const agg = new Map<string, TopProducto>();
-        // in() con listas grandes falla: pedir de a 200 ids.
-        for (let i = 0; i < ids.length; i += 200) {
-          const { data: items } = await supabase.from('ventas_items')
-            .select('nombre_producto, cantidad, subtotal')
-            .in('venta_id', ids.slice(i, i + 200));
+        // in() con listas grandes falla: de a 200 ids, todos los pedidos a la vez (uno detrás de otro tardaba).
+        const tandas: string[][] = [];
+        for (let i = 0; i < ids.length; i += 200) tandas.push(ids.slice(i, i + 200));
+        const resultados = await Promise.all(tandas.map(t => supabase.from('ventas_items')
+          .select('nombre_producto, cantidad, subtotal').in('venta_id', t)));
+        for (const { data: items } of resultados) {
           for (const it of items ?? []) {
             const e = agg.get(it.nombre_producto) ?? { nombre: it.nombre_producto, cantidad: 0, plata: 0 };
             e.cantidad += it.cantidad;
