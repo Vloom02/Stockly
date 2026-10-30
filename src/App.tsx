@@ -30,6 +30,7 @@ const CajerosPage         = lazy(() => import('./ventas/pages/CajerosPage'));
 const EstadisticasPage    = lazy(() => import('./ventas/pages/EstadisticasPage'));
 const PromosPage          = lazy(() => import('./ventas/pages/PromosPage'));
 const CajeroCierrePage    = lazy(() => import('./ventas/pages/CajeroCierrePage'));
+const CerrarDiaPage       = lazy(() => import('./ventas/pages/CerrarDiaPage'));
 const CajaTurnoPage       = lazy(() => import('./ventas/pages/CajaTurnoPage'));
 import TabBar from './components/TabBar';
 import Onboarding from './components/Onboarding';
@@ -175,6 +176,7 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
           <Route path="/ventas/estadisticas" exact>{enVentas(<EstadisticasPage />, 'Lo más vendido')}</Route>
           <Route path="/ventas/ofertas" exact>{enVentas(<PromosPage />, 'Ofertas')}</Route>
           <Route path="/ventas/cerrar-caja" exact>{enVentas(<CajeroCierrePage />)}</Route>
+          <Route path="/ventas/cerrar-dia" exact>{enVentas(<CerrarDiaPage />, 'Cerrar el día')}</Route>
           <Route path="/ventas/caja-turno" exact>{enVentas(<CajaTurnoPage />)}</Route>
           <Route path="/" exact><Redirect to="/dashboard" /></Route>
         </IonRouterOutlet>
