@@ -93,8 +93,10 @@ const enVentas = (pagina: React.ReactNode, tituloDueno?: string) => (
 // puede atender "sin turno" (solo vender), desde la misma pantalla.
 const ConTurno: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { cajero, hayEmpleados, cargando } = useEmpleado();
-  const { hasPin } = useOwner();
-  if (!cargando && hayEmpleados && hasPin && !cajero) return <IonPage><CajeroGate /></IonPage>;
+  const { hasPin, loading: cargandoPin } = useOwner();
+  // Mientras no se sabe si hay que pedir turno, no se muestra nada (antes se veía todo como dueño).
+  if (cargando || (cargandoPin && !hasPin)) return <IonPage><Cargando /></IonPage>;
+  if (hayEmpleados && hasPin && !cajero) return <IonPage><CajeroGate /></IonPage>;
   return <>{children}</>;
 };
 

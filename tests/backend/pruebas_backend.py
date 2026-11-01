@@ -374,6 +374,38 @@ def main():
     caso('otro comercio no ve las ofertas ajenas', ajeno == [], f'{ajeno}')
     http('DELETE', f'/rest/v1/ventas_liquidaciones?producto_id=eq.{prod}', tok_d)
 
+    print('\n── L) Migración 16: la sesión de la tablet no alcanza para ser dueño')
+    s, r = http('GET', f'/rest/v1/ventas_config?comercio_id=eq.{comercio}&select=pin_hash', tok_d)
+    caso('nadie lee el hash de la clave del dueño por la API', s >= 400 or r == [], f'{s} {r}')
+    pin = str(secrets.randbelow(9000) + 1000)
+    http('POST', '/rest/v1/rpc/configurar_pin', tok_d, {'p': {'comercio_id': comercio, 'pin': pin, 'pin_actual': U.get('pin_dueno', '')}})
+    _, cfg = sql_service('GET', f'/rest/v1/ventas_config?comercio_id=eq.{comercio}&select=pin_hash')
+    if not cfg:  # sin clave todavía: la primera se crea sin la actual
+        http('POST', '/rest/v1/rpc/configurar_pin', tok_d, {'p': {'comercio_id': comercio, 'pin': pin}})
+    s, r = http('POST', '/rest/v1/rpc/configurar_pin', tok_d, {'p': {'comercio_id': comercio, 'pin': '0000'}})
+    _, ok_vieja = http('POST', '/rest/v1/rpc/verificar_pin', tok_d, {'p': {'comercio_id': comercio, 'pin': pin}})
+    caso('cambiar la clave sin la actual no se puede (y la vieja sigue valiendo)', s == 200 and r.get('ok') is False and ok_vieja is True, f'{s} {r} {ok_vieja}')
+    s, r = http('POST', '/rest/v1/rpc/configurar_pin', tok_d, {'p': {'comercio_id': comercio, 'pin': pin, 'pin_actual': pin}})
+    caso('con la clave actual sí se cambia', s == 200 and r.get('ok') is True, f'{s} {r}')
+    U['pin_dueno'] = pin
+    json.dump(U, open(ARCHIVO_USUARIOS, 'w', encoding='utf-8'), indent=2, ensure_ascii=False)
+
+    largo = 'X' * 40
+    _, antes = sql_service('GET', f'/rest/v1/auth_intentos?comercio_id=eq.{comercio}&select=clave')
+    http('POST', '/rest/v1/rpc/verificar_empleado_venta', tok_d, {'p': {'comercio_id': comercio, 'legajo': largo, 'pass': '1234'}})
+    _, despues = sql_service('GET', f'/rest/v1/auth_intentos?comercio_id=eq.{comercio}&select=clave')
+    caso('un legajo inventado larguísimo no deja filas en auth_intentos', len(despues or []) == len(antes or []), f'{len(antes or [])} → {len(despues or [])}')
+
+    _, mdev = http('GET', f'/rest/v1/miembros?user_id=eq.{uid_v}&select=comercio_id', tok_v)
+    _, sv = http('GET', f'/rest/v1/sucursales?comercio_id=eq.{mdev[0]["comercio_id"]}&select=id', tok_v)
+    s, r = http('POST', '/rest/v1/movimientos', tok_d, {'id': str(uuid.uuid4()), 'comercio_id': comercio, 'producto_id': prod,
+                                                        'sucursal_id': sv[0]['id'], 'tipo': 'ajuste', 'cantidad': 1,
+                                                        'cantidad_anterior': 0, 'cantidad_nueva': 1, 'fecha': '2026-10-25T10:00:00Z'})
+    caso('un movimiento no puede apuntar al local de otro comercio', s >= 400, f'{s} {r}')
+
+    s, r = http('POST', '/rest/v1/rpc/comercios_del_usuario', None, {})
+    caso('sin sesión no se puede llamar a comercios_del_usuario', s >= 400, f'{s} {r}')
+
     fallas = [n for n, ok in resultados if not ok]
     print(f'\n{len(resultados) - len(fallas)}/{len(resultados)} pruebas OK')
     sys.exit(1 if fallas else 0)
@@ -416,7 +448,7 @@ def cargar_datos_ejemplo():
         json.dump(U, open(ARCHIVO_USUARIOS, 'w', encoding='utf-8'), indent=2, ensure_ascii=False)
     s1, r1 = http('POST', '/rest/v1/rpc/guardar_empleado_venta', tok_d,
                   {'p': {'comercio_id': comercio, 'legajo': '01', 'nombre': U['cajero']['nombre'], 'pass': U['cajero']['clave']}})
-    s2, r2 = http('POST', '/rest/v1/rpc/configurar_pin', tok_d, {'p': {'comercio_id': comercio, 'pin': U['pin_dueno']}})
+    s2, r2 = http('POST', '/rest/v1/rpc/configurar_pin', tok_d, {'p': {'comercio_id': comercio, 'pin': U['pin_dueno'], 'pin_actual': U['pin_dueno']}})
     print('cajero:', s1, '| pin dueño:', s2, r2 if s2 != 200 else '')
     _, n = http('GET', f'/rest/v1/productos?comercio_id=eq.{comercio}&select=id', tok_d)
     print(f'{len(n)} productos en "{U["dueno"]["comercio"]}"')

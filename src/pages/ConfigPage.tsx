@@ -123,7 +123,9 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
 
   const salir = async () => {
     if (!(await confirmar('¿Cerrar sesión en este equipo?', { okText: 'Cerrar sesión' }))) return;
-    await Promise.all([sincronizarAhora(), flushOutbox()]); // lo que se pueda mandar, se manda antes de borrar
+    // Lo que se pueda mandar se manda antes de borrar, pero sin trabar el cierre: con Wi-Fi sin salida
+    // Promise.all fallaba y la sesión no se cerraba nunca.
+    await Promise.race([Promise.allSettled([sincronizarAhora(), flushOutbox()]), new Promise(r => setTimeout(r, 8000))]);
     await cerrarSesion();
   };
 

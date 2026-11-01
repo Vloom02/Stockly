@@ -42,13 +42,17 @@ const Ctx = createContext<OwnerCtx | undefined>(undefined);
 
 export const OwnerProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { comercio } = useAuth();
-  const [hasPin, setHasPin]       = useState(false);
+  const [hasPin, setHasPin]       = useState(() => localStorage.getItem(TIENE_PIN_KEY) === '1'); // lo último que dijo el servidor
   const [isUnlocked, setUnlocked] = useState(false);
   const [loading, setLoading]     = useState(true);
   const [lockMin, setLockMinState] = useState(leerLockMin);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const avisoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [avisoBloqueo, setAvisoBloqueo] = useState(false);
+  // La clave con la que se abrió el modo dueño, solo en memoria y mientras está abierto: el servidor la pide
+  // para cambiarla (migración 16). Nunca se guarda en el equipo.
+  const claveAbierta = useRef('');
+  useEffect(() => { if (!isUnlocked) claveAbierta.current = ''; }, [isUnlocked]);
 
   const setLockMin = useCallback((m: number) => {
     localStorage.setItem(LOCK_KEY, String(m));
@@ -106,10 +110,12 @@ export const OwnerProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (!comercio || pin.length < 4) return false;
     try {
       // Server-side: hashea en bcrypt y valida que seas el dueño.
-      const { error } = await supabase.rpc('configurar_pin', {
-        p: { comercio_id: comercio.id, pin },
+      const { data, error } = await supabase.rpc('configurar_pin', {
+        p: { comercio_id: comercio.id, pin, pin_actual: claveAbierta.current },
       });
       if (error) { console.error('[owner] setPin:', error.message); return false; }
+      if ((data as { ok?: boolean } | null)?.ok === false) return false; // la clave actual no coincide o está bloqueada
+      claveAbierta.current = pin;
       setHasPin(true);
       setUnlocked(true); // al crear el PIN, queda en modo dueño
       guardarCredencialOffline(CLAVE_PIN_DUENO, pin); // habilitar fallback offline
@@ -124,7 +130,7 @@ export const OwnerProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // del último desbloqueo online). Ver lib/authOffline.ts.
   const unlockOffline = useCallback(async (pin: string) => {
     const { ok } = await verificarCredencialOffline(CLAVE_PIN_DUENO, pin);
-    if (ok) setUnlocked(true);
+    if (ok) { claveAbierta.current = pin; setUnlocked(true); }
     return ok;
   }, []);
 
@@ -142,6 +148,7 @@ export const OwnerProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return unlockOffline(pin);
       }
       if (data === true) {
+        claveAbierta.current = pin;
         setUnlocked(true);
         guardarCredencialOffline(CLAVE_PIN_DUENO, pin); // renovar cache offline
         return true;

@@ -76,6 +76,11 @@ export const EmpleadoProvider: React.FC<{ children: ReactNode }> = ({ children }
           } catch { /* */ }
         }
       } catch { /* */ }
+      // Con la lista guardada ya se puede pedir turno; la del servidor llega por detrás.
+      try {
+        const raw = await getLocalSetting(KEY_LISTA);
+        if (raw) { setEmpleados(JSON.parse(raw)); setCargando(false); }
+      } catch { /* */ }
       await recargar();
       setCargando(false);
     })();

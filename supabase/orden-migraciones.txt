@@ -24,3 +24,4 @@ supabase/migracion-12-costo-ganancia.sql
 supabase/migracion-13-seguridad-2026-10-29.sql
 supabase/migracion-14-ventas-y-sumas.sql
 supabase/migracion-15-ofertas-por-vencer.sql
+supabase/migracion-16-seguridad-2026-11.sql

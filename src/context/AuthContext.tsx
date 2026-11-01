@@ -205,6 +205,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const cerrarSesion = async () => {
     // Que este equipo deje de recibir los avisos de este comercio (necesita la sesión todavía).
     await Promise.race([olvidarPush(), new Promise(r => setTimeout(r, 3000))]);
+    // Las huellas guardadas en el Keystore (dueño y cajeros) no sobreviven al cierre de sesión.
+    try {
+      const { borrarHuella, CLAVE_HUELLA_DUENO, claveHuellaCajero } = await import('../ventas/lib/huella');
+      const { openDB, getLocalSetting } = await import('../ventas/lib/outbox');
+      await openDB();
+      const lista = JSON.parse((await getLocalSetting('empleados-cache')) || '[]') as { legajo: string }[];
+      await Promise.all([borrarHuella(CLAVE_HUELLA_DUENO), ...lista.map(e => borrarHuella(claveHuellaCajero(e.legajo)))]);
+    } catch { /* */ }
     // Limpiar caché local primero (esto siempre funciona)
     try {
       const { limpiarTodoLocal } = await import('../lib/localDb');
@@ -213,16 +221,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       almacenRemove('stockly:cache-comercio');
       almacenRemove('stockly:cache-miembro');
-      localStorage.removeItem('ventas:carrito');
+      for (const k of Object.keys(localStorage)) if (k.startsWith('ventas:')) localStorage.removeItem(k);
     } catch { /* */ }
     // Intentar signOut en la nube, pero sin bloquear si no hay internet
+    let cerrada = false;
     try {
-      await Promise.race([
+      const r = await Promise.race([
         // Solo ESTE dispositivo: la misma cuenta puede estar abierta en el celular y en la tablet.
         supabase.auth.signOut({ scope: 'local' }),
-        new Promise((resolve) => setTimeout(resolve, 4000)),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
       ]);
+      cerrada = !!r && !r.error;
     } catch { /* */ }
+    // Sin internet signOut falla ANTES de borrar la sesión guardada: al reabrir, la app entraba sola con la
+    // cuenta del dueño. Se borra a mano y se recarga, así el cliente no la vuelve a guardar al refrescar.
+    if (!cerrada) {
+      try {
+        const clave = (supabase.auth as unknown as { storageKey: string }).storageKey;
+        localStorage.removeItem(clave);
+        localStorage.removeItem(`${clave}-code-verifier`);
+      } catch { /* */ }
+      window.location.reload();
+      return;
+    }
     // Pase lo que pase, limpiamos el estado local → vuelve al login
     cargadoPara.current = null;
     adminConsultadoPara.current = null;
