@@ -474,6 +474,30 @@ def main():
     s, r = http('POST', '/rest/v1/rpc/registrar_pago_fiado', tok_d, {'p': {'pago_id': str(uuid.uuid4()), 'deuda_id': deuda, 'comercio_id': comercio, 'monto': 200}})
     caso('cobrar una deuda ya saldada no cobra nada', s == 200 and r.get('sin_saldo') is True and float(r.get('cobrado', -1)) == 0, f'{s} {r}')
 
+    print('\n── N) Migración 18: anular un fiado que ya tenía pagos')
+    vfa = str(uuid.uuid4())
+    http('POST', '/rest/v1/rpc/registrar_venta', tok_d, {'p': {
+        'id': vfa, 'comercio_id': comercio, 'sucursal_id': sucursal, 'metodo_pago': 'efectivo', 'fiado': True, 'cliente': 'Rosa M18',
+        'items': [{'producto_id': None, 'nombre': 'Varios', 'cantidad': 1, 'precio': 1000}]}})
+    _, dfa = http('GET', f'/rest/v1/ventas_deudas?venta_id=eq.{vfa}&select=id', tok_d)
+    http('POST', '/rest/v1/rpc/registrar_pago_fiado', tok_d, {'p': {'pago_id': str(uuid.uuid4()), 'deuda_id': dfa[0]['id'], 'comercio_id': comercio, 'monto': 400}})
+    motivo = f'venta anulada {vfa[:8]}'
+    s, r = http('POST', '/rest/v1/rpc/anular_venta', tok_d, {'p': {'venta_id': vfa, 'comercio_id': comercio, 'usuario': 'Dueño'}})
+    _, sal = sql_service('GET', f'/rest/v1/ventas_caja_mov?comercio_id=eq.{comercio}&tipo=eq.egreso&motivo=like.*{vfa[:8]}*&select=monto,sucursal_id')
+    caso('anular un fiado con $400 pagados devuelve 400 y anota la salida de caja en su local',
+         s == 200 and float(r.get('devuelto', -1)) == 400 and sal and len(sal) == 1 and float(sal[0]['monto']) == 400 and sal[0]['sucursal_id'] == sucursal,
+         f'{s} {r} {sal}')
+    http('POST', '/rest/v1/rpc/anular_venta', tok_d, {'p': {'venta_id': vfa, 'comercio_id': comercio}})
+    _, sal2 = sql_service('GET', f'/rest/v1/ventas_caja_mov?comercio_id=eq.{comercio}&tipo=eq.egreso&motivo=like.*{vfa[:8]}*&select=monto')
+    caso('anular otra vez no anota otra salida', sal2 and len(sal2) == 1, f'{sal2}')
+    vcom = str(uuid.uuid4())
+    http('POST', '/rest/v1/rpc/registrar_venta', tok_d, {'p': {
+        'id': vcom, 'comercio_id': comercio, 'sucursal_id': sucursal, 'metodo_pago': 'efectivo',
+        'items': [{'producto_id': None, 'nombre': 'Varios', 'cantidad': 1, 'precio': 300}]}})
+    s, r = http('POST', '/rest/v1/rpc/anular_venta', tok_d, {'p': {'venta_id': vcom, 'comercio_id': comercio}})
+    _, sal3 = sql_service('GET', f'/rest/v1/ventas_caja_mov?comercio_id=eq.{comercio}&motivo=like.*{vcom[:8]}*&select=monto')
+    caso('una venta común anulada no anota salida (no hubo pagos de fiado)', s == 200 and float(r.get('devuelto', -1)) == 0 and sal3 == [], f'{s} {r} {sal3}')
+
     fallas = [n for n, ok in resultados if not ok]
     print(f'\n{len(resultados) - len(fallas)}/{len(resultados)} pruebas OK')
     sys.exit(1 if fallas else 0)

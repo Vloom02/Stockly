@@ -38,10 +38,18 @@ const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avi
     setAnulando(true);
     const payload = { ventaId: venta.id, comercioId: comercio.id, usuario: miembro?.nombre ?? null };
     if (navigator.onLine) {
-      const { error } = await supabase.rpc('anular_venta', { p: { venta_id: venta.id, comercio_id: comercio.id, usuario: miembro?.nombre ?? null } });
+      const { data, error } = await supabase.rpc('anular_venta', { p: { venta_id: venta.id, comercio_id: comercio.id, usuario: miembro?.nombre ?? null } });
       setAnulando(false);
       // Sin recargar la lista: volvía al principio y se perdía el "Ver más".
-      if (!error) { onAnulada(venta.id); avisar('Venta anulada. El stock volvió a la mercadería.'); return; }
+      if (!error) {
+        onAnulada(venta.id);
+        // Fiado que ya tenía pagos: el servidor anota esa plata como salida de caja (migración 18).
+        const devuelto = Number((data as { devuelto?: number } | null)?.devuelto ?? 0);
+        avisar(devuelto > 0
+          ? `Venta anulada. Devolvele ${formatMoney(devuelto)} que ya había pagado: quedó anotado como salida de caja.`
+          : 'Venta anulada. El stock volvió a la mercadería.');
+        return;
+      }
       // Rechazada por el servidor: encolarla solo la mandaba a cuarentena y la pantalla decía "guardada".
       if (esErrorPermanente(error.message)) { avisar(`No se pudo anular: ${error.message}`); return; }
       // Falló online (¿red inestable?): encolar para reintentar.
@@ -185,7 +193,7 @@ const HistorialPage: React.FC = () => {
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Ventas anteriores</h1>
         <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 14 }}>Últimos 30 días</p>
         {sinInternet && <p role="status" style={{ fontSize: 15, fontWeight: 600, margin: '0 0 12px' }}>Sin internet: las ventas se ven cuando vuelva la señal. No se borró nada.</p>}
-        <IonToast isOpen={!!aviso} message={aviso} duration={4000} onDidDismiss={() => setAviso('')} position="top" />
+        <IonToast isOpen={!!aviso} message={aviso} duration={6500} onDidDismiss={() => setAviso('')} position="top" />
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 12 }}>
           <Card variant="bordered" style={{ padding: 10 }}><div style={{ fontSize: 14, color: 'var(--text-2)' }}>Ventas</div><div style={{ fontSize: 20, fontWeight: 700 }}>{filtered.length}</div></Card>
