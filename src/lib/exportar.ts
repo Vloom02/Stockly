@@ -14,7 +14,7 @@ function celda(v: string | number | undefined | null): string {
   // anteponiendo apóstrofe. Solo aplica a strings; los números quedan intactos.
   if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
   // Si tiene separador, comillas o saltos → entrecomillar y duplicar comillas.
-  if (/[;"\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  if (/[;"\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"'; // con \r suelto, Excel cortaba la fila
   return s;
 }
 

@@ -25,10 +25,13 @@ export function fondoDeApertura(movs: MovCaja[]): number {
     if (m.tipo !== 'apertura') continue;
     const k = m.turno_desde ?? '';
     const prev = ultima.get(k);
-    if (!prev || (m.fecha ?? '') >= (prev.fecha ?? '')) ultima.set(k, m);
+    // Por la hora, no por el texto: "…Z" y "…+00:00" (del servidor y de la cola) no ordenan bien como texto.
+    if (!prev || hora(m.fecha) >= hora(prev.fecha)) ultima.set(k, m);
   }
   return [...ultima.values()].reduce((s, m) => s + Number(m.monto), 0);
 }
+
+const hora = (f?: string) => { const t = f ? new Date(f).getTime() : 0; return Number.isFinite(t) ? t : 0; };
 
 export interface Arqueo { fondo: number; ventasEfectivo: number; ingresos: number; egresos: number; cobrosFiado: number; esperado: number }
 

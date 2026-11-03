@@ -12,7 +12,8 @@ interface Props {
   titulo?: string;        // opcional: reemplaza el título del primer paso (ej. "Nueva clave de dueño")
   subtitulo?: string;     // opcional: reemplaza el texto de ayuda del primer paso
   extra?: React.ReactNode; // opcional: contenido bajo el subtítulo (ej. botón "Usar mi huella")
-  onSuccess: (pin: string) => Promise<boolean>;
+  /** true = entró; false = clave incorrecta; un texto = el error real para mostrar (bloqueado, sin internet…). */
+  onSuccess: (pin: string) => Promise<boolean | string>;
   onCancel: () => void;
 }
 
@@ -60,7 +61,7 @@ const PinPad: React.FC<Props> = ({ mode, titulo: tituloProp, subtitulo: subtitul
       setBusy(true);
       const ok = await onSuccess(pin);
       setBusy(false);
-      if (!ok) { setError('No se pudo guardar la clave. Revisá que haya internet y probá de nuevo.'); setStage('first'); setPin(''); setConfirm(''); }
+      if (ok !== true) { setError(typeof ok === 'string' ? ok : 'No se pudo guardar la clave. Revisá que haya internet y probá de nuevo.'); setStage('first'); setPin(''); setConfirm(''); }
       return;
     }
     // unlock
@@ -68,7 +69,7 @@ const PinPad: React.FC<Props> = ({ mode, titulo: tituloProp, subtitulo: subtitul
     setBusy(true);
     const ok = await onSuccess(pin);
     setBusy(false);
-    if (!ok) { setError('Clave incorrecta'); setPin(''); }
+    if (ok !== true) { setError(typeof ok === 'string' ? ok : 'Clave incorrecta'); setPin(''); }
   };
 
   const dots = Math.max(current.length, 0);
@@ -104,7 +105,8 @@ const PinPad: React.FC<Props> = ({ mode, titulo: tituloProp, subtitulo: subtitul
       {!error && <div style={{ minHeight: 28 }} />}
 
       {/* Teclado */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 72px)', gap: 12, marginBottom: 20 }}>
+      {/* Con letra "Muy grande" en un celular de 360 dp las 3 columnas fijas no entraban. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(56px, 72px))', gap: 12, marginBottom: 20 }}>
         {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(n => (
           <button key={n} onClick={() => press(n)} className="pressable"
             style={{ height: 64, borderRadius: 'var(--radius-lg)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', fontSize: 24, fontWeight: 600, color: 'var(--text)', cursor: 'pointer' }}>

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Publica la versión de package.json en los Releases de GitHub para que las apps se actualicen:
 #   stockly-web-X.Y.Z.zip  → la parte web; las apps la bajan solas al abrirse (lib/actualizacion.ts)
+#   stockly-web-X.Y.Z.zip.cifrado → la misma, cifrada y firmada (la bajan los APK desde 1.2.12)
 #   Stockly-X.Y.Z.apk      → para instalar de cero, o si el APK instalado es más viejo que "apkMinimo"
 # Antes: subir "version" en package.json. Si cambió algo NATIVO (plugin nuevo, permisos, Capacitor),
 # poner también "apkMinimo" = esa versión. Necesita la llave de firma (D:\Claude\firmas) y gh logueado.
@@ -45,7 +46,11 @@ with zipfile.ZipFile(sys.argv[2], 'w', zipfile.ZIP_DEFLATED) as z:
         if f.is_file(): z.write(f, f.relative_to(sys.argv[1]).as_posix())
 " dist "$SAL/stockly-web-$V.zip"
 SHA=$(python -I -c "import hashlib,sys;print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$SAL/stockly-web-$V.zip")
+# Firmada para los APK desde 1.2.12 (traen la llave pública): sin la llave privada no se publica.
+LLAVE=${LLAVE_ACTUALIZACIONES:-/d/Claude/firmas/capgo-actualizaciones.pem}
+[ -f "$LLAVE" ] || falla "falta la llave para firmar las actualizaciones ($LLAVE)"
+FIRMA=$(node scripts/cifrar-version.mjs "$SAL/stockly-web-$V.zip" "$SAL/stockly-web-$V.zip.cifrado" "$LLAVE")
 
-gh release create "v$V" "$SAL/stockly-web-$V.zip" "$SAL/Stockly-$V.apk" --title "Stockly $V" --draft --target "$(git rev-parse HEAD)" \
-  --notes "$(printf 'apk-minimo: %s\nsha256: %s\n\n%s' "$MIN" "$SHA" "${1:-Actualización de Stockly.}")"
+gh release create "v$V" "$SAL/stockly-web-$V.zip" "$SAL/stockly-web-$V.zip.cifrado" "$SAL/Stockly-$V.apk" --title "Stockly $V" --draft --target "$(git rev-parse HEAD)" \
+  --notes "$(printf 'apk-minimo: %s\nsha256: %s\n%s\n\n%s' "$MIN" "$SHA" "$FIRMA" "${1:-Actualización de Stockly.}")"
 echo "Borrador v$V listo (apk mínimo $MIN). Probalo y publicalo con: gh release edit v$V --draft=false --latest"

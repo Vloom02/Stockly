@@ -149,7 +149,12 @@ const ProductoForm: React.FC = () => {
 
   const handleEliminar = async () => {
     if (!productoExistente?.id) return;
-    if (lotes.length > 0) { setToast({ show: true, msg: 'Eliminá primero todos los lotes' }); return; }
+    // Cualquier lote con stock (o en negativo), de cualquier local: borrar el producto los dejaba huérfanos.
+    const conStock = state.lotes.filter(l => l.productoId === productoExistente.id && l.cantidad !== 0);
+    if (conStock.length > 0) {
+      setToast({ show: true, msg: `Todavía tiene mercadería (${conStock.length} ${conStock.length === 1 ? 'lote' : 'lotes'}). Sacala o anotala como vendida antes de borrar el producto.` });
+      return;
+    }
     if (!(await confirmar(`¿Eliminar "${productoExistente.nombre}"?`, { peligro: true, okText: 'Eliminar' }))) return;
     await deleteProducto(productoExistente.id);
     history.goBack();

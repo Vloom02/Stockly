@@ -13,6 +13,7 @@ export interface Promo {
   minCant: number;
   pct: number;
   hasta?: string; // YYYY-MM-DD, solo liquidación (con lo guardado sin internet no se pasa de la fecha)
+  maxUnidades?: number; // solo liquidación: lo que hay en el local de lotes que vencen hasta `hasta`
 }
 
 export interface LineaPromo { nombre: string; etiqueta: string; monto: number; }
@@ -32,8 +33,10 @@ export function descuentoPromos(cart: CartItem[], promos: Promo[], hoy = new Dat
     let monto = 0;
     let etiqueta = '';
     if (promo.tipo === 'liquidacion') {
-      monto = (item.precio * item.qty * promo.pct) / 100;
-      etiqueta = `Por vencer −${promo.pct}%`;
+      // Solo las unidades de lo que vence: antes la rebaja también caía sobre los lotes frescos.
+      const q = Math.min(item.qty, Math.max(0, promo.maxUnidades ?? item.qty));
+      monto = (item.precio * q * promo.pct) / 100;
+      etiqueta = q < item.qty ? `Por vencer −${promo.pct}% en ${q}` : `Por vencer −${promo.pct}%`;
     } else if (promo.tipo === '2x1') {
       const gratis = Math.floor(item.qty / 2);
       if (gratis > 0) { monto = gratis * item.precio; etiqueta = '2x1'; }

@@ -46,8 +46,10 @@ const InventarioPage: React.FC = () => {
   const aplicar = async () => {
     if (diferencias.length === 0) return;
     // Lo vendido sin internet todavía no está en los lotes: ajustar ahora lo restaría dos veces.
-    if (ventas.outboxLen > 0) {
-      setToast({ show: true, msg: `Hay ${ventas.outboxLen} venta${ventas.outboxLen !== 1 ? 's' : ''} sin mandar. Conectate a internet, esperá que se manden y volvé a tocar "Ajustar".` });
+    // Las trabadas (en cuarentena) no se mandan solas: si contaran, el conteo quedaba bloqueado para siempre.
+    const sinMandar = ventas.outboxLen - ventas.bloqueados;
+    if (sinMandar > 0) {
+      setToast({ show: true, msg: `Hay ${sinMandar} venta${sinMandar !== 1 ? 's' : ''} sin mandar. Conectate a internet, esperá que se manden y volvé a tocar "Aplicar ajustes".` });
       return;
     }
     setGuardando(true);
@@ -68,7 +70,7 @@ const InventarioPage: React.FC = () => {
   return (
     <IonPage>
       <IonContent ref={lectorRef} style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
-        <div style={{ padding: '20px 16px calc(120px + var(--sab,env(safe-area-inset-bottom))) 16px', maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ padding: '20px 16px calc(190px + var(--sab,env(safe-area-inset-bottom))) 16px', maxWidth: 760, margin: '0 auto' }}>
           <Header title="Inventario físico" onBack={() => history.goBack()} />
           <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '0 0 14px', lineHeight: 1.5 }}>
             Contá lo que hay en góndola y anotá la cantidad real. Te marcamos las diferencias y las ajustás de una.
@@ -119,7 +121,8 @@ const InventarioPage: React.FC = () => {
 
         {/* Barra fija de aplicar */}
         {diferencias.length > 0 && (
-          <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, padding: '12px 16px calc(12px + var(--sab,env(safe-area-inset-bottom)))', background: 'var(--surface)', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, maxWidth: 760, margin: '0 auto' }}>
+          // Arriba de la barra de pestañas: antes quedaba tapada por ella y el botón no se veía.
+          <div style={{ position: 'fixed', left: 0, right: 0, bottom: 'calc(92px + var(--sab,env(safe-area-inset-bottom)))', zIndex: 101, padding: '12px 16px', background: 'var(--surface)', borderTop: '1px solid var(--border)', boxShadow: 'var(--shadow-md)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, maxWidth: 760, margin: '0 auto' }}>
             <span style={{ fontSize: 14, color: 'var(--text-2)' }}>{diferencias.length} con diferencia</span>
             <button type="button" onClick={aplicar} disabled={guardando} className="pressable boton-marca"
               style={{ border: 'none', borderRadius: 'var(--radius)', padding: '11px 20px', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: guardando ? 0.6 : 1 }}>

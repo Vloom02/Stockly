@@ -117,6 +117,7 @@ export interface CartItem {
   precio: number;
   qty: number;
   stockDisponible: number;   // suma de lotes; informativo (se permite vender de más)
+  costo?: number;            // el de la ficha al agregarlo: una venta sin internet que sube días después lleva el costo de ese día
 }
 
 // ─── Resultado de aplicar FEFO a un producto ──────────────────────────────────

@@ -189,8 +189,8 @@ export interface ControlEmpleado {
 }
 
 /** Por empleado: ventas, lo vendido sin stock (Historial), lo que bajó al contar o anotó roto, y las
- *  diferencias de caja de sus cierres. */
-export function controlEmpleados(porEmpleado: Fila[], movs: Movimiento[], cierres: CierreRes[], desde: Date, hasta: Date): ControlEmpleado[] {
+ *  diferencias de caja de sus cierres. `dueno`: el que cuenta y corrige todo; no entra en "para mirar". */
+export function controlEmpleados(porEmpleado: Fila[], movs: Movimiento[], cierres: CierreRes[], desde: Date, hasta: Date, dueno?: string): ControlEmpleado[] {
   const m = new Map<string, ControlEmpleado>();
   const fila = (nombre: string) => {
     let f = m.get(nombre);
@@ -214,9 +214,12 @@ export function controlEmpleados(porEmpleado: Fila[], movs: Movimiento[], cierre
     e.diferenciaCaja += Number(c.diferencia || 0);
   }
   // Para mirar: al menos 5 unidades y más del triple de lo que es normal en el comercio (la mediana).
+  // El dueño queda afuera de la cuenta: sus conteos son correcciones, y con él adentro marcaba a un empleado
+  // (o a él mismo) por comparación.
   const lista = [...m.values()];
-  const orden = lista.map(e => e.faltantes).sort((a, b) => a - b);
+  const empleados = lista.filter(e => e.nombre !== dueno);
+  const orden = empleados.map(e => e.faltantes).sort((a, b) => a - b);
   const mediana = orden.length ? orden[Math.floor((orden.length - 1) / 2)] : 0;
-  for (const e of lista) e.paraMirar = lista.length > 1 && e.faltantes >= 5 && e.faltantes > 3 * mediana;
+  for (const e of empleados) e.paraMirar = empleados.length > 1 && e.faltantes >= 5 && e.faltantes > 3 * mediana;
   return lista.sort((a, b) => b.vendido - a.vendido);
 }

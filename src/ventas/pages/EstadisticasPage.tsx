@@ -22,11 +22,13 @@ const EstadisticasPage: React.FC = () => {
   const [top, setTop] = useState<TopProducto[]>([]);
   const [porHora, setPorHora] = useState<number[]>([]);
   const [totales, setTotales] = useState({ ventas: 0, plata: 0 });
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!comercio) return;
     (async () => {
       setLoading(true);
+      setError(false);
       try {
         const desde = new Date(Date.now() - 30 * 86400000).toISOString();
         // De a 1.000: limit(2000) no sirve, el servidor corta en 1.000 y sin orden.
@@ -45,12 +47,13 @@ const EstadisticasPage: React.FC = () => {
         const ids = vs.map(v => v.id);
         const agg = new Map<string, TopProducto>();
         // in() con listas grandes falla: de a 200 ids, todos los pedidos a la vez (uno detrás de otro tardaba).
+        // Cada tanda también de a 1.000 renglones: 200 ventas de 6 productos ya pasaban el tope y el resto no se contaba.
         const tandas: string[][] = [];
         for (let i = 0; i < ids.length; i += 200) tandas.push(ids.slice(i, i + 200));
-        const resultados = await Promise.all(tandas.map(t => supabase.from('ventas_items')
-          .select('nombre_producto, cantidad, subtotal').in('venta_id', t)));
-        for (const { data: items } of resultados) {
-          for (const it of items ?? []) {
+        const resultados = await Promise.all(tandas.map(t => todas<{ nombre_producto: string; cantidad: number; subtotal: number }>((x, y) =>
+          supabase.from('ventas_items').select('nombre_producto, cantidad, subtotal').in('venta_id', t).order('id').range(x, y))));
+        for (const items of resultados) {
+          for (const it of items) {
             const e = agg.get(it.nombre_producto) ?? { nombre: it.nombre_producto, cantidad: 0, plata: 0 };
             e.cantidad += it.cantidad;
             e.plata += Number(it.subtotal);
@@ -58,7 +61,7 @@ const EstadisticasPage: React.FC = () => {
           }
         }
         setTop(Array.from(agg.values()).sort((a, b) => b.cantidad - a.cantidad).slice(0, 10));
-      } catch { /* sin conexión: queda vacío */ }
+      } catch { setError(true); } // antes decía "Sin ventas este mes" aunque hubiera
       setLoading(false);
     })();
   }, [comercio]);
@@ -75,6 +78,9 @@ const EstadisticasPage: React.FC = () => {
 
         {loading ? (
           <><Skeleton height={80} style={{ marginBottom: 8 }} /><Skeleton height={200} /></>
+        ) : error ? (
+          <EmptyState icon={<ChartBarIcon size={44} color="var(--text-3)" />} title="No se pudieron traer los números"
+            description="Hace falta internet. Probá de nuevo en un rato: no se borró nada." />
         ) : totales.ventas === 0 ? (
           <EmptyState icon={<ChartBarIcon size={44} color="var(--text-3)" />} title="Sin ventas este mes"
             description="Cuando registres ventas vas a ver acá los números." />

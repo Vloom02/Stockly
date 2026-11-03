@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Exportar ventas a CSV (planilla Excel/Sheets es-AR) + guardado de archivo.
 // ═══════════════════════════════════════════════════════════════════════════
-import { Capacitor } from '@capacitor/core';
+import { guardarYCompartir, ResultadoArchivo } from '../../lib/archivos';
 
 export interface VentaExport {
   fecha: string;        // ISO
@@ -22,7 +22,7 @@ function celda(v: string | number): string {
   // CSV injection: neutralizar textos que Excel interpretaría como fórmula
   // (p.ej. cliente "=HYPERLINK(...)"). Solo strings; números intactos.
   if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
-  return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  return /[;"\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; // con \r suelto, Excel cortaba la fila
 }
 
 export function ventasACSV(ventas: VentaExport[]): string {
@@ -47,22 +47,7 @@ export function ventasACSV(ventas: VentaExport[]): string {
   return '﻿' + 'sep=;\n' + [header, ...rows].map(r => r.map(celda).join(';')).join('\n');
 }
 
-/** Guarda el CSV (Documentos en Android, descarga en web). */
-export async function guardarCSV(nombre: string, contenido: string): Promise<'guardado' | 'descargado' | 'error'> {
-  try {
-    if (Capacitor.isNativePlatform()) {
-      const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
-      await Filesystem.writeFile({ path: nombre, data: contenido, directory: Directory.Documents, encoding: Encoding.UTF8, recursive: true });
-      return 'guardado';
-    }
-    const blob = new Blob([contenido], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = nombre;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    return 'descargado';
-  } catch {
-    return 'error';
-  }
+/** Guarda el CSV (caché + Compartir en Android, descarga en web). */
+export function guardarCSV(nombre: string, contenido: string): Promise<ResultadoArchivo> {
+  return guardarYCompartir(nombre, contenido, 'text/csv');
 }

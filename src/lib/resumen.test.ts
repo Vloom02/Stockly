@@ -139,5 +139,8 @@ describe('controlEmpleados', () => {
       mov('Ana', 'ajuste', 4, 'Devolución venta 12'), mov('Automático', 'ajuste', -20),
     ], [], desde, hasta);
     expect(r.map(e => [e.nombre, e.faltantes, e.paraMirar])).toEqual([['Rosa', 8, true], ['Juan', 1, false], ['Ana', 0, false]]);
+    // El dueño no entra en la comparación ni queda marcado.
+    const conDueno = controlEmpleados([], [mov('Rosa', 'ajuste', -6), mov('Juan', 'ajuste', -1), mov('Ana', 'ajuste', -1)], [], desde, hasta, 'Rosa');
+    expect(conDueno.find(e => e.nombre === 'Rosa')?.paraMirar).toBe(false);
   });
 });

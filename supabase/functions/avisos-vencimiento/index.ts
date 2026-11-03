@@ -97,12 +97,19 @@ Deno.serve(async (req) => {
     const fcmUrl = `https://fcm.googleapis.com/v1/projects/${SA.project_id}/messages:send`;
     let enviados = 0, borrados = 0;
 
-    // Los celulares de todos los comercios en una sola consulta (antes, una por comercio).
-    const { data: todos, error: errTokens } = await supa.from('push_tokens').select('token, comercio_id')
-      .in('comercio_id', [...porComercio.keys()]);
-    if (errTokens) return json({ error: errTokens.message }, 500);
+    // Los celulares de los comercios, de a 200 comercios y de a 1.000 filas: el servidor corta en 1.000 y una lista
+    // de ids muy larga no entra en la dirección del pedido (pasada cierta cantidad, a algunos no les llegaba el aviso).
     const tokensDe = new Map<string, { token: string }[]>();
-    for (const t of todos ?? []) tokensDe.set(t.comercio_id, [...(tokensDe.get(t.comercio_id) ?? []), { token: t.token }]);
+    const ids = [...porComercio.keys()];
+    for (let i = 0; i < ids.length; i += 200) {
+      for (let desde = 0; ; desde += 1000) {
+        const { data, error: errTokens } = await supa.from('push_tokens').select('token, comercio_id')
+          .in('comercio_id', ids.slice(i, i + 200)).order('token').range(desde, desde + 999);
+        if (errTokens) return json({ error: errTokens.message }, 500);
+        for (const t of data ?? []) tokensDe.set(t.comercio_id, [...(tokensDe.get(t.comercio_id) ?? []), { token: t.token }]);
+        if (!data || data.length < 1000) break;
+      }
+    }
 
     for (const [comercioId, info] of porComercio) {
       const tokens = tokensDe.get(comercioId);
@@ -128,10 +135,14 @@ Deno.serve(async (req) => {
         });
         if (r.ok) {
           enviados++;
-        } else if (r.status === 404 || r.status === 400) {
-          // token inválido o desregistrado → limpiarlo
-          await supa.from('push_tokens').delete().eq('token', t.token);
-          borrados++;
+        } else {
+          // Se borra solo si FCM dice que ese celular ya no existe (UNREGISTERED). Un 400 por un error del mensaje
+          // borraba los tokens de todos y nadie volvía a recibir avisos.
+          const err = await r.json().catch(() => null) as { error?: { details?: { errorCode?: string }[] } } | null;
+          if (err?.error?.details?.some(d => d.errorCode === 'UNREGISTERED')) {
+            await supa.from('push_tokens').delete().eq('token', t.token);
+            borrados++;
+          } else console.warn('FCM', r.status, JSON.stringify(err));
         }
       }
     }

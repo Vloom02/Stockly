@@ -10,6 +10,7 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { IonContent, IonToast } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { cobrosDeFiado } from '../lib/fiado';
 import { useAuth } from '../context/AuthContext';
 import { useOwner } from '../context/OwnerContext';
 import { openDB, getLocalSetting, setLocalSetting } from '../lib/outbox';
@@ -127,11 +128,12 @@ const CierrePage: React.FC = () => {
       .gte('fecha', desdeIso).lt('fecha', hastaIso);
     let qm = supabase.from('ventas_caja_mov').select('tipo, monto, fecha, turno_desde')
       .eq('comercio_id', comercio.id).gte('fecha', desdeIso).lt('fecha', hastaIso);
+    const qp = cobrosDeFiado(comercio.id, sucursalActiva?.id).gte('fecha', desdeIso).lt('fecha', hastaIso);
     if (sucursalActiva) { q = q.eq('sucursal_id', sucursalActiva.id); qm = qm.eq('sucursal_id', sucursalActiva.id); }
     const [rv, rm, rp] = await Promise.all([
       q.order('fecha', { ascending: false }),
       qm,
-      supabase.from('ventas_pagos').select('monto').eq('comercio_id', comercio.id).gte('fecha', desdeIso).lt('fecha', hastaIso),
+      qp,
     ]);
     // Sin internet se deja lo que ya se veía y se avisa (antes decía "Sin ventas").
     setSinInternet(!!(rv.error || rm.error || rp.error));
@@ -351,7 +353,7 @@ const CierrePage: React.FC = () => {
             Gestionar cajeros
           </button>
           <p style={{ fontSize: 14, color: 'var(--text-3)', marginTop: 8, textAlign: 'center' }}>
-            El PIN protege Dashboard, Caja, Historial y Deudas. Los cajeros inician turno con legajo + contraseña.
+            La clave de dueño cuida la caja, las ventas anteriores y el fiado. Cada empleado entra tocando su nombre y poniendo su clave.
           </p>
         </Card>
       </div>

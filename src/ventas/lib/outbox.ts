@@ -118,20 +118,38 @@ export function esErrorPermanente(msg?: string): boolean {
     .some(p => m.includes(p));
 }
 
+/** Sin señal, Wi-Fi sin salida, servidor que no contesta o sesión cerrada: no es culpa del dato, así que no
+ *  cuenta como intento (antes, una hora así mandaba todas las ventas a cuarentena). */
+export function esErrorDeRed(msg?: string): boolean {
+  if (!msg) return false;
+  const m = msg.toLowerCase();
+  return ['failed to fetch', 'networkerror', 'network request failed', 'load failed', 'fetch failed',
+          'timeout', 'aborted', 'sin sesión'].some(p => m.includes(p));
+}
+
 export async function flushOutbox(): Promise<number> {
   if (flushing || !navigator.onLine) return 0;
   flushing = true;
   let processed = 0;
   try {
+    // Sin sesión el servidor rechaza todo como "no autorizado" y cada venta se iba a cuarentena.
+    if (!(await supabase.auth.getSession()).data.session) return 0;
     const items: OutboxItem[] = await idbGetAll('outbox');
     items.sort((a, b) => a.createdAt - b.createdAt);
     for (const item of items) {
       if (item.bloqueado) continue; // en cuarentena: no se reintenta hasta acción manual
       try {
-        if (item.kind === 'venta')      await syncVentaOffline(item.payload as OfflineVentaPayload);
-        if (item.kind === 'anulacion')  await syncAnulacionOffline(item.payload as OfflineAnulacionPayload);
-        if (item.kind === 'pago_fiado') await syncPagoOffline(item.payload as OfflinePagoPayload);
-        if (item.kind === 'cierre' || item.kind === 'caja_mov') await syncFilaCaja(item.kind, item.payload as FilaCaja);
+        // Con tiempo límite: con Wi-Fi sin salida el pedido quedaba colgado y la cola no se volvía a mandar nunca.
+        // Si el servidor igual lo aplicó, reintentarlo no duplica (todo va por id).
+        await Promise.race([
+          (async () => {
+            if (item.kind === 'venta')      await syncVentaOffline(item.payload as OfflineVentaPayload);
+            if (item.kind === 'anulacion')  await syncAnulacionOffline(item.payload as OfflineAnulacionPayload);
+            if (item.kind === 'pago_fiado') await syncPagoOffline(item.payload as OfflinePagoPayload);
+            if (item.kind === 'cierre' || item.kind === 'caja_mov') await syncFilaCaja(item.kind, item.payload as FilaCaja);
+          })(),
+          new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Timeout (20 s)')), 20000)),
+        ]);
         // La venta ya quedó en el servidor: borrar su copia local para que no siga
         // contando en "ventas de hoy" offline los días siguientes (store 'ventas').
         if (item.kind === 'venta') await idbDelete('ventas', (item.payload as OfflineVentaPayload).ventaId);
@@ -140,6 +158,7 @@ export async function flushOutbox(): Promise<number> {
       } catch (err) {
         // NUNCA se borra una venta no confirmada: se pone en cuarentena (se conserva).
         const msg = err instanceof Error ? err.message : String(err);
+        if (esErrorDeRed(msg)) break; // sin red: el resto tampoco va a salir, se reintenta en la próxima
         const retries = item.retries + 1;
         const bloqueado = esErrorPermanente(msg) || retries >= MAX_INTENTOS;
         await idbPut('outbox', { ...item, retries, error: msg, bloqueado });

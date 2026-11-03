@@ -11,13 +11,13 @@ import { useAuth as useAuthStockly } from '../../context/AuthContext';
 import { uuid } from '../lib/ventas-engine';
 import { useAuth } from '../context/AuthContext';
 import { formatMoney } from '../context/VentasContext';
-import { Card, Badge, EmptyState, Skeleton } from '../components/ui';
-import { useConfirm } from '../../lib/useConfirm';
+import { Card, EmptyState, Skeleton } from '../components/ui';
+import { useConfirm, usePedirTexto } from '../../lib/useConfirm';
 import { BookOpenIcon, CheckIcon, MagnifyingGlass } from '../components/ui/icons';
 
 import { parseMonto } from '../../lib/numeros';
 import BotonVolver from '../components/BotonVolver';
-import { repartirPago } from '../lib/fiado';
+import { repartirPago, claveCliente as clave, diasDesde } from '../lib/fiado';
 import { ChatBubbleLeftRightIcon as IcoChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 interface DeudaRow { id: string; cliente: string; monto: number; pagada: boolean; fecha: string; }
 
@@ -25,6 +25,7 @@ const DeudasPage: React.FC = () => {
   const { comercio, miembro } = useAuth();
   const { cajeroEnTurno } = useAuthStockly();
   const confirmar = useConfirm();
+  const pedirTexto = usePedirTexto();
   const [deudas, setDeudas] = useState<DeudaRow[]>([]);
   const [pagos, setPagos] = useState<Record<string, number>>({}); // deuda_id → abonado
   const [loading, setLoading] = useState(true);
@@ -70,96 +71,114 @@ const DeudasPage: React.FC = () => {
 
   const saldoDe = (d: DeudaRow) => Math.max(0, d.monto - (pagos[d.id] ?? 0));
 
-  // Registra un abono (parcial o total). monto = remaining → salda la deuda.
-  // El pago lleva id generado acá: si hay que reintentar (outbox offline), el
-  // server lo detecta como duplicado y no lo cobra dos veces.
-  const registrarPago = async (d: DeudaRow, monto: number) => {
-    if (!comercio || monto <= 0) return;
-    // Dos toques seguidos en "Saldar" apilaban dos cobros de la misma deuda.
-    if (cobrando.current.has(d.id)) return;
+  // Registra un abono (parcial o total) y devuelve lo que se cobró de verdad (null si falló). No avisa:
+  // avisa quien llama, una sola vez (una entrega repartida en varias deudas mostraba un cartel por cada una).
+  // El pago lleva id generado acá: si hay que reintentar (outbox offline), el server lo detecta como duplicado.
+  const registrarPago = async (d: DeudaRow, monto: number): Promise<{ cobrado: number; enCola: boolean } | null> => {
+    if (!comercio || monto <= 0) return null;
+    // Dos toques seguidos apilaban dos cobros de la misma deuda.
+    if (cobrando.current.has(d.id)) return null;
     cobrando.current.add(d.id);
-    // Saldada: queda marcada, así un segundo "Saldar" de un diálogo apilado no cobra de nuevo.
-    let salda = false;
-    try { salda = await registrarPagoUnaVez(d, monto); } finally { if (!salda) cobrando.current.delete(d.id); }
+    try { return await registrarPagoUnaVez(d, monto); } finally { cobrando.current.delete(d.id); }
   };
 
-  const registrarPagoUnaVez = async (d: DeudaRow, monto: number): Promise<boolean> => {
-    if (!comercio) return false;
+  const registrarPagoUnaVez = async (d: DeudaRow, monto: number): Promise<{ cobrado: number; enCola: boolean } | null> => {
+    if (!comercio) return null;
     const pagoId = uuid();
-    const saldaria = monto >= saldoDe(d);
     const usuario = cajeroEnTurno ?? miembro?.nombre ?? null; // el cierre del cajero suma sus cobros
 
-    const aplicarLocal = (msgExtra = '') => {
-      if (saldaria) {
-        setDeudas(x => x.filter(y => y.id !== d.id));
-        setToast({ show: true, msg: `${d.cliente} saldó su deuda 🎉${msgExtra}`, color: 'success' });
-      } else {
-        setPagos(p => ({ ...p, [d.id]: (p[d.id] ?? 0) + monto }));
-        setToast({ show: true, msg: `Pago de ${formatMoney(monto)} registrado${msgExtra}`, color: 'success' });
-      }
+    const aplicarLocal = (cobrado: number) => {
+      if (cobrado >= saldoDe(d)) setDeudas(x => x.filter(y => y.id !== d.id));
+      else setPagos(p => ({ ...p, [d.id]: (p[d.id] ?? 0) + cobrado }));
     };
 
     if (navigator.onLine) {
-      const { error } = await supabase.rpc('registrar_pago_fiado', {
+      const { data, error } = await supabase.rpc('registrar_pago_fiado', {
         p: { pago_id: pagoId, deuda_id: d.id, comercio_id: comercio.id, monto, usuario },
       });
-      if (!error) { aplicarLocal(); return saldaria; }
+      if (!error) {
+        // El servidor nunca cobra más que el saldo: si otro equipo ya la había cobrado, acá se cobró menos (o nada).
+        const r = (data ?? {}) as { sin_saldo?: boolean; cobrado?: number; saldo?: number };
+        const cobrado = r.sin_saldo ? 0 : Number(r.cobrado ?? Math.min(monto, saldoDe(d)));
+        if (r.sin_saldo || r.saldo === 0) setDeudas(x => x.filter(y => y.id !== d.id));
+        else aplicarLocal(cobrado);
+        return { cobrado, enCola: false };
+      }
       // Rechazado por el servidor: guardarlo para después solo lo mandaba a cuarentena.
       if (esErrorPermanente(error.message)) {
         setToast({ show: true, msg: `No se pudo registrar el pago: ${error.message}`, color: 'danger' });
-        return false;
+        return null;
       }
       // Sin señal o se cortó: cae al outbox.
     }
     try {
       await openDB();
       await enqueueOutbox('pago_fiado', { pagoId, deudaId: d.id, comercioId: comercio.id, monto, usuario, fecha: Date.now() });
-      aplicarLocal('. Se manda solo cuando haya internet.');
-      return saldaria;
+      aplicarLocal(monto);
+      return { cobrado: monto, enCola: true };
     } catch {
       setToast({ show: true, msg: 'No se pudo registrar el pago', color: 'danger' });
-      return false;
+      return null;
     }
   };
 
-  const pedirPago = (d: DeudaRow) => {
-    const saldo = saldoDe(d);
-    const txt = window.prompt(`Pago de ${d.cliente}. Saldo: ${formatMoney(saldo)}.\n¿Cuánto abona?`, String(saldo));
-    if (txt === null) return;
-    const monto = Math.min(saldo, Math.round(parseMonto(txt) || 0));
-    if (monto > 0) registrarPago(d, monto);
-  };
-
-  const saldar = async (d: DeudaRow) => {
-    if (!(await confirmar(`¿Saldar la deuda de "${d.cliente}" (${formatMoney(saldoDe(d))})?`, { okText: 'Saldar' }))) return;
-    registrarPago(d, saldoDe(d));
-  };
-
-  // Entrega a cuenta de un cliente con varias deudas: se reparte pagando primero lo más viejo.
-  const cobrarACuenta = async (cliente: string) => {
+  // Cobro a un cliente (una parte o todo): se reparte pagando primero lo más viejo. Un solo aviso con el total.
+  const cobrar = async (cliente: string, monto: number) => {
     const suyas = deudas.filter(d => clave(d.cliente) === clave(cliente));
-    const total = suyas.reduce((s, d) => s + saldoDe(d), 0);
-    const txt = window.prompt(`Entrega de ${cliente}. Debe en total ${formatMoney(total)}.\n¿Cuánto entrega?`, String(total));
-    if (txt === null) return;
-    const monto = Math.min(total, Math.round(parseMonto(txt) || 0));
-    for (const { deuda, monto: m } of repartirPago(suyas, saldoDe, monto)) await registrarPago(deuda, m);
+    let cobrado = 0, enCola = false, fallo = false;
+    for (const { deuda, monto: m } of repartirPago(suyas, saldoDe, monto)) {
+      const r = await registrarPago(deuda, m);
+      if (!r) { fallo = true; continue; }
+      cobrado += r.cobrado; enCola ||= r.enCola;
+    }
+    if (fallo && cobrado === 0) return; // el error ya se avisó
+    const devolver = Math.round((monto - cobrado) * 100) / 100;
+    if (devolver > 0) {
+      setToast({ show: true, color: 'danger', msg: cobrado > 0
+        ? `Se anotaron ${formatMoney(cobrado)}: el resto ya lo había pagado en otro equipo. Devolvé ${formatMoney(devolver)}.`
+        : `Ya estaba pagado (lo cobraron en otro equipo). Devolvé ${formatMoney(devolver)}.` });
+      load();
+      return;
+    }
+    setToast({ show: true, color: 'success', msg: `${cliente}: pago de ${formatMoney(cobrado)} anotado${enCola ? '. Se manda solo cuando haya internet.' : '.'}` });
   };
 
-  const recordar = (d: DeudaRow) => {
-    const msg = `Hola ${d.cliente}! Te recuerdo que tenés una cuenta pendiente de ${formatMoney(saldoDe(d))} en ${comercio?.nombre ?? 'el almacén'}. ¡Gracias!`;
+  const cobrarParte = async (cliente: string, total: number) => {
+    const txt = await pedirTexto('Cobrar una parte', `${cliente} debe ${formatMoney(total)}. ¿Cuánto te da?`, '', 'Anotar pago');
+    if (txt === null) return;
+    // Con centavos: redondear a pesos enteros dejaba deudas de $0,50 que no se podían saldar.
+    const monto = Math.min(total, Math.round((parseMonto(txt) || 0) * 100) / 100);
+    if (monto > 0) cobrar(cliente, monto);
+    else setToast({ show: true, color: 'danger', msg: 'Escribí cuánto te da, por ejemplo 1500' });
+  };
+
+  const saldarTodo = async (cliente: string, total: number) => {
+    if (!(await confirmar(`¿${cliente} pagó todo (${formatMoney(total)})?`, { okText: 'Pagó todo' }))) return;
+    cobrar(cliente, total);
+  };
+
+  const recordar = (cliente: string, total: number) => {
+    const msg = `Hola ${cliente}! Te recuerdo que tenés una cuenta pendiente de ${formatMoney(total)} en ${comercio?.nombre ?? 'el almacén'}. ¡Gracias!`;
     window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
   };
 
-  const filtered = useMemo(() => deudas.filter(d => !search || d.cliente.toLowerCase().includes(search.toLowerCase())), [deudas, search]);
   const total = useMemo(() => deudas.reduce((s, d) => s + saldoDe(d), 0), [deudas, pagos]);
 
-  // Agrupar por cliente: lo que todavía debe (no lo fiado), y "Marta" = "marta " (se escribe a mano en cada venta).
-  const clave = (c: string) => c.trim().toLowerCase();
-  const porCliente = useMemo(() => {
-    const m: Record<string, { total: number; count: number }> = {};
-    for (const d of filtered) { const k = clave(d.cliente); (m[k] ??= { total: 0, count: 0 }); m[k].total += saldoDe(d); m[k].count++; }
-    return m;
-  }, [filtered, pagos]);
+  // Una tarjeta por cliente: lo que todavía debe (no lo fiado), y "Marta" = "marta " (se escribe a mano en cada venta).
+  const clientes = useMemo(() => {
+    const m = new Map<string, { cliente: string; total: number; deudas: DeudaRow[] }>();
+    for (const d of deudas) {
+      if (search && !d.cliente.toLowerCase().includes(search.toLowerCase())) continue;
+      const k = clave(d.cliente);
+      const c = m.get(k) ?? { cliente: d.cliente.trim(), total: 0, deudas: [] };
+      c.total += saldoDe(d); c.deudas.push(d);
+      m.set(k, c);
+    }
+    for (const c of m.values()) c.deudas.sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+    return [...m.values()].sort((a, b) => b.total - a.total);
+  }, [deudas, pagos, search]);
+  const nClientes = useMemo(() => new Set(deudas.map(d => clave(d.cliente))).size, [deudas]);
+  const haceDias = (fecha: string) => { const n = diasDesde(fecha); return n <= 0 ? 'de hoy' : n === 1 ? 'de ayer' : `de hace ${n} días`; };
 
   return (
     <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
@@ -169,56 +188,49 @@ const DeudasPage: React.FC = () => {
         <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 14 }}>Clientes con fiado pendiente</p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 14 }}>
-          <Card variant="bordered" style={{ padding: 10 }}><div style={{ fontSize: 14, color: 'var(--text-2)' }}>Deudas activas</div><div style={{ fontSize: 20, fontWeight: 700 }}>{deudas.length}</div></Card>
+          <Card variant="bordered" style={{ padding: 10 }}><div style={{ fontSize: 14, color: 'var(--text-2)' }}>Clientes que deben</div><div style={{ fontSize: 20, fontWeight: 700 }}>{nClientes}</div></Card>
           <Card variant="bordered" style={{ padding: 10 }}><div style={{ fontSize: 14, color: 'var(--text-2)' }}>Total adeudado</div><div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-mono)', paddingTop: 2, color: 'var(--color-danger)' }}>{formatMoney(total)}</div></Card>
         </div>
 
         {deudas.length > 0 && (
           <div style={{ position: 'relative', marginBottom: 12 }}>
             <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }}><MagnifyingGlass size={18} color="var(--text-3)" /></span>
-            <input className="campo" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar cliente..."
-              style={{ width: '100%', padding: '10px 14px 10px 38px', fontSize: 15, color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none' }} />
+            <input className="campo" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar cliente..." aria-label="Buscar cliente"
+              style={{ width: '100%', minHeight: 48, padding: '10px 14px 10px 38px', fontSize: 17, color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none' }} />
           </div>
         )}
 
         {loading ? (
           <><Skeleton height={70} style={{ marginBottom: 7 }} /><Skeleton height={70} /></>
-        ) : filtered.length === 0 ? (
+        ) : clientes.length === 0 ? (
           <EmptyState icon={<BookOpenIcon size={44} color="var(--text-3)" />}
             title={deudas.length > 0 ? 'Sin resultados' : sinInternet ? 'Sin internet' : 'Sin deudas'}
             description={deudas.length > 0 ? 'Probá otra búsqueda' : sinInternet ? 'El fiado se ve cuando vuelva la señal. No se borró nada.' : 'No hay fiados pendientes'} />
         ) : (
-          filtered.map(d => {
-            const abonado = pagos[d.id] ?? 0;
-            const saldo = saldoDe(d);
-            return (
-            <Card key={d.id} variant="bordered" style={{ padding: '12px 14px', marginBottom: 7 }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 15 }}>{d.cliente}</div>
-                  <div style={{ fontSize: 14, color: 'var(--text-3)', marginTop: 2 }}>
-                    {new Date(d.fecha).toLocaleDateString('es-AR')} · {(() => { const n = Math.floor((Date.now() - new Date(d.fecha).getTime()) / 86400000); return n <= 0 ? 'de hoy' : `hace ${n} día${n === 1 ? '' : 's'}`; })()}
-                  </div>
-                  {abonado > 0 && <div style={{ fontSize: 14, color: 'var(--color-primary-dark)', marginTop: 3 }}>Abonado {formatMoney(abonado)} de {formatMoney(d.monto)}</div>}
-                  {porCliente[clave(d.cliente)]?.count > 1 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
-                      <Badge color="yellow">Total cliente: {formatMoney(porCliente[clave(d.cliente)].total)}</Badge>
-                      <button type="button" onClick={() => cobrarACuenta(d.cliente)} className="pressable"
-                        style={{ minHeight: 44, padding: '0 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                        Entrega a cuenta
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <span style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-danger)', fontFamily: 'var(--font-mono)' }}>{formatMoney(saldo)}</span>
+          clientes.map(c => (
+            <Card key={clave(c.cliente)} variant="bordered" style={{ padding: '12px 14px', marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
+                <div style={{ fontWeight: 700, fontSize: 18 }}>{c.cliente}</div>
+                <span style={{ fontWeight: 800, fontSize: 19, color: 'var(--color-danger)', fontFamily: 'var(--font-mono)' }}>{formatMoney(c.total)}</span>
               </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={() => pedirPago(d)} className="pressable" style={{ flex: 1, minHeight: 48, padding: '8px', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}>$ Pago</button>
-                <button onClick={() => saldar(d)} className="pressable" style={{ flex: 1, minHeight: 48, padding: '8px', border: '1px solid var(--color-primary-border)', borderRadius: 'var(--radius)', background: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)', cursor: 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><CheckIcon size={15} /> Saldar</button>
-                <button onClick={() => recordar(d)} aria-label={`Recordar a ${d.cliente} por WhatsApp`} className="pressable" style={{ width: 48, minHeight: 48, padding: '8px', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', cursor: 'pointer', fontSize: 15 }}><IcoChatBubbleLeftRightIcon width={22} height={22} /></button>
+              <div style={{ marginBottom: 10 }}>
+                {c.deudas.map(d => {
+                  const abonado = pagos[d.id] ?? 0;
+                  return (
+                    <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 15, color: 'var(--text-2)', padding: '2px 0' }}>
+                      <span>{new Date(d.fecha).toLocaleDateString('es-AR')} · {haceDias(d.fecha)}{abonado > 0 ? ` · pagó ${formatMoney(abonado)}` : ''}</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>{formatMoney(saldoDe(d))}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <button onClick={() => cobrarParte(c.cliente, c.total)} className="pressable" style={{ flex: '1 1 130px', minHeight: 48, padding: '8px', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontSize: 16, fontWeight: 600, fontFamily: 'inherit' }}>Cobrar una parte</button>
+                <button onClick={() => saldarTodo(c.cliente, c.total)} className="pressable" style={{ flex: '1 1 130px', minHeight: 48, padding: '8px', border: '1px solid var(--color-primary-border)', borderRadius: 'var(--radius)', background: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)', cursor: 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><CheckIcon size={18} /> Pagó todo</button>
+                <button onClick={() => recordar(c.cliente, c.total)} aria-label={`Recordar a ${c.cliente} por WhatsApp`} className="pressable" style={{ width: 48, minHeight: 48, padding: '8px', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', cursor: 'pointer' }}><IcoChatBubbleLeftRightIcon width={22} height={22} /></button>
               </div>
             </Card>
-          );})
+          ))
         )}
       </div>
       <IonToast isOpen={toast.show} onDidDismiss={() => setToast(t => ({ ...t, show: false }))} message={toast.msg} duration={4500} position="top" color={toast.color} />

@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('./supabase', () => ({ supabase: {} }));
 vi.mock('./localDb', () => ({}));
 
-import { deltasPendientesPorLote, cambiosReemplazados } from './sync';
+import { deltasPendientesPorLote, fusionarCambios, esperaAlta, cambiosSinSubir } from './sync';
 import type { ItemOutbox } from './localDb';
 
 const item = (tabla: string, loteId: string | undefined, cantidad: number): ItemOutbox =>
@@ -24,18 +24,26 @@ describe('deltasPendientesPorLote', () => {
   });
 });
 
-describe('cambiosReemplazados', () => {
-  const cambio = (tabla: string, operacion: string, registroId: string, creadoEn: number, bloqueado = false): ItemOutbox =>
-    ({ id: `${registroId}-${creadoEn}`, tabla, operacion, registroId, payload: {}, intentos: 0, creadoEn, bloqueado }) as ItemOutbox;
+describe('fusionarCambios', () => {
+  const cambio = (tabla: string, operacion: string, registroId: string, creadoEn: number, payload: Record<string, unknown> = {}, bloqueado = false): ItemOutbox =>
+    ({ id: `${registroId}-${creadoEn}`, tabla, operacion, registroId, payload, intentos: 0, creadoEn, bloqueado }) as ItemOutbox;
 
-  it('de varios cambios del mismo registro queda solo el último', () => {
-    const items = [cambio('productos', 'update', 'p1', 1), cambio('productos', 'update', 'p1', 3), cambio('productos', 'update', 'p1', 2)];
-    expect(cambiosReemplazados(items).map(i => i.creadoEn).sort()).toEqual([1, 2]);
+  it('junta los cambios del mismo registro en el último, con lo más nuevo encima', () => {
+    const items = [
+      cambio('productos', 'update', 'p1', 1, { precio: 100, nombre: 'Leche' }),
+      cambio('productos', 'update', 'p1', 3, { precio: 300 }),
+      cambio('productos', 'update', 'p1', 2, { costo: 50, precio: 200 }),
+    ];
+    const { fusionados, sobran } = fusionarCambios(items);
+    expect(sobran.map(i => i.creadoEn).sort()).toEqual([1, 2]);
+    expect(fusionados).toHaveLength(1);
+    expect(fusionados[0].creadoEn).toBe(3);
+    expect(fusionados[0].payload).toEqual({ precio: 300, nombre: 'Leche', costo: 50 });
   });
 
-  it('el viejo en cuarentena también se descarta (si no, al reintentarlo pisaría al nuevo)', () => {
-    const items = [cambio('productos', 'update', 'p1', 1, true), cambio('productos', 'update', 'p1', 2)];
-    expect(cambiosReemplazados(items).map(i => i.creadoEn)).toEqual([1]);
+  it('el viejo en cuarentena también se junta (si no, al reintentarlo pisaría al nuevo)', () => {
+    const { sobran } = fusionarCambios([cambio('productos', 'update', 'p1', 1, {}, true), cambio('productos', 'update', 'p1', 2)]);
+    expect(sobran.map(i => i.creadoEn)).toEqual([1]);
   });
 
   it('no toca altas, otros registros ni la misma id en otra tabla', () => {
@@ -44,6 +52,44 @@ describe('cambiosReemplazados', () => {
       cambio('productos', 'update', 'p1', 1), cambio('productos', 'update', 'p2', 2),
       cambio('sucursales', 'update', 'p1', 3),
     ];
-    expect(cambiosReemplazados(items)).toEqual([]);
+    expect(fusionarCambios(items)).toEqual({ fusionados: [], sobran: [] });
+  });
+});
+
+describe('esperaAlta', () => {
+  const item_ = (tabla: string, operacion: string, registroId: string, payload: Record<string, unknown> = {}) =>
+    ({ id: 'x', tabla, operacion, registroId, payload, intentos: 0, creadoEn: 0 }) as ItemOutbox;
+  const altas = new Set(['p-nuevo', 'l-nuevo', 's-nuevo']);
+
+  it('un alta no espera por sí misma, pero sí por su producto o local sin subir', () => {
+    expect(esperaAlta(item_('lotes', 'insert', 'l-nuevo', { productoId: 'p-viejo', sucursalId: 's-viejo' }), altas)).toBe(false);
+    expect(esperaAlta(item_('lotes', 'insert', 'l-2', { productoId: 'p-nuevo', sucursalId: 's-viejo' }), altas)).toBe(true);
+    expect(esperaAlta(item_('lotes', 'insert', 'l-3', { productoId: 'p-viejo', sucursalId: 's-nuevo' }), altas)).toBe(true);
+  });
+
+  it('cambios, bajas, ajustes y movimientos esperan el alta de lo que tocan', () => {
+    expect(esperaAlta(item_('lotes', 'update', 'l-nuevo'), altas)).toBe(true);
+    expect(esperaAlta(item_('productos', 'delete', 'p-nuevo'), altas)).toBe(true);
+    expect(esperaAlta(item_('ajuste_stock', 'insert', 'm1', { loteId: 'l-nuevo' }), altas)).toBe(true);
+    expect(esperaAlta(item_('movimientos', 'insert', 'm2', { productoId: 'p-nuevo', sucursalId: '' }), altas)).toBe(true);
+    expect(esperaAlta(item_('movimientos', 'insert', 'm3', { productoId: 'p-viejo', sucursalId: '' }), altas)).toBe(false);
+  });
+});
+
+describe('cambiosSinSubir', () => {
+  const item_ = (tabla: string, operacion: string, registroId: string, creadoEn: number, payload: Record<string, unknown> = {}) =>
+    ({ id: `${registroId}-${creadoEn}`, tabla, operacion, registroId, payload, intentos: 0, creadoEn }) as ItemOutbox;
+
+  it('acumula altas y cambios en orden, la baja gana, y deja afuera movimientos y ajustes', () => {
+    const m = cambiosSinSubir([
+      item_('productos', 'update', 'p1', 2, { precio: 20 }),
+      item_('productos', 'insert', 'p1', 1, { nombre: 'Yerba', precio: 10 }),
+      item_('productos', 'delete', 'p2', 3),
+      item_('ajuste_stock', 'insert', 'm1', 4, { loteId: 'l1', cantidad: -1 }),
+      item_('movimientos', 'insert', 'm2', 5),
+    ]);
+    expect(m.get('productos:p1')).toEqual({ nombre: 'Yerba', precio: 20 });
+    expect(m.get('productos:p2')).toBeNull();
+    expect(m.size).toBe(2);
   });
 });

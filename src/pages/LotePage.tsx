@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { sumarFecha } from '../lib/vencimientos';
+import { sumarFecha, fechaLocalISO } from '../lib/vencimientos';
+import { useConfirm } from '../lib/useConfirm';
 import { parseMonto } from '../lib/numeros';
 import { precioConMismaGanancia } from '../lib/liquidacion';
 import { IonContent, IonPage, IonToast } from '@ionic/react';
@@ -38,6 +39,7 @@ const LoteForm: React.FC = () => {
   const { state, addLote, updateLote, retirarLote, updateProducto } = useStore();
   const history = useHistory();
   const { esDueno, comercio } = useAuth();
+  const confirmar = useConfirm();
   const location = useLocation();
   const { id } = useParams<RouteParams>();
   const esNuevo = id === 'nuevo' || !id;
@@ -72,13 +74,15 @@ const LoteForm: React.FC = () => {
   const [listo, setListo] = useState<string | null>(null); // lo que se acaba de cargar
   // Costo de esta compra (opcional, solo el dueño): con la inflación el de la ficha quedaba viejo y la ganancia daba mal.
   const [costoTxt, setCostoTxt] = useState('');
-  const [usarPrecio, setUsarPrecio] = useState(true);
+  const [usarPrecio, setUsarPrecio] = useState(false); // cambiar el precio de venta es una decisión: se toca a propósito
   // Mostrar el override de días de aviso si el lote ya lo tenía seteado.
   const [mostrarAvanzado, setMostrarAvanzado] = useState(!!loteExistente?.diasAviso &&
     loteExistente.diasAviso !== state.productos.find(p => p.id === loteExistente.productoId)?.diasAvisoDefault);
 
   const producto = productoId ? state.productos.find(p => p.id === productoId) : undefined;
-  const diasAvisoEf = diasAviso ? parseInt(diasAviso, 10) : (producto?.diasAvisoDefault || 7);
+  const diasAvisoNum = parseInt(diasAviso, 10);
+  // "abc" o vacío no son días: antes un NaN rompía el nivel de vencimiento del lote.
+  const diasAvisoEf = Number.isFinite(diasAvisoNum) && diasAvisoNum >= 0 ? diasAvisoNum : (producto?.diasAvisoDefault || 7);
   const nivel = fechaVencimiento ? calcularNivelAlerta(fechaVencimiento, diasAvisoEf) : 'ok';
   // Compra vencida: lo que hay que hacer es sacarla, así que ese bloque va primero.
   const vencidaPrimero = !!loteExistente && nivel === 'vencido' && loteExistente.cantidad > 0;
@@ -94,6 +98,8 @@ const LoteForm: React.FC = () => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaVencimiento)) { setToast({ show: true, msg: 'Elegí la fecha de vencimiento' }); return; }
 
     if (procesando) return;
+    if (fechaVencimiento < fechaLocalISO() && !loteExistente
+      && !(await confirmar(`Esa fecha (${formatearFecha(fechaVencimiento)}) ya pasó: la mercadería entra vencida. ¿Cargarla igual?`, { okText: 'Cargar igual', peligro: true }))) return;
     const datos = {
       productoId: productoId,
       sucursalId: state.sucursalActivaId,
@@ -108,11 +114,13 @@ const LoteForm: React.FC = () => {
       else {
         await addLote(datos);
         const costo = parseMonto(costoTxt);
+        let precioNuevo: number | null = null;
         if (esDueno && producto && costo > 0 && costo !== producto.costo) {
-          const precio = usarPrecio ? precioConMismaGanancia(producto.costo, producto.precio, costo) : null;
-          await updateProducto({ ...producto, costo, ...(precio ? { precio } : {}) });
+          precioNuevo = usarPrecio ? precioConMismaGanancia(producto.costo, producto.precio, costo) : null;
+          await updateProducto({ ...producto, costo, ...(precioNuevo ? { precio: precioNuevo } : {}) });
         }
-        setListo(`${cant} de ${producto?.nombre ?? 'mercadería'}, vence ${formatearFecha(fechaVencimiento)}`);
+        setListo(`${cant} de ${producto?.nombre ?? 'mercadería'}, vence ${formatearFecha(fechaVencimiento)}`
+          + (precioNuevo && producto && precioNuevo !== producto.precio ? `. Precio nuevo: ${formatearMoneda(precioNuevo)}` : ''));
       }
     } finally {
       setProcesando(false);
@@ -126,6 +134,10 @@ const LoteForm: React.FC = () => {
       ? Math.floor((1 - producto.costo / producto.precio) * 100) : 90;
     const pct = Math.min(pctSugerido, tope);
     if (pct <= 0) { setToast({ show: true, msg: 'Con este costo no hay margen para descontar sin perder plata' }); return; }
+    // Se confirma con el descuento que de verdad se pone (puede ser menos que el sugerido, para no perder plata).
+    const nuevoPrecio = Math.round(producto.precio * (100 - pct)) / 100;
+    if (!(await confirmar(`¿Poner ${producto.nombre} a ${formatearMoneda(nuevoPrecio)} (−${pct}%) en la caja hasta el ${formatearFecha(loteExistente.fechaVencimiento)}?`
+      + (pct < pctSugerido ? ` Es menos que el ${pctSugerido}% sugerido para no vender por debajo del costo.` : ''), { okText: 'Poner en oferta' }))) return;
     setProcesando(true);
     const { error } = await supabase.from('ventas_liquidaciones').upsert(
       { comercio_id: comercio?.id, producto_id: producto.id, pct, hasta: loteExistente.fechaVencimiento },
@@ -160,8 +172,9 @@ const LoteForm: React.FC = () => {
     const q = busqueda.trim().toLowerCase();
     const lista = state.productos
       .filter(p => !q || p.nombre.toLowerCase().includes(q) || (p.codigoBarras ?? '').includes(q))
-      .sort((a, b) => a.nombre.localeCompare(b.nombre))
-      .slice(0, 40);
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+    const encontrados = lista.length;
+    lista.splice(40);
     const cant = parseInt(cantidad, 10) || 0;
     const sumar = (n: number) => setCantidad(String(Math.max(1, cant + n)));
     const atras = () => (paso > 1 ? setPaso((paso - 1) as 1 | 2) : history.goBack());
@@ -231,10 +244,15 @@ const LoteForm: React.FC = () => {
                         No encontré ese producto.
                       </p>
                     )}
+                    {encontrados > lista.length && (
+                      <p role="status" style={{ fontSize: 16, color: 'var(--text-2)', textAlign: 'center', padding: '8px 0' }}>
+                        Se ven {lista.length} de {encontrados}. Escribí el nombre para encontrar el resto.
+                      </p>
+                    )}
                   </div>
                   <p style={{ fontSize: 16, color: 'var(--text-2)', marginTop: 16, textAlign: 'center' }}>
                     {esDueno
-                      ? <>¿No está? <button type="button" onClick={() => history.push('/producto/nuevo')} style={{ background: 'none', border: 'none', color: 'var(--brand-600)', fontWeight: 700, cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontSize: 16, minHeight: 44 }}>Crear producto nuevo</button></>
+                      ? <>¿No está? <button type="button" onClick={() => history.push('/producto/nuevo')} style={{ background: 'none', border: 'none', color: 'var(--marca-texto)', fontWeight: 700, cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontSize: 16, minHeight: 44 }}>Crear producto nuevo</button></>
                       : '¿No está? Pedile al dueño que cree el producto.'}
                   </p>
                 </>
@@ -242,16 +260,16 @@ const LoteForm: React.FC = () => {
 
               {paso === 2 && (
                 <>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, margin: '18px 0' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(48px, 64px) minmax(0, 120px) minmax(48px, 64px)', alignItems: 'center', justifyContent: 'center', gap: 12, margin: '18px 0' }}>
                     <button type="button" onClick={() => sumar(-1)} className="pressable" aria-label="Una menos"
-                      style={{ width: 64, height: 64, borderRadius: 'var(--radius-lg)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', fontSize: 32, fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}>−</button>
+                      style={{ width: '100%', height: 64, borderRadius: 'var(--radius-lg)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', fontSize: 32, fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}>−</button>
                     <input className="campo" value={cantidad} onChange={e => setCantidad(e.target.value.replace(/\D/g, ''))} inputMode="numeric" aria-label="Cantidad de unidades"
                       onFocus={e => e.target.select()}
-                      style={{ width: 120, height: 72, textAlign: 'center', fontSize: 40, fontWeight: 800, borderRadius: 'var(--radius-lg)', border: '2px solid var(--brand-500)', color: 'var(--text)', fontFamily: 'inherit' }} />
+                      style={{ width: '100%', minWidth: 0, height: 72, textAlign: 'center', fontSize: 40, fontWeight: 800, borderRadius: 'var(--radius-lg)', border: '2px solid var(--brand-500)', color: 'var(--text)', fontFamily: 'inherit' }} />
                     <button type="button" onClick={() => sumar(1)} className="pressable" aria-label="Una más"
-                      style={{ width: 64, height: 64, borderRadius: 'var(--radius-lg)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', fontSize: 32, fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}>+</button>
+                      style={{ width: '100%', height: 64, borderRadius: 'var(--radius-lg)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', fontSize: 32, fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}>+</button>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 20 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, marginBottom: 20 }}>
                     {[6, 12, 24, 48].map(n => (
                       <button key={n} type="button" onClick={() => setCantidad(String(n))} className="pressable" aria-pressed={cant === n}
                         style={{ minHeight: 52, borderRadius: 'var(--radius)', border: cant === n ? '3px solid var(--brand-500)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: cant === n ? 'var(--marca-suave)' : 'var(--surface)', fontSize: 18, fontWeight: 700, color: 'var(--text)', cursor: 'pointer', fontFamily: 'inherit' }}>

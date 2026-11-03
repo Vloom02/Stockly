@@ -15,6 +15,16 @@ import {
 } from '../lib/outbox';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../../context/StoreContext';
+import { getAll as stockGetAll, ItemOutbox } from '../../lib/localDb';
+
+/** Productos cargados en Mercadería que todavía no llegaron al servidor: una venta de ellos tiene que esperarlos,
+ *  si no el servidor la rechaza ("no pertenece") y se iba a cuarentena. */
+async function productosSinSubir(): Promise<Set<string>> {
+  try {
+    return new Set((await stockGetAll<ItemOutbox>('outbox'))
+      .filter(i => i.tabla === 'productos' && i.operacion === 'insert').map(i => i.registroId));
+  } catch { return new Set(); }
+}
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 async function hapticOk()  { try { await Haptics.impact({ style: ImpactStyle.Medium }); } catch { /* no-op */ } }
@@ -117,6 +127,7 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, [state.cart, comercio]);
 
   const doFlush = useCallback(async () => {
+    if ((await productosSinSubir()).size > 0) await sincronizarAhora(); // primero que suban los productos nuevos
     const n = await flushOutbox();
     const out = await idbGetAll<OutboxItem>('outbox');
     dispatch({ type: 'SET_OUTBOX', payload: out.length });
@@ -153,13 +164,23 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   useEffect(() => {
     if (!comercio || !sucursalActiva || !stock.loaded) return;
     lotesCacheRef.current = {};
-    const t = setTimeout(() => {
+    const t = setTimeout(async () => {
+      const lotes: Lote[] = stock.lotes.filter(l => l.sucursalId === sucursalActiva.id && l.cantidad > 0).map(l => ({
+        id: l.id, comercio_id: comercio.id, producto_id: l.productoId, sucursal_id: l.sucursalId,
+        cantidad: l.cantidad, fecha_vencimiento: l.fechaVencimiento, retirado: false,
+      }) as Lote);
+      // Lo vendido sin subir todavía no está en los lotes de Mercadería: se descuenta, si no al rearmar el
+      // catálogo Vender volvía a mostrar el stock de antes de esas ventas.
+      try {
+        await openDB();
+        for (const it of await idbGetAll<OutboxItem>('outbox')) {
+          const v = it.payload as OfflineVentaPayload;
+          if (it.kind === 'venta' && v.sucursalId === sucursalActiva.id) descontarLotesLocales(lotes, v.cart);
+        }
+      } catch { /* sin la cola: el de Mercadería */ }
       cacheCatalogo(
         stock.productos.map(p => ({ id: p.id, comercio_id: comercio.id, nombre: p.nombre, codigo_barras: p.codigoBarras ?? '', categoria: p.categoria, precio: p.precio, activo: true })),
-        stock.lotes.filter(l => l.sucursalId === sucursalActiva.id && l.cantidad > 0).map(l => ({
-          id: l.id, comercio_id: comercio.id, producto_id: l.productoId, sucursal_id: l.sucursalId,
-          cantidad: l.cantidad, fecha_vencimiento: l.fechaVencimiento, retirado: false,
-        })),
+        lotes,
       ).catch(() => { /* queda el catálogo anterior */ });
     }, 1000);
     return () => clearTimeout(t);
@@ -181,6 +202,11 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           t = setTimeout(() => { sincronizarAhora(); }, 1500);
         }
       )
+      // Precios y productos nuevos de otro equipo también: antes se veían recién en el ciclo de 30 s.
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'productos', filter: `comercio_id=eq.${comercio.id}` },
+        () => { clearTimeout(t); t = setTimeout(() => { sincronizarAhora(); }, 1500); }
+      )
       .subscribe();
     return () => { clearTimeout(t); supabase.removeChannel(canal); };
   }, [comercio, sucursalActiva, sincronizarAhora]);
@@ -201,16 +227,24 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const disp = stockTotal(lotes);
     dispatch({
       type: 'ADD_ITEM',
-      payload: { productoId: prod.id, nombre: prod.nombre, codigoBarras: prod.codigo_barras, precio: prod.precio, qty: 1, stockDisponible: disp },
+      payload: { productoId: prod.id, nombre: prod.nombre, codigoBarras: prod.codigo_barras, precio: prod.precio, qty: 1, stockDisponible: disp,
+        costo: productosRef.current.find(p => p.id === prod.id)?.costo },
     });
     hapticTap();
     const aviso = disp <= 0 ? ` (sin stock registrado)` : '';
     return { ok: true, msg: `${prod.nombre} agregado${aviso}` };
   }, [comercio, sucursalActiva]);
 
+  // El catálogo ya está en memoria (Stockly): antes cada tecla del buscador leía todos los productos del equipo.
+  const productosRef = useRef(stock.productos);
+  productosRef.current = stock.productos;
+  const aProductoVenta = (p: (typeof stock.productos)[number], comercioId: string): Producto =>
+    ({ id: p.id!, comercio_id: comercioId, nombre: p.nombre, codigo_barras: p.codigoBarras ?? '', categoria: p.categoria, precio: p.precio, activo: true }) as Producto;
+
   const escanear = useCallback(async (codigo: string) => {
     if (!comercio) return { ok: false, msg: 'Sin comercio activo' };
-    let prod: Producto | null = (await idbGetAll<Producto>('productos')).find(p => p.codigo_barras === codigo) ?? null;
+    const enMemoria = productosRef.current.find(p => p.codigoBarras === codigo);
+    let prod: Producto | null = enMemoria ? aProductoVenta(enMemoria, comercio.id) : null;
     if (!prod && navigator.onLine) prod = await buscarProductoPorCodigo(comercio.id, codigo).catch(() => null);
     if (!prod) return { ok: false, msg: `No encontré ese código (${codigo}). Buscalo por nombre o cargalo en Mercadería.` };
     return agregarProducto(prod);
@@ -219,7 +253,7 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const buscarPorNombre = useCallback(async (q: string) => {
     if (!comercio || q.length < 2) return [];
     const t = q.toLowerCase();
-    const locales = (await idbGetAll<Producto>('productos')).filter(p => p.nombre.toLowerCase().includes(t)).slice(0, 8);
+    const locales = productosRef.current.filter(p => p.nombre.toLowerCase().includes(t)).slice(0, 8).map(p => aProductoVenta(p, comercio.id));
     if (locales.length > 0 || !navigator.onLine) return locales;
     return buscarProductosPorNombre(comercio.id, q).catch(() => []);
   }, [comercio]);
@@ -275,7 +309,9 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       return { ok: true, msg: 'Venta guardada. Se manda sola cuando haya internet.', ventaId };
     };
 
-    if (!navigator.onLine) return saveOffline();
+    // Sin internet, o con un producto que todavía no subió: se guarda y sale cuando el producto esté arriba.
+    const sinSubir = await productosSinSubir();
+    if (!navigator.onLine || cart.some(c => sinSubir.has(c.productoId))) return saveOffline();
     try {
       // FEFO + descuento de stock se resuelven atómicamente en el servidor (RPC).
       // Con señal floja no se espera 45 s con el cliente adelante: a los 8 s se guarda en el

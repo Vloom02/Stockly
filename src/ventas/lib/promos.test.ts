@@ -58,4 +58,12 @@ describe('oferta por vencer', () => {
   it('pasada la fecha no descuenta (aunque esté guardada sin internet)', () => {
     expect(descuentoPromos([item], [{ productoId: 'p', tipo: 'liquidacion', minCant: 1, pct: 30, hasta: '2026-10-29' }], '2026-10-30').monto).toBe(0);
   });
+
+  it('liquidación: la rebaja cae solo en las unidades que vencen', () => {
+    const cinco = { productoId: 'p', nombre: 'Yogur', precio: 1000, qty: 5 } as never;
+    const r = descuentoPromos([cinco], [{ productoId: 'p', tipo: 'liquidacion', minCant: 1, pct: 50, hasta: '2026-11-05', maxUnidades: 2 }], '2026-10-30');
+    expect(r.monto).toBe(1000);
+    expect(r.lineas[0].etiqueta).toContain('en 2');
+    expect(descuentoPromos([cinco], [{ productoId: 'p', tipo: 'liquidacion', minCant: 1, pct: 50, hasta: '2026-11-05', maxUnidades: 0 }], '2026-10-30').monto).toBe(0);
+  });
 });

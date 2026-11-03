@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Pantalla de venta. Escanea / busca → carrito → confirma (FEFO + offline).
 // ═══════════════════════════════════════════════════════════════════════════
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { IonContent, IonModal, IonToast, useIonAlert } from '@ionic/react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { useStore } from '../../context/StoreContext';
@@ -27,6 +27,7 @@ import { useConfirm } from '../../lib/useConfirm';
 import { parseMonto } from '../../lib/numeros';
 import { avisoVentaOk, avisoToque } from '../lib/aviso';
 import { useContador } from '../../lib/useContador';
+import { useAlVolver } from '../../lib/useAlVolver';
 import CheckDibujo from '../components/CheckDibujo';
 import { BanknotesIcon as IcoBanknotesIcon, CameraIcon as IcoCameraIcon, CreditCardIcon as IcoCreditCardIcon, DevicePhoneMobileIcon as IcoDevicePhoneMobileIcon, QrCodeIcon as IcoQrCodeIcon, UserIcon as IcoUserIcon } from '@heroicons/react/24/outline';
 import { useLectorFisico } from '../../lib/useLectorFisico';
@@ -58,12 +59,12 @@ const VentaPage: React.FC = () => {
   const { state: stock } = useStore();
   useEffect(() => {
     const id = new URLSearchParams(location.search).get('producto');
-    if (!id) return;
+    if (!id || !stock.loaded) return; // con el catálogo sin cargar el producto no aparecía y se perdía
     history.replace('/ventas');
     const p = stock.productos.find(x => x.id === id);
     if (p) agregarProducto({ id, comercio_id: comercio?.id ?? '', nombre: p.nombre, codigo_barras: p.codigoBarras ?? '', precio: p.precio, activo: true })
       .then(r => toast$(r.msg, r.ok));
-  }, [location.search]);
+  }, [location.search, stock.loaded]);
   // Lector físico: suma al carrito aunque el cursor no esté en "Escaneá el código".
   const lectorRef = useLectorFisico(codigo => handleScan(codigo));
 
@@ -136,8 +137,11 @@ const VentaPage: React.FC = () => {
     })();
   }, [comercio]);
 
-  // Promos activas del comercio (con cache local para vender offline).
+  // Promos activas del comercio (con cache local para vender offline). Se releen al volver a Vender:
+  // una oferta recién puesta desde Cargar no se veía hasta reabrir la app.
   const [promos, setPromos] = useState<Promo[]>([]);
+  const [cargarPromosN, setCargarPromosN] = useState(0);
+  useAlVolver(() => setCargarPromosN(n => n + 1));
   useEffect(() => {
     if (!comercio) return;
     (async () => {
@@ -163,7 +167,13 @@ const VentaPage: React.FC = () => {
         } catch { /* sin promos offline */ }
       }
     })();
-  }, [comercio]);
+  }, [comercio, cargarPromosN]);
+  // La oferta por vencer alcanza solo a lo que vence en ESTE local (hasta la fecha de la oferta).
+  const promosDelLocal = useMemo(() => promos.map(p => p.tipo !== 'liquidacion' ? p : {
+    ...p,
+    maxUnidades: stock.lotes.filter(l => l.productoId === p.productoId && l.sucursalId === sucursalActiva?.id
+      && l.cantidad > 0 && l.fechaVencimiento <= (p.hasta ?? '')).reduce((s, l) => s + l.cantidad, 0),
+  }), [promos, stock.lotes, sucursalActiva]);
 
   const toast$ = (msg: string, ok = true) => setToast({ show: true, msg, color: ok ? 'success' : 'danger' });
 
@@ -192,11 +202,16 @@ const VentaPage: React.FC = () => {
   };
 
   const subtotal = state.cart.reduce((s, c) => s + c.precio * c.qty, 0);
-  const subtotalAnimado = useContador(subtotal); // el total "cuenta" al agregar
-  const promosCalc = descuentoPromos(state.cart, promos);
+  const promosCalc = descuentoPromos(state.cart, promosDelLocal);
   // El descuento de la venta = promos automáticas + descuento manual, tope subtotal.
   const desc = Math.min(subtotal, Math.max(0, parseMonto(descuento) || 0) + promosCalc.monto); // nunca negativo: el server lo rechazaría
   const total = subtotal - desc;
+  const totalAnimado = useContador(total); // el total "cuenta" al agregar; ya con las ofertas
+  // Carrito vacío = cliente nuevo: el fiado, el nombre y el descuento del anterior no pasan al siguiente.
+  useEffect(() => {
+    if (state.cart.length > 0) return;
+    setFiado(false); setCliente(''); setDescuento(''); setRecibido(''); setMasOpciones(false);
+  }, [state.cart.length]);
   const totalItems = state.cart.reduce((s, c) => s + c.qty, 0);
 
   const fiadoSinCliente = fiado && !cliente.trim();
@@ -212,8 +227,14 @@ const VentaPage: React.FC = () => {
       subtotal, descuento: desc, total, metodoPago, cliente: cliente.trim(), fiado,
     };
     setProc(true);
-    const r = await confirmarVenta({ metodoPago, cliente: cliente.trim(), fiado, descuento: desc, usuario: cajero?.nombre ?? null });
-    setProc(false);
+    let r: Awaited<ReturnType<typeof confirmarVenta>>;
+    try {
+      r = await confirmarVenta({ metodoPago, cliente: cliente.trim(), fiado, descuento: desc, usuario: cajero?.nombre ?? null });
+    } catch (e) {
+      r = { ok: false, msg: `La venta no se guardó: ${e instanceof Error ? e.message : 'error'}` };
+    } finally {
+      setProc(false); // si algo fallaba, el botón quedaba girando para siempre
+    }
     if (r.ok) {
       const txt = armarTicket({
         comercio: comercio?.nombre ?? 'Almacén',
@@ -385,11 +406,12 @@ const VentaPage: React.FC = () => {
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap' }}>{formatMoney(item.precio * item.qty)}</span>
                   </div>
                   <div style={{ fontSize: 15, color: 'var(--text-2)' }}>
-                    {formatMoney(item.precio)} c/u ·{' '}
+                    {formatMoney(item.precio)} c/u
+                    {!item.productoId.startsWith('libre-') && (<>{' · '}
                     <span style={{ color: item.stockDisponible <= 0 ? 'var(--color-danger)' : item.stockDisponible <= 5 ? 'var(--color-warning-dark)' : 'var(--text-2)', fontWeight: item.stockDisponible <= 5 ? 600 : 400 }}>
                       {item.stockDisponible <= 0 ? 'sin stock' : `quedan ${item.stockDisponible}`}
-                    </span>
-                    {item.qty > item.stockDisponible && item.stockDisponible >= 0 && (
+                    </span></>)}
+                    {!item.productoId.startsWith('libre-') && item.qty > item.stockDisponible && item.stockDisponible >= 0 && (
                       <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}> · vendés {item.qty - item.stockDisponible} de más</span>
                     )}
                   </div>
@@ -413,12 +435,15 @@ const VentaPage: React.FC = () => {
                 <div style={{ fontSize: 16, fontWeight: 800 }}>Total</div>
                 <div style={{ fontSize: 15, opacity: .75 }}>{totalItems} {totalItems !== 1 ? 'productos' : 'producto'}</div>
               </div>
-              <div style={{ fontSize: 28, fontWeight: 800, fontFamily: 'var(--font-mono)', letterSpacing: '-0.02em' }}>{formatMoney(subtotalAnimado)}</div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 28, fontWeight: 800, fontFamily: 'var(--font-mono)', letterSpacing: '-0.02em' }}>{formatMoney(totalAnimado)}</div>
+                {desc > 0 && <div style={{ fontSize: 15, opacity: .85 }}>con {formatMoney(desc)} de descuento</div>}
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: 8 }}>
               <Button variant="secondary" size="lg" aria-label="Vaciar carrito" onClick={async () => { if (await confirmar('¿Vaciar el carrito?', { peligro: true, okText: 'Vaciar' })) vaciar(); }} style={{ flex: .35 }}><TrashIcon size={22} /></Button>
-              <Button size="lg" className="brillo-una-vez anim-pop" onClick={() => setConfirm(true)} style={{ flex: 1, fontSize: 20 }}><CheckIcon size={22} /> Cobrar {formatMoney(subtotal)}</Button>
+              <Button size="lg" className="brillo-una-vez anim-pop" onClick={() => setConfirm(true)} style={{ flex: 1, fontSize: 20 }}><CheckIcon size={22} /> Cobrar {formatMoney(total)}</Button>
             </div>
           </>
         )}
@@ -510,6 +535,11 @@ const VentaPage: React.FC = () => {
                 {fiadoSinCliente && (
                   <div style={{ fontSize: 15, color: 'var(--color-danger)', marginBottom: 12 }}>
                     Escribí el nombre para anotar la deuda.
+                  </div>
+                )}
+                {fiado && !state.isOnline && deben.length === 0 && (
+                  <div role="status" style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 12 }}>
+                    Sin internet no se ve cuánto debe cada cliente. La venta se anota igual.
                   </div>
                 )}
                 {fiado && (() => {

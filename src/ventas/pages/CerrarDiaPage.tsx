@@ -15,6 +15,7 @@ import { Card } from '../components/ui';
 import Button from '../../components/ui/Button';
 import BotonVolver from '../components/BotonVolver';
 import { totalesPorMetodo, VentaCaja } from '../lib/caja';
+import { cobrosDeFiado } from '../lib/fiado';
 import { fechaLocalISO, sumarFecha } from '../../lib/vencimientos';
 import { compartirTexto } from '../../lib/compartir';
 
@@ -35,6 +36,7 @@ const CerrarDiaPage: React.FC = () => {
   const [cobrado, setCobrado] = useState(0);
   const [cierres, setCierres] = useState<Cierre[]>([]);
   const [sinInternet, setSinInternet] = useState(false);
+  const [cargando, setCargando] = useState(true); // antes mostraba "$0, nadie cerró caja" mientras buscaba
   const [toast, setToast] = useState('');
 
   const cargar = useCallback(async () => {
@@ -45,12 +47,13 @@ const CerrarDiaPage: React.FC = () => {
     let qc = supabase.from('ventas_cierres').select('cajero_nombre, total, diferencia').eq('comercio_id', comercio.id).gte('hasta', desde);
     if (sucursalActiva) { qv = qv.eq('sucursal_id', sucursalActiva.id); qc = qc.eq('sucursal_id', sucursalActiva.id); }
     const [rv, rp, rc] = await Promise.all([
-      qv, supabase.from('ventas_pagos').select('monto').eq('comercio_id', comercio.id).gte('fecha', desde), qc,
+      qv, cobrosDeFiado(comercio.id, sucursalActiva?.id).gte('fecha', desde), qc,
     ]);
     setSinInternet(!!(rv.error || rp.error || rc.error));
     if (!rv.error) setVentas((rv.data ?? []) as VentaCaja[]);
-    if (!rp.error) setCobrado((rp.data ?? []).reduce((s, p: { monto: number }) => s + Number(p.monto), 0));
+    if (!rp.error) setCobrado(((rp.data ?? []) as { monto: number }[]).reduce((s: number, p) => s + Number(p.monto), 0));
     if (!rc.error) setCierres((rc.data ?? []) as Cierre[]);
+    setCargando(false);
   }, [comercio, sucursalActiva]);
   useEffect(() => { cargar(); }, [cargar]);
   useAlVolver(() => { cargar(); });
@@ -89,7 +92,9 @@ const CerrarDiaPage: React.FC = () => {
           {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}{sucursalActiva ? ` · ${sucursalActiva.nombre}` : ''}
         </p>
         {sinInternet && <p role="alert" style={{ fontSize: 16, color: 'var(--danger)', marginBottom: 12 }}>Sin internet: lo de la caja puede estar incompleto.</p>}
+        {cargando && <p role="status" style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-2)', marginBottom: 12 }}>Buscando lo de hoy…</p>}
 
+        {!cargando && <>
         <Card style={{ padding: 16, marginBottom: 12 }}>
           {fila(`Vendido (${ventas.length} venta${ventas.length === 1 ? "" : "s"})`, formatMoney(total), true)}
           {Object.entries(porMetodo).map(([m, v]) => <React.Fragment key={m}>{fila(NOMBRE_METODO[m] ?? m, formatMoney(v))}</React.Fragment>)}
@@ -105,16 +110,24 @@ const CerrarDiaPage: React.FC = () => {
           {cierres.length === 0
             ? <p style={{ fontSize: 16, color: 'var(--text-2)', margin: 0 }}>Nadie cerró caja todavía.</p>
             : cierres.map((c, i) => {
-                const dif = Number(c.diferencia ?? 0);
+                const dif = Math.round(Number(c.diferencia ?? 0) * 100) / 100; // con centavos: $0,004 no es "faltó"
                 return <React.Fragment key={i}>{fila(c.cajero_nombre ?? 'Sin nombre',
-                  <span style={{ color: dif === 0 ? 'var(--level-ok-fg)' : 'var(--danger)' }}>{dif === 0 ? 'Cuadró' : `${dif > 0 ? 'Sobró' : 'Faltó'} ${formatMoney(Math.abs(dif))}`}</span>)}</React.Fragment>;
+                  <span style={{ color: Math.abs(dif) < 0.01 ? 'var(--level-ok-fg)' : 'var(--danger)' }}>{Math.abs(dif) < 0.01 ? 'Cuadró' : `${dif > 0 ? 'Sobró' : 'Faltó'} ${formatMoney(Math.abs(dif))}`}</span>)}</React.Fragment>;
               })}
         </Card>
+        </>}
 
         <Card style={{ padding: 16, marginBottom: 16 }}>
           <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 6 }}>Para mañana</div>
-          {vencidos.length > 0 && <p style={{ fontSize: 16, color: 'var(--danger)', fontWeight: 700, margin: '0 0 6px' }}>
-            Sacar de la góndola (vencido): {vencidos.map(l => `${l.cantidad} ${nombre.get(l.productoId) ?? ''}`).join(', ')}</p>}
+          {/* Uno por renglón: en una sola línea con comas no se leía con la letra grande. */}
+          {vencidos.length > 0 && <>
+            <p style={{ fontSize: 16, color: 'var(--danger)', fontWeight: 700, margin: '0 0 4px' }}>Sacar de la góndola (vencido):</p>
+            <ul style={{ margin: '0 0 8px', paddingLeft: 22, fontSize: 16, color: 'var(--danger)', lineHeight: 1.5 }}>
+              {vencidos.slice(0, 8).map(l => <li key={l.id}>{l.cantidad} {nombre.get(l.productoId) ?? ''}</li>)}
+              {vencidos.length > 8 && <li>y {vencidos.length - 8} más</li>}
+            </ul>
+            <Button variant="secondary" fullWidth onClick={() => history.push('/stock?nivel=vencido')} style={{ marginBottom: 10 }}>Ver lo vencido</Button>
+          </>}
           <p style={{ fontSize: 16, margin: 0 }}>
             {vencenManana.length ? `Vence mañana: ${vencenManana.map(l => `${l.cantidad} ${nombre.get(l.productoId) ?? ''}`).join(', ')}` : 'Mañana no vence nada.'}
           </p>

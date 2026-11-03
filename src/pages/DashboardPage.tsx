@@ -33,6 +33,15 @@ const DashboardPage: React.FC = () => {
   useEffect(() => { buscarActualizacion().then(setNueva); }, []);
 
   const res = useMemo(() => resumen(), [resumen]);
+  // El aviso dice "productos": se cuentan productos, no lotes (un yogur con 3 lotes vencidos decía "3 productos").
+  const productosPorNivel = useMemo(() => {
+    let vencidos = 0, pronto = 0;
+    for (const p of productosConLotes()) {
+      if (p.nivelPeor === 'vencido') vencidos++;
+      else if (p.nivelPeor === 'critico' || p.nivelPeor === 'urgente') pronto++;
+    }
+    return { vencidos, pronto };
+  }, [productosConLotes]);
   const valorAnimado = useContador(res.valorTotal); // el valor "cuenta" al abrir
   const lotes = useMemo(() => lotesEnriquecidos(), [lotesEnriquecidos]);
 
@@ -112,7 +121,7 @@ const DashboardPage: React.FC = () => {
           </header>
 
           <SyncBanner />
-          <AvisoDeHoy vencidos={res.lotesVencidos} pronto={res.lotesCriticos + res.lotesUrgentes}
+          <AvisoDeHoy vencidos={productosPorNivel.vencidos} pronto={productosPorNivel.pronto}
             onVer={(nivel) => history.push(`/stock?nivel=${nivel}&vista=lotes`)} />
 
           {/* Versión nueva publicada: se baja con el navegador y Android la instala encima */}

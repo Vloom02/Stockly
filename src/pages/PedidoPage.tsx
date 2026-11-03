@@ -88,14 +88,15 @@ const PedidoPage: React.FC = () => {
           </div>
           {vendido === null && <p style={{ fontSize: 16, color: 'var(--text-2)' }}>Mirando lo que se vendió…</p>}
 
-          {porProveedor.length === 0 ? (
+          {/* Mientras busca no se muestra un pedido a medias: decía "Nada para pedir" y se podía mandar incompleto. */}
+          {vendido === null ? null : porProveedor.length === 0 ? (
             <EmptyState icon={<TruckIcon width={32} height={32} />} title="Nada para pedir"
               description="Con lo que tenés alcanza para esos días. Si un producto no se vende por la app, definí su stock mínimo para que aparezca acá." />
           ) : (
             porProveedor.map(({ proveedor, items }) => (
               <Card key={proveedor} padding="md" style={{ marginBottom: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                  <TruckIcon width={18} height={18} style={{ color: 'var(--brand-600)', flexShrink: 0 }} />
+                  <TruckIcon width={18} height={18} style={{ color: 'var(--marca-texto)', flexShrink: 0 }} />
                   <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, flex: 1 }}>{proveedor}</h2>
                   <span style={{ fontSize: 14, color: 'var(--text-2)' }}>
                     {items.length} producto{items.length !== 1 ? 's' : ''}

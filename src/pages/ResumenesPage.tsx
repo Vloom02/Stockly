@@ -14,7 +14,7 @@ import { supabase } from '../lib/supabase';
 import { todas } from '../lib/todas';
 import { Periodo, PERIODOS, rangoDe, resumirVentas, perdidasEntre, controlEmpleados, fechaCorta, ResumenVentas, VentaRes, ItemRes, Fila, CierreRes } from '../lib/resumen';
 import { DatosResumen, cifras, resumenAExcel, resumenAHtml } from '../lib/resumenExportar';
-import { guardarYCompartir } from '../lib/archivos';
+import { guardarYCompartir, avisoArchivo } from '../lib/archivos';
 import { imprimirHtml } from '../lib/imprimir';
 import { formatMoney } from '../ventas/context/VentasContext';
 import { Header } from './ProductoPage';
@@ -23,7 +23,7 @@ const ESTADOS: Record<string, string> = { vencido: 'Vencido', critico: 'Crítico
 
 const ResumenesPage: React.FC = () => {
   const history = useHistory();
-  const { comercio } = useAuth();
+  const { comercio, miembro } = useAuth();
   const { state, resumen, productosConLotes } = useStore();
   const [presentToast] = useIonToast();
   const [periodo, setPeriodo] = useState<Periodo>('hoy');
@@ -36,6 +36,7 @@ const ResumenesPage: React.FC = () => {
   const rango = useMemo(() => rangoDe(periodo), [periodo, recarga]);
   const sucursalId = state.sucursalActivaId;
   const sucursal = state.sucursales.find(s => s.id === sucursalId)?.nombre ?? '';
+  const movsDelLocal = useMemo(() => state.movimientos.filter(m => m.sucursalId === sucursalId), [state.movimientos, sucursalId]);
 
   useEffect(() => {
     let vigente = true;
@@ -77,13 +78,14 @@ const ResumenesPage: React.FC = () => {
       ventas: ventas === 'cargando' ? null : ventas,
       stock: { valorTotal: r.valorTotal, lotesVencidos: r.lotesVencidos, valorVencido: r.valorVencido, lotesPorVencer: r.lotesCriticos + r.lotesUrgentes, valorEnRiesgo: r.valorEnRiesgo, productosEnNegativo: r.productosEnNegativo, unidadesFaltantes: r.unidadesFaltantes,
         valorCosto: productosConLotes().reduce((t, p) => t + (p.cantidadTotal > 0 && p.producto.costo ? p.cantidadTotal * p.producto.costo : 0), 0) },
-      perdidas: perdidasEntre(state.movimientos, state.productos, rango.desde, rango.hasta),
-      empleados: controlEmpleados(ventas === 'cargando' || !ventas ? [] : ventas.porEmpleado, state.movimientos, cierres, rango.desde, rango.hasta),
+      // Del local elegido, igual que las ventas: antes sumaba las pérdidas y conteos de todos los locales.
+      perdidas: perdidasEntre(movsDelLocal, state.productos, rango.desde, rango.hasta),
+      empleados: controlEmpleados(ventas === 'cargando' || !ventas ? [] : ventas.porEmpleado, movsDelLocal, cierres, rango.desde, rango.hasta, miembro?.nombre),
       productosStock: productosConLotes().filter(p => p.cantidadTotal !== 0)
         .map(p => ({ nombre: p.producto.nombre, categoria: p.producto.categoria || '', cantidad: p.cantidadTotal, precio: p.producto.precio || 0, valor: p.valorTotal, vence: p.proximoVencimiento, estado: p.cantidadTotal < 0 ? 'Vendido sin stock' : ESTADOS[p.nivelPeor] ?? p.nivelPeor }))
         .sort((a, b) => a.nombre.localeCompare(b.nombre)),
     };
-  }, [comercio, sucursal, rango, ventas, resumen, productosConLotes, state.movimientos, state.productos]);
+  }, [comercio, sucursal, rango, ventas, resumen, productosConLotes, movsDelLocal, state.productos, miembro]);
 
   // "Resumen 26-10-2026", "Resumen del 20-10-2026 al 26-10-2026", "Resumen Octubre 2026" (sin "/": no van en nombres de archivo)
   const nombreArchivo = 'Resumen ' + (rango.porTurno ? fechaCorta(rango.desde) : rango.titulo.replace(/^Del/, 'del')).replace(/\//g, '-');
@@ -94,11 +96,9 @@ const ResumenesPage: React.FC = () => {
       .then(b => guardarYCompartir(`${nombreArchivo}.xlsx`, b, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'))
       .catch(() => 'error' as const);
     setOcupado('');
-    if (r === 'compartido') return;
-    presentToast({
-      message: r === 'guardado' ? `Guardado en Documentos: ${nombreArchivo}.xlsx` : r === 'descargado' ? 'Excel descargado' : 'No se pudo armar el Excel',
-      duration: 3000, position: 'top', color: r === 'error' ? 'danger' : 'success',
-    });
+    const msg = avisoArchivo(r, 'El Excel');
+    if (!msg) return;
+    presentToast({ message: msg, duration: 4500, position: 'top', color: r === 'error' ? 'danger' : 'success' });
   };
 
   const imprimir = async () => {
@@ -217,7 +217,7 @@ const ResumenesPage: React.FC = () => {
                 <Tarjeta titulo="Control de empleados">
                   {datos.empleados.map((e, i) => (
                     <div key={e.nombre} style={{ padding: '10px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 10 }}>
                         <span style={{ flex: 1, fontSize: 18, fontWeight: 800 }}>{e.nombre}</span>
                         <span style={{ fontSize: 16, color: 'var(--text-2)' }}>{e.ventas} {e.ventas === 1 ? 'venta' : 'ventas'}</span>
                         <span style={{ fontSize: 18, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{formatMoney(Math.round(e.vendido))}</span>
@@ -227,7 +227,7 @@ const ResumenesPage: React.FC = () => {
                       )}
                       {e.faltantes > 0 && (
                         <p style={{ fontSize: 16, fontWeight: 700, margin: '4px 0 0', color: e.paraMirar ? 'var(--danger)' : 'var(--text-2)' }}>
-                          Bajó {e.faltantes} unid. al contar o por roturas{e.paraMirar ? ' · mucho más que el resto, para mirar' : ''}
+                          Bajó {e.faltantes} unid. al contar o por roturas{e.paraMirar ? ' · mucho más que el resto: revisalo' : ''}
                         </p>
                       )}
                       {e.cierres > 0 && (
@@ -244,7 +244,7 @@ const ResumenesPage: React.FC = () => {
 
           <Tarjeta titulo="Mercadería">
             {mercaderia.filas.map(([nombre, valor, f], i) => (
-              <div key={nombre} style={{ display: 'flex', alignItems: 'baseline', gap: 12, padding: '10px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+              <div key={nombre} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 12, padding: '10px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
                 <span style={{ flex: 1, fontSize: 17 }}>{nombre}</span>
                 <span style={{ fontSize: 18, fontWeight: 800, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{f === 'plata' ? formatMoney(Math.round(valor)) : valor}</span>
               </div>
@@ -274,7 +274,7 @@ const Barras: React.FC<{ filas: Fila[]; total: number; vacio: string; sinPorcent
         const pct = total > 0 ? (f.total / total) * 100 : 0;
         return (
           <div key={f.nombre}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
               <span style={{ flex: 1, fontSize: 17, fontWeight: 600 }}>{f.nombre}</span>
               <span style={{ fontSize: 15, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{f.cantidad} {f.cantidad === 1 ? 'venta' : 'ventas'}</span>
               <span style={{ fontSize: 18, fontWeight: 800, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatMoney(Math.round(f.total))}</span>
@@ -296,7 +296,7 @@ const Comparacion: React.FC<{ total: number; anterior: number; frase: string }> 
   const sube = dif >= 0;
   const Icono = sube ? ArrowTrendingUpIcon : ArrowTrendingDownIcon;
   return (
-    <p style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 17, fontWeight: 700, margin: '12px 0 0', color: sube ? 'var(--success)' : 'var(--danger)' }}>
+    <p style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, fontSize: 17, fontWeight: 700, margin: '12px 0 0', color: sube ? 'var(--success)' : 'var(--danger)' }}>
       <Icono width={24} height={24} style={{ flexShrink: 0 }} />
       <span>{dif === 0 ? 'Igual' : `${Math.abs(dif)}% ${sube ? 'más' : 'menos'}`} que {frase} ({formatMoney(Math.round(anterior))})</span>
     </p>

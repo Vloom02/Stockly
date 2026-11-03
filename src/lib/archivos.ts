@@ -1,5 +1,6 @@
-// Archivos generados por la app (Excel, etc.). En la app se guardan en Documentos y se abre
-// "Compartir" (WhatsApp, mail, Drive, abrir con Excel); en la web se descargan.
+// Archivos generados por la app (Excel, planillas, copias). En la app se guardan en el caché privado y se abre
+// "Compartir" (Drive, WhatsApp, mail, abrir con Excel); en la web se descargan.
+// No en Documentos: ahí quedaban ventas y nombres de clientes a la vista de cualquier otra app con permiso de archivos.
 import { Capacitor } from '@capacitor/core';
 
 const aBase64 = (datos: Uint8Array) => {
@@ -8,23 +9,31 @@ const aBase64 = (datos: Uint8Array) => {
   return btoa(s);
 };
 
-export async function guardarYCompartir(nombre: string, datos: Uint8Array, tipo: string): Promise<'compartido' | 'guardado' | 'descargado' | 'error'> {
+export type ResultadoArchivo = 'compartido' | 'cancelado' | 'descargado' | 'error';
+
+/** Texto para avisar cómo terminó (null = no hace falta avisar). */
+export function avisoArchivo(r: ResultadoArchivo, queEs = 'El archivo'): string | null {
+  if (r === 'compartido') return null;
+  if (r === 'cancelado') return `${queEs} no se mandó a ningún lado. Tocá de nuevo y elegí Drive, WhatsApp o mail.`;
+  if (r === 'descargado') return `${queEs} se descargó.`;
+  return `No se pudo armar ${queEs.toLowerCase()}.`;
+}
+
+export async function guardarYCompartir(nombre: string, datos: Uint8Array | string, tipo: string): Promise<ResultadoArchivo> {
   try {
+    const bytes = typeof datos === 'string' ? new TextEncoder().encode(datos) : datos;
     if (Capacitor.isNativePlatform()) {
       const { Filesystem, Directory } = await import('@capacitor/filesystem');
-      const data = aBase64(datos);
-      // Documentos puede no estar permitido en Android viejos: ahí queda en el caché y se comparte igual.
-      const { uri } = await Filesystem.writeFile({ path: nombre, data, directory: Directory.Documents, recursive: true })
-        .catch(() => Filesystem.writeFile({ path: nombre, data, directory: Directory.Cache }));
+      const { uri } = await Filesystem.writeFile({ path: nombre, data: aBase64(bytes), directory: Directory.Cache });
       try {
         const { Share } = await import('@capacitor/share');
-        await Share.share({ title: nombre, files: [uri] });
+        await Share.share({ title: nombre, files: [uri], dialogTitle: '¿Dónde lo guardás o a quién se lo mandás?' });
         return 'compartido';
       } catch {
-        return 'guardado'; // cerró "Compartir": el archivo quedó guardado igual
+        return 'cancelado';
       }
     }
-    const url = URL.createObjectURL(new Blob([datos as BlobPart], { type: tipo }));
+    const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: tipo }));
     const a = document.createElement('a');
     a.href = url;
     a.download = nombre;

@@ -7,8 +7,9 @@ import { IonContent, IonToast } from '@ionic/react';
 import { useAlVolver } from '../../lib/useAlVolver';
 import { supabase } from '../lib/supabase';
 import { todas } from '../../lib/todas';
-import { openDB, enqueueOutbox } from '../lib/outbox';
+import { openDB, enqueueOutbox, esErrorPermanente } from '../lib/outbox';
 import { ventasACSV, guardarCSV } from '../lib/exportar';
+import { avisoArchivo } from '../../lib/archivos';
 import { useAuth } from '../context/AuthContext';
 import { formatMoney } from '../context/VentasContext';
 import { useConfirm } from '../../lib/useConfirm';
@@ -19,13 +20,13 @@ import { HistoryFilters } from '../types';
 import BotonVolver from '../components/BotonVolver';
 interface VentaRow { id: string; total: number; descuento: number; metodo_pago: string; cliente: string; fiado: boolean; usuario: string; fecha: string; anulada?: boolean; }
 
-const SaleCard: React.FC<{ venta: VentaRow; onChanged: () => void }> = ({ venta, onChanged }) => {
+const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avisar: (msg: string) => void }> = ({ venta, onAnulada, avisar }) => {
   const { comercio, miembro } = useAuth();
   const confirmar = useConfirm();
   const [open, setOpen] = useState(false);
   const [anulando, setAnulando] = useState(false);
   const [anuladaLocal, setAnuladaLocal] = useState(false); // optimista (offline)
-  const [items, setItems] = useState<{ cantidad: number; precio_unit: number; subtotal: number; producto_id: string }[]>([]);
+  const [items, setItems] = useState<{ cantidad: number; precio_unit: number; subtotal: number; producto_id: string | null; nombre_producto?: string | null }[]>([]);
   const [prods, setProds] = useState<Record<string, string>>({});
   const anulada = venta.anulada || anuladaLocal;
 
@@ -39,16 +40,19 @@ const SaleCard: React.FC<{ venta: VentaRow; onChanged: () => void }> = ({ venta,
     if (navigator.onLine) {
       const { error } = await supabase.rpc('anular_venta', { p: { venta_id: venta.id, comercio_id: comercio.id, usuario: miembro?.nombre ?? null } });
       setAnulando(false);
-      if (!error) { onChanged(); return; }
+      // Sin recargar la lista: volvía al principio y se perdía el "Ver más".
+      if (!error) { onAnulada(venta.id); avisar('Venta anulada. El stock volvió a la mercadería.'); return; }
+      // Rechazada por el servidor: encolarla solo la mandaba a cuarentena y la pantalla decía "guardada".
+      if (esErrorPermanente(error.message)) { avisar(`No se pudo anular: ${error.message}`); return; }
       // Falló online (¿red inestable?): encolar para reintentar.
     }
     try {
       await openDB();
       await enqueueOutbox('anulacion', payload);
       setAnuladaLocal(true);
-      window.alert('Sin conexión: la anulación quedó guardada y se aplica al volver internet.');
+      avisar('Sin internet: la anulación quedó guardada y se aplica sola cuando vuelva la señal.');
     } catch {
-      window.alert('No se pudo anular la venta.');
+      avisar('No se pudo anular la venta.');
     }
     setAnulando(false);
   };
@@ -59,7 +63,8 @@ const SaleCard: React.FC<{ venta: VentaRow; onChanged: () => void }> = ({ venta,
     if (next && items.length === 0) {
       const { data } = await supabase.from('ventas_items').select('*').eq('venta_id', venta.id);
       setItems(data ?? []);
-      const ids = [...new Set((data ?? []).map(i => i.producto_id).filter(Boolean))];
+      // El nombre guardado en la venta manda (si después se renombró o borró el producto, se ve el de ese día).
+      const ids = [...new Set((data ?? []).filter(i => !i.nombre_producto).map(i => i.producto_id).filter(Boolean))];
       if (ids.length) {
         const { data: p } = await supabase.from('productos').select('id,nombre').in('id', ids);
         const m: Record<string, string> = {};
@@ -73,8 +78,8 @@ const SaleCard: React.FC<{ venta: VentaRow; onChanged: () => void }> = ({ venta,
   const metodoLabel = ({ efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta', qr: 'QR' } as Record<string, string>)[venta.metodo_pago] ?? venta.metodo_pago;
 
   return (
-    <Card variant="bordered" style={{ padding: 0, overflow: 'hidden', marginBottom: 7, opacity: anulada ? 0.6 : 1 }}>
-      <div onClick={toggle} className="pressable" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', cursor: 'pointer' }}>
+    <Card variant="bordered" style={{ padding: 0, overflow: 'hidden', marginBottom: 7 }}>
+      <button type="button" onClick={toggle} aria-expanded={open} className="pressable" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', minHeight: 56, cursor: 'pointer', border: 'none', background: 'none', textAlign: 'left', fontFamily: 'inherit', color: 'var(--text)' }}>
         <div>
           <div style={{ fontSize: 14, color: 'var(--text-2)' }}>{time} {venta.usuario && <Badge color="purple" style={{ marginLeft: 4, fontSize: 14 }}>{venta.usuario}</Badge>}
             {anulada && <span style={{ marginLeft: 6, fontSize: 14, fontWeight: 700, color: 'var(--color-danger)', background: 'var(--color-danger-bg)', border: '1px solid var(--color-danger-border)', borderRadius: 'var(--radius-full)', padding: '1px 7px' }}>ANULADA</span>}
@@ -83,14 +88,14 @@ const SaleCard: React.FC<{ venta: VentaRow; onChanged: () => void }> = ({ venta,
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--color-primary-dark)', fontFamily: 'var(--font-mono)', textDecoration: anulada ? 'line-through' : 'none' }}>{formatMoney(venta.total)}</span>
-          <span style={{ color: 'var(--text-3)', fontSize: 18, transition: 'transform .2s', transform: open ? 'rotate(90deg)' : '' }}>›</span>
+          <span aria-hidden="true" style={{ color: 'var(--text-3)', fontSize: 18, transition: 'transform .2s', transform: open ? 'rotate(90deg)' : '' }}>›</span>
         </div>
-      </div>
+      </button>
       {open && (
         <div style={{ borderTop: '1px solid var(--border)', padding: '10px 14px', background: 'var(--surface-2)' }}>
           {items.length === 0 ? <Skeleton height={14} /> : items.map((it, i) => (
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '2px 0' }}>
-              <span>{prods[it.producto_id] ?? '—'} <span style={{ color: 'var(--text-3)' }}>x{it.cantidad}</span></span>
+              <span>{it.nombre_producto || (it.producto_id && prods[it.producto_id]) || 'Venta rápida'} <span style={{ color: 'var(--text-3)' }}>x{it.cantidad}</span></span>
               <span style={{ fontFamily: 'var(--font-mono)' }}>{formatMoney(it.subtotal)}</span>
             </div>
           ))}
@@ -147,7 +152,7 @@ const HistorialPage: React.FC = () => {
 
   // De a 60: 30 días de un almacén con movimiento son miles de tarjetas dibujadas de una.
   const [cuantas, setCuantas] = useState(60);
-  useEffect(() => { setCuantas(60); }, [filtered]);
+  useEffect(() => { setCuantas(60); }, [filters]); // solo al cambiar filtros: anular una venta no vuelve al principio
   const diaDe = (v: VentaRow) => new Date(v.fecha).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
   const totalDia = useMemo(() => {
     const t: Record<string, number> = {};
@@ -163,10 +168,11 @@ const HistorialPage: React.FC = () => {
     return g;
   }, [filtered, cuantas]);
 
-  // CSV unificado con la lib compartida (en Android guarda en Documentos).
+  // Planilla: en Android se abre "Compartir" (Drive, WhatsApp, mail).
   const exportCSV = async () => {
     const r = await guardarCSV(`ventas-${fechaLocalISO()}.csv`, ventasACSV(filtered.filter(v => !v.anulada)));
-    setAviso(r === 'guardado' ? 'Planilla guardada en Documentos' : r === 'descargado' ? 'Planilla descargada' : 'No se pudo guardar la planilla');
+    const msg = avisoArchivo(r, 'La planilla');
+    if (msg) setAviso(msg);
   };
 
   const activeFilters = Object.values(filters).filter(Boolean).length;
@@ -187,7 +193,7 @@ const HistorialPage: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          <Button variant="secondary" onClick={exportCSV} style={{ flex: 1 }}><DocumentIcon size={16} /> CSV</Button>
+          <Button variant="secondary" onClick={exportCSV} style={{ flex: 1 }}><DocumentIcon size={16} /> Planilla</Button>
           <Button variant={activeFilters > 0 ? 'primary' : 'secondary'} onClick={() => setShowFilters(!showFilters)} style={{ flex: 1 }}><FunnelIcon size={16} /> Filtros{activeFilters > 0 ? ` (${activeFilters})` : ''}</Button>
         </div>
 
@@ -222,7 +228,8 @@ const HistorialPage: React.FC = () => {
                   <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                   <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-primary-dark)' }}>{formatMoney(dayTotal)}</span>
                 </div>
-                {vs.map(v => <SaleCard key={v.id} venta={v} onChanged={cargar} />)}
+                {vs.map(v => <SaleCard key={v.id} venta={v} avisar={setAviso}
+                  onAnulada={id => setVentas(xs => xs.map(x => x.id === id ? { ...x, anulada: true } : x))} />)}
               </div>
             );
           })

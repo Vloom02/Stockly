@@ -8,7 +8,7 @@ import {
 import { haptic } from '../utils/haptics';
 import { useAuth } from './AuthContext';
 import {
-  abrirDB, put, guardarYEncolar,
+  abrirDB, guardarYEncolar,
   cargarProductos, cargarLotes, cargarSucursales, cargarMovimientos,
   obtenerPendientes, obtenerBloqueados, reintentarBloqueados,
 } from '../lib/localDb';
@@ -17,6 +17,7 @@ import { supabaseConfigurado } from '../lib/supabase';
 import { almacenGet, almacenSet } from '../lib/almacen';
 import { diasRestantes, calcularNivelAlerta as _calcNivel, ordenNivel, etiquetaNivel, fechaLocalISO } from '../lib/vencimientos';
 import { DescuentoConfig } from '../lib/liquidacion';
+import { camposDeCopia } from '../lib/copia';
 import { sincronizarNotificaciones } from '../lib/notificaciones';
 import { EVENTO_VENTA_PENDIENTE, leerUnidadesPendientes } from '../ventas/lib/outbox';
 
@@ -29,6 +30,8 @@ export function setSetting(k: string, v: string): void {
   almacenSet(LS_PREFIX + k, v);
 }
 
+/** Ajustes avisa que cambiaron los umbrales o descuentos: los niveles se recalculan. */
+export const EVENTO_UMBRALES = 'stockly:umbrales';
 export const UMBRAL_AVISO = () => parseInt(getSetting('umbral-aviso', '60'), 10) || 60;
 export const UMBRAL_URGENTE = () => parseInt(getSetting('umbral-urgente', '30'), 10) || 30;
 export const UMBRAL_CRITICO = () => parseInt(getSetting('umbral-critico', '7'), 10) || 7;
@@ -79,6 +82,7 @@ export function textoEstado(fechaVencimiento: string): string {
 }
 
 const hoyISO = () => fechaLocalISO();
+
 
 // ─── Estado ─────────────────────────────────────────────────────────────────
 interface State {
@@ -183,6 +187,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     dispatch({ type: 'SET_PENDIENTES', n: p.length });
     const b = await obtenerBloqueados();
     dispatch({ type: 'SET_BLOQUEADOS', n: b.length });
+  }, []);
+
+  // Cambian los umbrales en Ajustes → se recalculan los niveles (antes hacía falta reabrir la app).
+  const [umbralesN, setUmbralesN] = useState(0);
+  useEffect(() => {
+    const f = () => setUmbralesN(n => n + 1);
+    window.addEventListener(EVENTO_UMBRALES, f);
+    return () => window.removeEventListener(EVENTO_UMBRALES, f);
   }, []);
 
   // Vendido en Vender que todavía no subió (sin internet): se descuenta del total de cada producto.
@@ -290,9 +302,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return () => { clearInterval(intervalo); document.removeEventListener('visibilitychange', alVolverALaApp); };
   }, [comercioId, sincronizarYRecargar]);
 
+  // Sin cortar si ya hay una en curso: lib/sync encadena UNA pasada más. Antes un cambio hecho mientras
+  // sincronizaba esperaba al ciclo de 30 s (y una venta recién subida no se veía en Mercadería).
+  const enVuelo = useRef(0);
   const sincronizarAhora = useCallback(async () => {
     if (!comercioId || !navigator.onLine) return;
-    if (sincronizandoRef.current) return; // evitar solapamiento
+    enVuelo.current++;
     sincronizandoRef.current = true;
     setSincronizando(true);
     try {
@@ -303,8 +318,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         ultimaSyncOk: res.error ? estadoNubeRef.current.ultimaSyncOk : new Date().toISOString(),
       });
     } finally {
-      sincronizandoRef.current = false;
-      setSincronizando(false);
+      if (--enVuelo.current === 0) {
+        sincronizandoRef.current = false;
+        setSincronizando(false);
+      }
     }
   }, [comercioId, sincronizarYRecargar]);
 
@@ -319,7 +336,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // comoAjuste=true → el cambio de stock se aplica por DELTA atómico (RPC ajustar_stock),
   // no por upsert de la fila (así no pisa la cantidad que descontó la app de Ventas).
-  const registrarMovimiento = useCallback(async (m: Omit<Movimiento, 'id' | 'fecha' | 'usuario' | 'comercioId'>, comoAjuste = false) => {
+  // `ademas`: lo que se guarda en la misma transacción que el movimiento (el lote que cambió y su cambio).
+  const registrarMovimiento = useCallback(async (m: Omit<Movimiento, 'id' | 'fecha' | 'usuario' | 'comercioId'>, comoAjuste = false,
+    ademas?: Parameters<typeof guardarYEncolar>[3]) => {
     if (!comercioId) return;
     const mov: Movimiento = {
       ...m, id: crypto.randomUUID(), comercioId,
@@ -327,7 +346,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
     await guardarYEncolar('movimientos', mov, {
       tabla: comoAjuste && mov.loteId ? 'ajuste_stock' : 'movimientos', operacion: 'insert', registroId: mov.id!, payload: mov,
-    });
+    }, ademas);
     dispatch({ type: 'PREPEND_MOVIMIENTO', movimiento: mov });
     await refrescarPendientes();
   }, [comercioId, usuario, refrescarPendientes]);
@@ -346,11 +365,18 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [comercioId, state.sucursalActivaId, registrarMovimiento, sincronizarAhora]);
 
   const updateProducto = useCallback(async (p: Producto) => {
-    await guardarYEncolar('productos', p, { tabla: 'productos', operacion: 'update', registroId: p.id!, payload: p });
+    // Solo los campos que cambiaron: si otro equipo cambió otro campo del mismo producto, no se lo pisa.
+    const anterior = state.productos.find(x => x.id === p.id) as Record<string, unknown> | undefined;
+    const campos = Object.keys(p).filter(k => !['id', 'comercioId', 'activo', 'fechaCreacion'].includes(k)
+      && (!anterior || anterior[k] !== (p as unknown as Record<string, unknown>)[k]));
+    if (campos.length > 0) {
+      const parche = Object.fromEntries(campos.map(k => [k, (p as unknown as Record<string, unknown>)[k] ?? null]));
+      await guardarYEncolar('productos', p, { tabla: 'productos', operacion: 'update', registroId: p.id!, payload: parche });
+    }
     dispatch({ type: 'UPSERT_PRODUCTO', producto: p });
     await refrescarPendientes();
     sincronizarAhora();
-  }, [refrescarPendientes, sincronizarAhora]);
+  }, [state.productos, refrescarPendientes, sincronizarAhora]);
 
   const deleteProducto = useCallback(async (id: string) => {
     await guardarYEncolar('productos', null, { tabla: 'productos', operacion: 'delete', registroId: id, payload: { id } });
@@ -379,11 +405,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const updateLote = useCallback(async (l: Lote) => {
     const anterior = state.lotes.find(x => x.id === l.id);
     const diff = l.cantidad - (anterior?.cantidad || 0);
-    // El ajuste se encola antes que el lote: si la app se corta en el medio, el stock igual llega al servidor.
+    const cambio = { tabla: 'lotes' as const, operacion: 'update' as const, registroId: l.id!, payload: l };
+    // El ajuste, el lote y su cambio en una sola transacción: si la app se corta, queda todo o nada.
     if (diff !== 0) {
-      await registrarMovimiento({ loteId: l.id, productoId: l.productoId, sucursalId: l.sucursalId, tipo: 'ajuste', cantidad: diff, cantidadAnterior: anterior?.cantidad || 0, cantidadNueva: l.cantidad, notas: `Ajuste (${diff > 0 ? '+' : ''}${diff})` }, true);
+      await registrarMovimiento({ loteId: l.id, productoId: l.productoId, sucursalId: l.sucursalId, tipo: 'ajuste', cantidad: diff, cantidadAnterior: anterior?.cantidad || 0, cantidadNueva: l.cantidad, notas: `Ajuste (${diff > 0 ? '+' : ''}${diff})` },
+        true, { filas: [['lotes', l]], items: [cambio] });
+    } else {
+      await guardarYEncolar('lotes', l, cambio);
     }
-    await guardarYEncolar('lotes', l, { tabla: 'lotes', operacion: 'update', registroId: l.id!, payload: l });
     dispatch({ type: 'UPSERT_LOTE', lote: l });
     await refrescarPendientes();
     sincronizarAhora();
@@ -397,10 +426,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const retirado = cantNueva === 0;
     const actualizado: Lote = { ...lote, cantidad: cantNueva, retirado };
 
-    // El retiro se sincroniza por delta atómico (ajuste_stock), no por upsert de cantidad. Se encola
-    // antes de tocar el lote: si la app se corta en el medio, el retiro igual llega al servidor.
-    await registrarMovimiento({ loteId: id, productoId: lote.productoId, sucursalId: lote.sucursalId, tipo, cantidad: -cantARetirar, cantidadAnterior: lote.cantidad, cantidadNueva: cantNueva, notas }, true);
-    await put('lotes', actualizado);
+    // El retiro se sincroniza por delta atómico (ajuste_stock), no por upsert de cantidad. El lote, el
+    // movimiento y el ajuste van en una sola transacción: si la app se corta, queda todo o nada.
+    await registrarMovimiento({ loteId: id, productoId: lote.productoId, sucursalId: lote.sucursalId, tipo, cantidad: -cantARetirar, cantidadAnterior: lote.cantidad, cantidadNueva: cantNueva, notas },
+      true, { filas: [['lotes', actualizado]] });
     haptic.medium();
     if (retirado) dispatch({ type: 'REMOVE_LOTE', id });
     else dispatch({ type: 'UPSERT_LOTE', lote: actualizado });
@@ -463,7 +492,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (!proxVenc || l.fechaVencimiento < proxVenc) proxVenc = l.fechaVencimiento;
       }
       return { producto, lotes, cantidadTotal, valorTotal: cantidadTotal * producto.precio, nivelPeor, proximoVencimiento: proxVenc };
-    }), [state.productos, lotesPorProducto, vendidoSinSubir]);
+    }), [state.productos, lotesPorProducto, vendidoSinSubir, umbralesN]);
   const productosConLotes = useCallback(() => productosConLotesCalc, [productosConLotesCalc]);
 
   const lotesEnriquecidosCalc = useMemo((): LoteConProducto[] => {
@@ -478,7 +507,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         diasRestantes: diasRestantes(l.fechaVencimiento), valorLote: l.cantidad * (prod?.precio || 0),
       };
     });
-  }, [lotesDeSucursal, state.productos, state.sucursales, state.sucursalActivaId]);
+  }, [lotesDeSucursal, state.productos, state.sucursales, state.sucursalActivaId, umbralesN]);
   const lotesEnriquecidos = useCallback(() => lotesEnriquecidosCalc, [lotesEnriquecidosCalc]);
 
   // Reprogramar el aviso de vencimiento cuando cambian los lotes / productos.
@@ -524,6 +553,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const idx = new Map(res.map((r, i) => [r.mes, i]));
     for (const m of state.movimientos) {
       if (m.tipo !== 'retiro_vencido' && m.tipo !== 'retiro_roto') continue;
+      if (m.sucursalId !== state.sucursalActivaId) continue; // del local elegido, como el resto de Reportes
       const i = idx.get(fechaLocalISO(new Date(m.fecha)).slice(0, 7));
       if (i === undefined) continue;
       const prod = state.productos.find(p => p.id === m.productoId);
@@ -532,7 +562,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       else res[i].valorRoto += valor;
     }
     return res;
-  }, [state.movimientos, state.productos]);
+  }, [state.movimientos, state.productos, state.sucursalActivaId]);
 
   const distribucionPorCategoria = useCallback((): DistribucionCategoria[] => {
     const mapa = new Map<string, DistribucionCategoria>();
@@ -561,7 +591,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       else mapa.set(l.fechaVencimiento, { fecha: l.fechaVencimiento, lotes: 1, unidades: l.cantidad, nivelPeor: nivel });
     }
     return mapa;
-  }, [state.lotes, state.sucursalActivaId]);
+  }, [state.lotes, state.sucursalActivaId, umbralesN]);
 
   // ─── Backup ────────────────────────────────────────────────────────────
   const exportarBackup = useCallback((): string => {
@@ -587,18 +617,23 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return { ok: 0, error: 1 };
     }
 
-    // Helper: importa un array a una tabla, regenerando id y reasignando comercio
+    // Helper: importa un array a una tabla, regenerando id y reasignando comercio. Solo los campos conocidos y con
+    // el tipo que corresponde: un archivo armado a mano metía cualquier cosa (fotos de otro sitio, `activo`, textos enormes).
     const importarTabla = async (
-      tabla: 'productos' | 'lotes' | 'sucursales',
+      tabla: 'productos' | 'sucursales',
       items: any[],
       mapaIds: Map<string, string>
     ) => {
       if (!Array.isArray(items)) return;
       for (const item of items) {
         try {
+          const limpio = camposDeCopia(tabla, item);
+          if (!limpio) { error++; continue; }
           const nuevoId = crypto.randomUUID();
-          if (item.id) mapaIds.set(item.id, nuevoId);
-          const registro = { ...item, id: nuevoId, comercioId };
+          if (typeof item?.id === 'string') mapaIds.set(item.id, nuevoId);
+          const registro = tabla === 'productos'
+            ? { ...limpio, id: nuevoId, comercioId, activo: true, fechaCreacion: hoyISO() }
+            : { ...limpio, id: nuevoId, comercioId, activa: true };
           await guardarYEncolar(tabla, registro, { tabla, operacion: 'insert', registroId: nuevoId, payload: registro });
           ok++;
         } catch {
@@ -621,11 +656,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (Array.isArray(data.lotes)) {
       for (const lote of data.lotes) {
         try {
+          const limpio = camposDeCopia('lotes', lote);
+          // El lote tiene que ser de un producto de la copia o de uno que ya existe acá.
+          const productoId = mapaProductos.get(lote?.productoId) || (state.productos.some(p => p.id === lote?.productoId) ? lote.productoId : '');
+          if (!limpio || !productoId) { error++; continue; }
           const nuevoId = crypto.randomUUID();
-          const productoId = mapaProductos.get(lote.productoId) || lote.productoId;
           const sucursalId = mapaSucursales.get(lote.sucursalId) || state.sucursalActivaId;
           const registro: Lote = {
-            ...lote, id: nuevoId, comercioId, productoId, sucursalId,
+            ...(limpio as Omit<Lote, 'id' | 'comercioId' | 'productoId' | 'sucursalId' | 'retirado'>),
+            id: nuevoId, comercioId, productoId, sucursalId, retirado: false,
           };
           await guardarYEncolar('lotes', registro, { tabla: 'lotes', operacion: 'insert', registroId: nuevoId, payload: registro });
           ok++;
@@ -641,7 +680,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     sincronizarAhora();
 
     return { ok, error };
-  }, [comercioId, state.sucursalActivaId, recargarLocal, refrescarPendientes, sincronizarAhora]);
+  }, [comercioId, state.sucursalActivaId, state.productos, recargarLocal, refrescarPendientes, sincronizarAhora]);
 
   // Memo: si el proveedor se redibuja sin cambios (p. ej. por la sesión), las pantallas no.
   const valor = useMemo(() => ({

@@ -45,7 +45,8 @@ const AuthPage: React.FC = () => {
     if (cargando) return;
     setError('');
     const c = codigo.replace(/\D/g, '');
-    if (c.length < 6) { setError('Escribí el código que te llegó por email'); return; }
+    // De 6 a 8 números: Supabase puede mandar 8 (más difícil de adivinar). Más que eso es un pegado mal.
+    if (c.length < 6 || c.length > 8) { setError('Escribí el código que te llegó por email (de 6 a 8 números)'); return; }
     if (password.length < 8) { setError('La contraseña nueva debe tener al menos 8 caracteres'); return; }
     setCargando(true);
     try {
@@ -158,7 +159,7 @@ const AuthPage: React.FC = () => {
           {modo === 'codigo' && (<>
             <Field label="Código del email">
               <Input value={codigo} onChange={e => setCodigo(e.target.value)} inputMode="numeric"
-                autoComplete="one-time-code" placeholder="123456"
+                autoComplete="one-time-code" placeholder="12345678" maxLength={12}
                 leftIcon={<KeyIcon width={18} height={18} />} />
             </Field>
             <Field label="Contraseña nueva" hint="Mínimo 8 caracteres">

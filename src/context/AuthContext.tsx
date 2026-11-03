@@ -213,8 +213,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const lista = JSON.parse((await getLocalSetting('empleados-cache')) || '[]') as { legajo: string }[];
       await Promise.all([borrarHuella(CLAVE_HUELLA_DUENO), ...lista.map(e => borrarHuella(claveHuellaCajero(e.legajo)))]);
     } catch { /* */ }
-    // Limpiar caché local primero (esto siempre funciona)
+    // Limpiar caché local primero (esto siempre funciona). Antes se frena la sincronización: una pasada en
+    // curso escribía lo de esta cuenta en el equipo ya limpio y lo veía la próxima que entrara.
     try {
+      const { frenarSincronizacion } = await import('../lib/sync');
+      frenarSincronizacion();
       const { limpiarTodoLocal } = await import('../lib/localDb');
       await limpiarTodoLocal();
     } catch { /* */ }
@@ -241,17 +244,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.removeItem(clave);
         localStorage.removeItem(`${clave}-code-verifier`);
       } catch { /* */ }
-      window.location.reload();
-      return;
     }
-    // Pase lo que pase, limpiamos el estado local → vuelve al login
-    cargadoPara.current = null;
-    adminConsultadoPara.current = null;
-    setCajeroEnTurno(null);
-    setSession(null);
-    setComercio(null);
-    setMiembro(null);
-    setEsAdminPlataforma(false);
+    // Siempre se recarga: corta cualquier pedido o escritura de la cuenta anterior que haya quedado en el aire.
+    window.location.reload();
   };
 
   // Volver a traer los datos del comercio (ej: tras activar la suscripción)

@@ -70,7 +70,8 @@ const TabBar: React.FC = () => {
             key={t.path}
             type="button"
             // Tocar la pestaña en la que ya estás no suma otro "atrás" que no hace nada.
-            onClick={() => { if (location.pathname !== t.path) history.push(t.path); }}
+            // "Cargar" siempre empieza de cero (aunque estés a mitad de una carga o en "Listo").
+            onClick={() => { if (t.fab) history.push(`${t.path}?t=${Date.now()}`); else if (location.pathname !== t.path) history.push(t.path); }}
             aria-current={active ? 'page' : undefined}
             style={{
               position: 'relative', background: 'none', border: 'none', cursor: 'pointer',

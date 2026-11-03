@@ -384,7 +384,9 @@ def main():
         http('POST', '/rest/v1/rpc/configurar_pin', tok_d, {'p': {'comercio_id': comercio, 'pin': pin}})
     s, r = http('POST', '/rest/v1/rpc/configurar_pin', tok_d, {'p': {'comercio_id': comercio, 'pin': '0000'}})
     _, ok_vieja = http('POST', '/rest/v1/rpc/verificar_pin', tok_d, {'p': {'comercio_id': comercio, 'pin': pin}})
-    caso('cambiar la clave sin la actual no se puede (y la vieja sigue valiendo)', s == 200 and r.get('ok') is False and ok_vieja is True, f'{s} {r} {ok_vieja}')
+    # Migración 17: sin la actual es un error (la app vieja mostraba un "ok: false" como "clave actualizada").
+    caso('cambiar la clave sin la actual no se puede (y la vieja sigue valiendo)',
+         s >= 400 and 'clave actual' in json.dumps(r, ensure_ascii=False) and ok_vieja is True, f'{s} {r} {ok_vieja}')
     s, r = http('POST', '/rest/v1/rpc/configurar_pin', tok_d, {'p': {'comercio_id': comercio, 'pin': pin, 'pin_actual': pin}})
     caso('con la clave actual sí se cambia', s == 200 and r.get('ok') is True, f'{s} {r}')
     U['pin_dueno'] = pin
@@ -405,6 +407,72 @@ def main():
 
     s, r = http('POST', '/rest/v1/rpc/comercios_del_usuario', None, {})
     caso('sin sesión no se puede llamar a comercios_del_usuario', s >= 400, f'{s} {r}')
+
+    print('\n── M) Migración 17: ventas, fiado y stock')
+    p2 = str(uuid.uuid4())
+    http('POST', '/rest/v1/productos', tok_d, {'id': p2, 'comercio_id': comercio, 'nombre': 'Yogur M17', 'categoria': 'Lácteos', 'precio': 500, 'costo': 300})
+    l_chico = str(uuid.uuid4())
+    http('POST', '/rest/v1/lotes', tok_d, {'id': l_chico, 'comercio_id': comercio, 'producto_id': p2, 'sucursal_id': sucursal,
+                                           'cantidad': 3, 'fecha_vencimiento': '2027-02-01', 'dias_aviso': 7})
+    mid = str(uuid.uuid4())
+    s, r = http('POST', '/rest/v1/rpc/ajustar_stock', tok_d, {'p': {'mov_id': mid, 'comercio_id': comercio, 'lote_id': l_chico,
+                                                                    'tipo': 'retiro_roto', 'delta': -10, 'usuario': 'Rosa'}})
+    _, mv = http('GET', f'/rest/v1/movimientos?id=eq.{mid}&select=cantidad,cantidad_anterior,cantidad_nueva', tok_d)
+    caso('un retiro de más anota lo que de verdad bajó (3, no 10)', s == 200 and mv and mv[0]['cantidad'] == -3 and mv[0]['cantidad_nueva'] == 0, f'{s} {r} {mv}')
+
+    # Un lote con stock dado de baja (borrado en la app) no revive con una venta sin stock.
+    l_baja = str(uuid.uuid4())
+    http('POST', '/rest/v1/lotes', tok_d, {'id': l_baja, 'comercio_id': comercio, 'producto_id': p2, 'sucursal_id': sucursal,
+                                           'cantidad': 5, 'fecha_vencimiento': '2026-01-01', 'dias_aviso': 7})
+    http('PATCH', f'/rest/v1/lotes?id=eq.{l_baja}', tok_d, {'retirado': True})
+    vsin = str(uuid.uuid4())
+    s, r = http('POST', '/rest/v1/rpc/registrar_venta', tok_d, {'p': {
+        'id': vsin, 'comercio_id': comercio, 'sucursal_id': sucursal, 'usuario': 'Rosa', 'metodo_pago': 'efectivo',
+        'items': [{'producto_id': p2, 'nombre': 'Yogur M17', 'cantidad': 2, 'precio': 500, 'costo': 123}]}})
+    _, lb = http('GET', f'/rest/v1/lotes?id=eq.{l_baja}&select=cantidad,retirado', tok_d)
+    _, its = http('GET', f'/rest/v1/ventas_items?venta_id=eq.{vsin}&select=lote_id,cantidad,sin_stock,costo_unit', tok_d)
+    caso('vender sin stock no toca un lote dado de baja', s == 200 and lb and lb[0]['cantidad'] == 5 and lb[0]['retirado'] is True, f'{s} {r} {lb}')
+    caso('el renglón vendido sin stock queda marcado', its and all(i['sin_stock'] for i in its) and its[0]['lote_id'] != l_baja, f'{its}')
+    caso('el costo es el del momento de la venta (lo manda la app)', its and float(its[0]['costo_unit']) == 123, f'{its}')
+
+    # Entra mercadería: el faltante se cubre del lote nuevo. Al anular, las unidades vuelven a ese lote nuevo.
+    neg = its[0]['lote_id'] if its else None
+    l_nuevo = str(uuid.uuid4())
+    http('POST', '/rest/v1/lotes', tok_d, {'id': l_nuevo, 'comercio_id': comercio, 'producto_id': p2, 'sucursal_id': sucursal,
+                                           'cantidad': 6, 'fecha_vencimiento': '2027-06-01', 'dias_aviso': 7})
+    s, r = http('POST', '/rest/v1/rpc/anular_venta', tok_d, {'p': {'venta_id': vsin, 'comercio_id': comercio, 'usuario': 'Rosa'}})
+    _, ln = http('GET', f'/rest/v1/lotes?id=in.({l_nuevo},{neg})&select=id,cantidad', tok_d)
+    cant = {x['id']: x['cantidad'] for x in ln or []}
+    caso('anular lo vendido sin stock devuelve al lote nuevo, no al vencido', s == 200 and cant.get(l_nuevo) == 6 and cant.get(neg) == 0, f'{s} {r} {cant}')
+
+    # Un id de venta de otro comercio no se da por "duplicada".
+    s, r = http('POST', '/rest/v1/rpc/registrar_venta', tok_v, {'p': {
+        'id': vsin, 'comercio_id': mdev[0]['comercio_id'], 'sucursal_id': sv[0]['id'], 'metodo_pago': 'efectivo',
+        'items': [{'producto_id': None, 'nombre': 'Varios', 'cantidad': 1, 'precio': 10}]}})
+    caso('una venta con el id de otro comercio es un error, no "duplicada"', s >= 400, f'{s} {r}')
+
+    # Fiado de $0 nace pagado; el cobro dice cuánto se cobró y una deuda sin saldo queda cerrada.
+    vf0 = str(uuid.uuid4())
+    http('POST', '/rest/v1/rpc/registrar_venta', tok_d, {'p': {
+        'id': vf0, 'comercio_id': comercio, 'sucursal_id': sucursal, 'metodo_pago': 'efectivo', 'fiado': True, 'cliente': 'Marta M17',
+        'descuento': 10, 'items': [{'producto_id': None, 'nombre': 'Varios', 'cantidad': 1, 'precio': 10}]}})
+    _, d0 = http('GET', f'/rest/v1/ventas_deudas?venta_id=eq.{vf0}&select=monto,pagada', tok_d)
+    caso('un fiado de $0 nace pagado', d0 and float(d0[0]['monto']) == 0 and d0[0]['pagada'] is True, f'{d0}')
+
+    vf = str(uuid.uuid4())
+    http('POST', '/rest/v1/rpc/registrar_venta', tok_d, {'p': {
+        'id': vf, 'comercio_id': comercio, 'sucursal_id': sucursal, 'metodo_pago': 'efectivo', 'fiado': True, 'cliente': 'Marta M17',
+        'items': [{'producto_id': None, 'nombre': 'Varios', 'cantidad': 1, 'precio': 1000}]}})
+    _, dd = http('GET', f'/rest/v1/ventas_deudas?venta_id=eq.{vf}&select=id', tok_d)
+    deuda = dd[0]['id']
+    pago1 = str(uuid.uuid4())
+    s, r = http('POST', '/rest/v1/rpc/registrar_pago_fiado', tok_d, {'p': {'pago_id': pago1, 'deuda_id': deuda, 'comercio_id': comercio,
+                                                                          'monto': 1500, 'fecha': '2099-01-01T00:00:00Z'}})
+    _, pg = http('GET', f'/rest/v1/ventas_pagos?id=eq.{pago1}&select=fecha', tok_d)
+    caso('el cobro dice cuánto se cobró (no más que el saldo)', s == 200 and float(r.get('cobrado', -1)) == 1000, f'{s} {r}')
+    caso('un cobro con fecha del futuro queda con la hora del servidor', pg and pg[0]['fecha'] < '2099', f'{pg}')
+    s, r = http('POST', '/rest/v1/rpc/registrar_pago_fiado', tok_d, {'p': {'pago_id': str(uuid.uuid4()), 'deuda_id': deuda, 'comercio_id': comercio, 'monto': 200}})
+    caso('cobrar una deuda ya saldada no cobra nada', s == 200 and r.get('sin_saldo') is True and float(r.get('cobrado', -1)) == 0, f'{s} {r}')
 
     fallas = [n for n, ok in resultados if not ok]
     print(f'\n{len(resultados) - len(fallas)}/{len(resultados)} pruebas OK')

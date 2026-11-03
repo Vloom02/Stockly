@@ -39,7 +39,7 @@ const CajeroGate: React.FC = () => {
   const entrarCajero = async (clave: string) => {
     if (!elegido) return false;
     const err = await iniciarTurno(elegido.legajo, clave);
-    return !err;
+    return err === null ? true : err; // el teclado muestra el motivo real (sin internet, trabado…), no "incorrecta"
   };
   const entrarDueno = async (pin: string) => {
     const ok = await tryUnlock(pin);
@@ -125,7 +125,7 @@ const CajeroGate: React.FC = () => {
           titulo={`Hola, ${elegido.nombre}`}
           subtitulo="Poné tu clave"
           extra={<>
-            {huellaCajero.activa && <BotonHuella onClick={async () => { if (await huellaCajero.entrar(entrarCajero)) setElegido(null); }} />}
+            {huellaCajero.activa && <BotonHuella onClick={async () => { if (await huellaCajero.entrar(async c => (await entrarCajero(c)) === true)) setElegido(null); }} />}
             {/* Dentro del teclado: como botón fijo aparte quedaba tapado por él. */}
             <button type="button" onClick={() => setConLetras(true)}
               style={{ minHeight: 48, padding: '0 18px', marginBottom: 12, borderRadius: 'var(--radius-full)', border: '1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--text-2)', fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -135,7 +135,7 @@ const CajeroGate: React.FC = () => {
           onSuccess={async (clave) => {
             if (huellaCajero.disponible && !huellaCajero.activa) dejarOfertaHuella(claveHuellaCajero(elegido.legajo), clave);
             const ok = await entrarCajero(clave);
-            if (ok) setElegido(null); else dejarOfertaHuella('', ''); // clave mal: no ofrecer
+            if (ok === true) setElegido(null); else dejarOfertaHuella('', ''); // clave mal (o un error con su motivo): no ofrecer
             return ok;
           }}
           onCancel={() => setElegido(null)}

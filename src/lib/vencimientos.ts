@@ -45,7 +45,9 @@ export function nivelPorDias(
   if (dias < 0) return 'vencido';
   if (dias <= umbrales.critico) return 'critico';
   if (dias <= umbrales.urgente) return 'urgente';
-  const umbralAviso = diasAviso ?? umbrales.aviso;
+  // Un aviso del lote que no pasa de "urgente" (el de 15 días que traen casi todos) no deja banda de aviso: el
+  // nivel Aviso no aparecía nunca. En ese caso manda el umbral general.
+  const umbralAviso = diasAviso != null && diasAviso > umbrales.urgente ? diasAviso : umbrales.aviso;
   if (dias <= umbralAviso) return 'aviso';
   return 'ok';
 }

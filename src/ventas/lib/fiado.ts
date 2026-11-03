@@ -1,3 +1,13 @@
+import { supabase } from './supabase';
+
+/** Cobros de fiado del comercio; con local, solo los de ventas de ese local (antes el arqueo de un local sumaba
+ *  la plata que entró en el otro). */
+export function cobrosDeFiado(comercioId: string, sucursalId?: string) {
+  if (!sucursalId) return supabase.from('ventas_pagos').select('monto').eq('comercio_id', comercioId);
+  return supabase.from('ventas_pagos').select('monto, ventas_deudas!inner(ventas_ventas!inner(sucursal_id))')
+    .eq('comercio_id', comercioId).eq('ventas_deudas.ventas_ventas.sucursal_id', sucursalId);
+}
+
 // Fiado por cliente: el nombre se escribe a mano en cada venta, así que "Marta" y "marta " son la misma persona.
 export const claveCliente = (c: string) => c.trim().toLowerCase();
 
@@ -17,14 +27,22 @@ export function saldosPorCliente(deudas: { id: string; cliente: string; monto: n
   return [...m.values()].sort((a, b) => b.saldo - a.saldo);
 }
 
+/** Días de calendario desde una fecha (ayer a las 23 h = 1 día, aunque hayan pasado pocas horas). */
+export function diasDesde(fecha: string, hoy = new Date()): number {
+  const d = new Date(fecha);
+  const a = Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  const b = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  return Math.round((a - b) / 86400000);
+}
+
 /** Cómo se reparte una entrega a cuenta: primero las deudas más viejas. */
 export function repartirPago<D extends { id: string; fecha: string }>(deudas: D[], saldoDe: (d: D) => number, monto: number): { deuda: D; monto: number }[] {
   const r: { deuda: D; monto: number }[] = [];
   let resto = monto;
   for (const d of [...deudas].sort((a, b) => (a.fecha < b.fecha ? -1 : 1))) {
     if (resto <= 0) break;
-    const m = Math.min(resto, saldoDe(d));
-    if (m > 0) { r.push({ deuda: d, monto: m }); resto -= m; }
+    const m = Math.round(Math.min(resto, saldoDe(d)) * 100) / 100;
+    if (m > 0) { r.push({ deuda: d, monto: m }); resto = Math.round((resto - m) * 100) / 100; }
   }
   return r;
 }

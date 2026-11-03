@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useConfirm } from '../lib/useConfirm';
 import { fechaLocalISO } from '../lib/vencimientos';
 import { Capacitor } from '@capacitor/core';
+import { guardarYCompartir, avisoArchivo } from '../lib/archivos';
 import { IonContent, IonPage, IonToast } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import {
@@ -13,7 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import {
   useStore, setSetting,
-  DIAS_AVISO_DEFAULT, UMBRAL_AVISO, UMBRAL_URGENTE, UMBRAL_CRITICO, CATEGORIAS,
+  DIAS_AVISO_DEFAULT, UMBRAL_AVISO, UMBRAL_URGENTE, UMBRAL_CRITICO, CATEGORIAS, EVENTO_UMBRALES,
   DESC_CRITICO, DESC_URGENTE, DESC_AVISO,
 } from '../context/StoreContext';
 import { COLORES_MARCA, aplicarColorMarca, guardarColorMarca, obtenerColorMarcaGuardado } from '../lib/tema';
@@ -81,14 +82,17 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
   };
 
   const guardar = (silencioso = false) => {
-    setSetting('dias-aviso-default', diasAviso || '15');
-    setSetting('umbral-aviso', uAviso || '60');
-    setSetting('umbral-urgente', uUrgente || '30');
-    setSetting('umbral-critico', uCritico || '7');
+    // Solo números enteros de 0 o más: "abc" o "-5" se guardaban y rompían las cuentas de vencimiento.
+    const dias = (v: string, def: string) => { const n = parseInt(v, 10); return Number.isFinite(n) && n >= 0 ? String(n) : def; };
+    setSetting('dias-aviso-default', dias(diasAviso, '15'));
+    setSetting('umbral-aviso', dias(uAviso, '60'));
+    setSetting('umbral-urgente', dias(uUrgente, '30'));
+    setSetting('umbral-critico', dias(uCritico, '7'));
     setSetting('desc-critico', descCritico || '40');
     setSetting('desc-urgente', descUrgente || '20');
     setSetting('desc-aviso', descAviso || '10');
     setSetting('categorias', categorias);
+    window.dispatchEvent(new Event(EVENTO_UMBRALES)); // que Inicio y Mercadería recalculen ya, sin reabrir la app
     if (!silencioso) setToast({ show: true, msg: 'Configuración guardada' });
   };
   // Se guarda sola al cambiar (antes dependía de un botón al fondo y si se salía antes se perdía).
@@ -129,61 +133,12 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
     await cerrarSesion();
   };
 
-  const exportar = async () => {
-    const json = exportarBackup();
-    const nombre = `stockly_backup_${fechaLocalISO()}.json`;
-
-    if (Capacitor.isNativePlatform()) {
-      // Android: guardar con Filesystem en la carpeta Documents
-      try {
-        const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
-        await Filesystem.writeFile({
-          path: nombre,
-          data: json,
-          directory: Directory.Documents,
-          encoding: Encoding.UTF8,
-          recursive: true,
-        });
-        setToast({ show: true, msg: `Backup guardado en Documentos: ${nombre}` });
-      } catch (e) {
-        setToast({ show: true, msg: 'No se pudo guardar el backup' });
-      }
-      return;
-    }
-
-    // Web: descarga clásica
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = nombre;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setToast({ show: true, msg: 'Backup exportado' });
+  // Copia y planillas: en Android se abre "Compartir" (mejor en Drive o mandada por mail: fuera del celular).
+  const guardarTexto = async (nombre: string, contenido: string, mime: string, queEs = 'La planilla') => {
+    const msg = avisoArchivo(await guardarYCompartir(nombre, contenido, mime), queEs);
+    if (msg) setToast({ show: true, msg });
   };
-
-  // Guarda un texto como archivo (Documents en Android, descarga en web).
-  const guardarTexto = async (nombre: string, contenido: string, mime: string) => {
-    if (Capacitor.isNativePlatform()) {
-      try {
-        const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
-        await Filesystem.writeFile({ path: nombre, data: contenido, directory: Directory.Documents, encoding: Encoding.UTF8, recursive: true });
-        setToast({ show: true, msg: `Guardado en Documentos: ${nombre}` });
-      } catch {
-        setToast({ show: true, msg: 'No se pudo guardar el archivo' });
-      }
-      return;
-    }
-    const blob = new Blob([contenido], { type: mime });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = nombre;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setToast({ show: true, msg: 'Planilla exportada' });
-  };
+  const exportar = () => guardarTexto(`stockly_backup_${fechaLocalISO()}.json`, exportarBackup(), 'application/json', 'La copia');
 
   const fechaHoy = () => fechaLocalISO();
   const exportarStockCSV = () =>
@@ -240,7 +195,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             ].map((t, i) => (
               <button key={t.path} type="button" onClick={() => history.push(t.path)} className="pressable"
                 style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 14, minHeight: 64, padding: '12px 16px', border: 'none', borderTop: i ? '1px solid var(--border)' : 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', color: 'var(--text)' }}>
-                <t.Icon width={26} height={26} style={{ color: 'var(--brand-600)', flexShrink: 0 }} />
+                <t.Icon width={26} height={26} style={{ color: 'var(--marca-texto)', flexShrink: 0 }} />
                 <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
                   <span style={{ fontSize: 16, fontWeight: 600 }}>{t.label}</span>
                   <span style={{ fontSize: 14, color: 'var(--text-2)' }}>{t.desc}</span>
@@ -255,7 +210,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{
                 width: 48, height: 48, borderRadius: 'var(--radius-md)',
-                background: 'var(--brand-50)', color: 'var(--brand-600)',
+                background: 'var(--brand-50)', color: 'var(--marca-texto)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 <UserCircleIcon width={28} height={28} />
@@ -390,7 +345,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             </div>
             <button type="button" onClick={sincronizarAhora} disabled={sincronizando} style={{ ...rowBtn, marginTop: 12, opacity: sincronizando ? 0.5 : 1 }}>
               <span>{sincronizando ? 'Sincronizando...' : 'Sincronizar ahora'}</span>
-              <span style={{ color: 'var(--brand-600)', fontSize: 14 }}>↻</span>
+              <span style={{ color: 'var(--marca-texto)', fontSize: 14 }}>↻</span>
             </button>
             {state.bloqueadosSync > 0 && (
               <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: 'var(--level-vencido-bg)' }}>
@@ -418,7 +373,13 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
               <Button variant="primary" size="lg" fullWidth onClick={() => { window.location.href = act.url; }}>
                 Bajar la versión {act.version}
               </Button>
-              <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '8px 0 0' }}>Esta versión se instala encima de la app. No se pierde nada.</p>
+              {/* Paso a paso: instalar un archivo bajado no es algo que se haga seguido. */}
+              <ol style={{ fontSize: 16, color: 'var(--text-2)', margin: '10px 0 0', paddingLeft: 22, lineHeight: 1.6 }}>
+                <li>Tocá el botón y esperá que termine de bajar.</li>
+                <li>Abrí el aviso de descarga (arriba, deslizando hacia abajo) y tocá el archivo de Stockly.</li>
+                <li>Si el celular pregunta, tocá "Configuración" y permití instalar desde esa app.</li>
+                <li>Tocá "Instalar". Se pone encima de la que tenés: no se pierde nada.</li>
+              </ol>
             </>) : (
               <Button variant="secondary" size="lg" fullWidth onClick={buscarAct} disabled={buscandoAct}>
                 {buscandoAct ? 'Buscando…' : 'Buscar actualización'}
@@ -430,16 +391,16 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           {/* Notificaciones */}
           <Card padding="md" style={{ marginBottom: 12 }}>
             <SectionTitle icon={<BellAlertIcon width={16} height={16} />}>Avisos de vencimiento</SectionTitle>
-            <button type="button" onClick={() => cambiarNotif(!notifOn)} style={rowBtn}>
+            <button type="button" role="switch" aria-checked={notifOn} onClick={() => cambiarNotif(!notifOn)} style={rowBtn}>
               <span>Notificarme productos por vencer</span>
-              {/* mini switch */}
-              <span style={{
-                width: 42, height: 24, borderRadius: 999, padding: 2, flexShrink: 0,
+              {/* interruptor: el lector de pantalla dice "activado / desactivado" */}
+              <span aria-hidden="true" style={{
+                width: 52, height: 30, borderRadius: 999, padding: 3, flexShrink: 0,
                 background: notifOn ? 'var(--brand-500)' : 'var(--border-strong)',
                 display: 'inline-flex', alignItems: 'center',
                 justifyContent: notifOn ? 'flex-end' : 'flex-start', transition: 'all 160ms',
               }}>
-                <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.3)' }} />
+                <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.3)' }} />
               </span>
             </button>
             {notifOn && (
@@ -500,25 +461,25 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           {esDueno && (
           <Card padding="none" style={{ marginBottom: 12, overflow: 'hidden' }}>
             <button type="button" onClick={exportarStockCSV} style={linkRow}>
-              <span style={{ color: 'var(--brand-600)' }}><ArrowDownTrayIcon width={18} height={18} /></span>
+              <span style={{ color: 'var(--marca-texto)' }}><ArrowDownTrayIcon width={18} height={18} /></span>
               <span style={{ flex: 1, textAlign: 'left' }}>Planilla de la mercadería (para Excel)</span>
               <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
             </button>
             <div style={{ height: 1, background: 'var(--border)' }} />
             <button type="button" onClick={exportarMovimientosCSV} style={linkRow}>
-              <span style={{ color: 'var(--brand-600)' }}><ArrowDownTrayIcon width={18} height={18} /></span>
+              <span style={{ color: 'var(--marca-texto)' }}><ArrowDownTrayIcon width={18} height={18} /></span>
               <span style={{ flex: 1, textAlign: 'left' }}>Planilla del historial (para Excel)</span>
               <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
             </button>
             <div style={{ height: 1, background: 'var(--border)' }} />
             <button type="button" onClick={exportar} style={linkRow}>
-              <span style={{ color: 'var(--brand-600)' }}><ArrowDownTrayIcon width={18} height={18} /></span>
+              <span style={{ color: 'var(--marca-texto)' }}><ArrowDownTrayIcon width={18} height={18} /></span>
               <span style={{ flex: 1, textAlign: 'left' }}>Guardar una copia de todo</span>
               <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
             </button>
             <div style={{ height: 1, background: 'var(--border)' }} />
             <button type="button" onClick={() => fileInputRef.current?.click()} style={linkRow}>
-              <span style={{ color: 'var(--brand-600)' }}><ArrowUpTrayIcon width={18} height={18} /></span>
+              <span style={{ color: 'var(--marca-texto)' }}><ArrowUpTrayIcon width={18} height={18} /></span>
               <span style={{ flex: 1, textAlign: 'left' }}>Recuperar desde una copia</span>
               <ChevronRightIcon width={16} height={16} style={{ color: 'var(--text-3)' }} />
             </button>
@@ -566,8 +527,8 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
 
 const SectionTitle: React.FC<{ icon: React.ReactNode; children: React.ReactNode }> = ({ icon, children }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-    <span style={{ color: 'var(--brand-600)', display: 'flex' }}>{icon}</span>
-    <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14 }}>{children}</span>
+    <span style={{ color: 'var(--marca-texto)', display: 'flex' }}>{icon}</span>
+    <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17 }}>{children}</span>
   </div>
 );
 const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
@@ -599,14 +560,14 @@ const DescField: React.FC<{ nivel: string; label: string; value: string; onChang
     </div>
   );
 const rowBtn: React.CSSProperties = {
-  width: '100%', padding: '12px 0', background: 'none', border: 'none',
+  width: '100%', padding: '12px 0', minHeight: 48, background: 'none', border: 'none', gap: 12, textAlign: 'left',
   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-  cursor: 'pointer', color: 'var(--text)', fontFamily: 'inherit', fontSize: 14, fontWeight: 500,
+  cursor: 'pointer', color: 'var(--text)', fontFamily: 'inherit', fontSize: 16, fontWeight: 500,
 };
 const linkRow: React.CSSProperties = {
   width: '100%', padding: 16, background: 'none', border: 'none',
-  display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer',
-  color: 'var(--text)', fontFamily: 'inherit', fontSize: 14, fontWeight: 500,
+  display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', textAlign: 'left',
+  color: 'var(--text)', fontFamily: 'inherit', fontSize: 16, fontWeight: 500,
 };
 
 export default ConfigPage;

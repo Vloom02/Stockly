@@ -92,7 +92,8 @@ const MovimientosPage: React.FC = () => {
 
 const MovItem: React.FC<{ m: Movimiento; nombre: string }> = ({ m, nombre }) => {
   const info = tipoInfo(m.tipo);
-  const hora = m.fecha.slice(11, 16);
+  // En hora del celular: la fecha guardada es de Greenwich y a las 10 de la mañana decía 13:00.
+  const hora = new Date(m.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
   return (
     <Card padding="sm">
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>

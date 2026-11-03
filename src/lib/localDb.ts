@@ -1,5 +1,6 @@
 import { Producto, Lote, Sucursal, Movimiento } from '../types';
 import { openDB as abrirVentasDB, idbGetAll as ventasGetAll, idbClear as ventasClear } from '../ventas/lib/outbox';
+import { almacenGet, almacenSet } from './almacen';
 
 /**
  * Capa de persistencia local (IndexedDB).
@@ -106,24 +107,42 @@ export function clearTabla(tabla: string): Promise<void> {
 }
 
 // ─── Outbox (cola de cambios pendientes) ────────────────────────────────────
-export function encolar(item: Omit<ItemOutbox, 'id' | 'intentos' | 'creadoEn'>): Promise<void> {
+// creadoEn ordena la cola: dos cambios en el mismo milisegundo (o con el reloj atrasado) quedaban en cualquier
+// orden y al juntarlos podía ganar el viejo. Siempre crece, aunque el reloj vuelva para atrás.
+let ultimoCreadoEn = 0;
+export function creadoEnNuevo(): number {
+  if (!ultimoCreadoEn) ultimoCreadoEn = Number(almacenGet('stockly:ultimo-creado-en', '0')) || 0;
+  ultimoCreadoEn = Math.max(Date.now(), ultimoCreadoEn + 1);
+  almacenSet('stockly:ultimo-creado-en', String(ultimoCreadoEn));
+  return ultimoCreadoEn;
+}
+
+type NuevoItem = Omit<ItemOutbox, 'id' | 'intentos' | 'creadoEn'>;
+
+export function encolar(item: NuevoItem): Promise<void> {
   const completo: ItemOutbox = {
     ...item,
     id: crypto.randomUUID(),
     intentos: 0,
-    creadoEn: Date.now(),
+    creadoEn: creadoEnNuevo(),
   };
   return put('outbox', completo);
 }
 
 /** Guarda (o borra, con obj null) el registro y encola su cambio en UNA transacción: si la app se
- *  cierra en el medio no queda un cambio en pantalla que nunca sube, ni uno encolado que no está. */
-export function guardarYEncolar(tabla: TablaSync, obj: object | null, item: Omit<ItemOutbox, 'id' | 'intentos' | 'creadoEn'>): Promise<void> {
+ *  cierra en el medio no queda un cambio en pantalla que nunca sube, ni uno encolado que no está.
+ *  `ademas`: otras filas y cambios que van en la misma transacción (p. ej. el lote junto con su movimiento). */
+export function guardarYEncolar(tabla: TablaSync, obj: object | null, item: NuevoItem,
+  ademas: { filas?: [TablaSync, object][]; items?: NuevoItem[] } = {}): Promise<void> {
   return new Promise((res, rej) => {
     if (!db) { rej(new Error('DB local no abierta')); return; }
-    const t = db.transaction([tabla, 'outbox'], 'readwrite');
+    const filas = ademas.filas ?? [];
+    const t = db.transaction([...new Set<string>([tabla, ...filas.map(f => f[0]), 'outbox'])], 'readwrite');
     if (obj) t.objectStore(tabla).put(obj); else t.objectStore(tabla).delete(item.registroId);
-    t.objectStore('outbox').put({ ...item, id: crypto.randomUUID(), intentos: 0, creadoEn: Date.now() });
+    for (const [tb, o] of filas) t.objectStore(tb).put(o);
+    for (const it of [item, ...(ademas.items ?? [])]) {
+      t.objectStore('outbox').put({ ...it, id: crypto.randomUUID(), intentos: 0, creadoEn: creadoEnNuevo() });
+    }
     t.oncomplete = () => res();
     t.onerror = () => rej(t.error);
     t.onabort = () => rej(t.error);

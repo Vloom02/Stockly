@@ -96,7 +96,7 @@ export const EmpleadoProvider: React.FC<{ children: ReactNode }> = ({ children }
     const { ok, extra, bloqueadoHasta } = await verificarCredencialOffline(clavePorLegajo(legajo), pass);
     const e = extra as { id?: string; legajo?: string; nombre?: string } | undefined;
     if (bloqueadoHasta) return `Muchos intentos. Esperá hasta las ${new Date(bloqueadoHasta).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}.`;
-    if (!ok || !e?.id) return 'Sin internet: la clave no coincide o no entraste con internet en los últimos 3 días';
+    if (!ok || !e?.id) return 'Sin internet no se puede comprobar: esa clave no es, o hace más de 3 días que no entrás con internet.';
     const c: CajeroActivo = { id: e.id, legajo: e.legajo!, nombre: e.nombre!, desde: Date.now() };
     setCajero(c); persistir(c);
     return null;
@@ -110,7 +110,7 @@ export const EmpleadoProvider: React.FC<{ children: ReactNode }> = ({ children }
       });
       if (error) return iniciarTurnoOffline(legajo, pass); // error de red, no de credenciales
       const r = data as { ok?: boolean; id?: string; legajo?: string; nombre?: string };
-      if (!r?.ok) return 'Legajo o contraseña incorrectos';
+      if (!r?.ok) return 'Esa clave no es. Si te equivocás muchas veces seguidas, se traba unos minutos.';
       const c: CajeroActivo = { id: r.id!, legajo: r.legajo!, nombre: r.nombre!, desde: Date.now() };
       setCajero(c); persistir(c);
       // Renovar el fallback offline de este legajo (72 h).

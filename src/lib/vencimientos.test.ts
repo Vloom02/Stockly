@@ -45,6 +45,11 @@ describe('nivelPorDias', () => {
     expect(nivelPorDias(50, U)).toBe('aviso');
   });
 
+  it('un diasAviso del lote que no pasa de urgente no borra la banda de aviso', () => {
+    expect(nivelPorDias(45, U, 15)).toBe('aviso');
+    expect(nivelPorDias(61, U, 15)).toBe('ok');
+  });
+
   it('vencido y critico tienen prioridad sobre el diasAviso del lote', () => {
     expect(nivelPorDias(-3, U, 90)).toBe('vencido');
     expect(nivelPorDias(5, U, 90)).toBe('critico');

@@ -30,6 +30,20 @@ describe('planDeActualizacion', () => {
     expect(planDeActualizacion(rel('apk-minimo: 1.2.0'), '1.2.4', '1.2.0')).toEqual({ tipo: 'nada' });
   });
 
+  it('con el APK que trae la llave pública solo se baja la versión firmada', () => {
+    const firmado = {
+      ...rel('apk-minimo: 1.2.0\nsha256: abc\nsession-key: aXY=:Y2xhdmU=\nchecksum-cifrado: 0a0b'),
+      assets: [...rel('').assets, { name: 'stockly-web-1.3.0.zip.cifrado', browser_download_url: 'https://z/web.zip.cifrado' }],
+    };
+    expect(planDeActualizacion(firmado, '1.2.12', '1.2.12'))
+      .toEqual({ tipo: 'web', version: '1.3.0', url: 'https://z/web.zip.cifrado', checksum: '0a0b', sessionKey: 'aXY=:Y2xhdmU=' });
+    // Un APK viejo sigue con el zip común.
+    expect(planDeActualizacion(firmado, '1.2.11', '1.2.0'))
+      .toEqual({ tipo: 'web', version: '1.3.0', url: 'https://z/web.zip', checksum: 'abc' });
+    // Sin firma, el APK nuevo no baja nada (ni pide un APK).
+    expect(planDeActualizacion(rel('apk-minimo: 1.2.0\nsha256: abc'), '1.2.12', '1.2.12')).toEqual({ tipo: 'nada' });
+  });
+
   it('si el APK instalado es más viejo que el mínimo, pide el APK', () => {
     expect(planDeActualizacion(rel('apk-minimo: 1.3.0\nsha256: abc'), '1.2.4', '1.2.0'))
       .toEqual({ tipo: 'apk', version: '1.3.0', url: 'https://z/app.apk' });

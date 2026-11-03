@@ -7,6 +7,9 @@
 import { Capacitor } from '@capacitor/core';
 
 const REPO = 'Vloom02/Stockly';
+// Desde el APK 1.2.12 la app trae la llave pública (capacitor.config.ts) y Capgo solo instala versiones firmadas: un
+// release cambiado en GitHub no llega a esas tablets. Las de antes siguen con el zip común y su sha256.
+export const FIRMA_DESDE = '1.2.12';
 
 /** "v1.2.0" > "1.1.9" → true. Compara número por número. */
 export function esMasNueva(publicada: string, actual: string): boolean {
@@ -22,7 +25,7 @@ interface Release { tag_name?: string; body?: string; html_url?: string; assets?
 
 export type Plan =
   | { tipo: 'nada' }
-  | { tipo: 'web'; version: string; url: string; checksum: string }    // se baja sola
+  | { tipo: 'web'; version: string; url: string; checksum: string; sessionKey?: string }    // se baja sola
   | { tipo: 'apk'; version: string; url: string };                      // hay que instalar el APK
 
 /** Qué hacer con el último release: nada, bajar la parte web, o pedir el APK (si el nativo quedó viejo). */
@@ -32,10 +35,17 @@ export function planDeActualizacion(rel: Release | null, versionWeb: string, ver
   const dato = (clave: string) => rel.body?.match(new RegExp(`^${clave}:\\s*(\\S+)`, 'm'))?.[1];
   const archivo = (fin: string) => rel.assets?.find(a => a.name.endsWith(fin))?.browser_download_url;
   const apkMinimo = dato('apk-minimo');
-  const web = archivo('.zip');
-  if ((apkMinimo && esMasNueva(apkMinimo, versionNativa)) || !web) {
-    return { tipo: 'apk', version, url: archivo('.apk') ?? rel.html_url ?? `https://github.com/${REPO}/releases/latest` };
+  const conFirma = !esMasNueva(FIRMA_DESDE, versionNativa);
+  const web = archivo(conFirma ? '.zip.cifrado' : '.zip');
+  const pedirApk = { tipo: 'apk' as const, version, url: archivo('.apk') ?? rel.html_url ?? `https://github.com/${REPO}/releases/latest` };
+  if (apkMinimo && esMasNueva(apkMinimo, versionNativa)) return pedirApk;
+  if (conFirma) {
+    // Sin firma no se baja nada (Capgo igual lo rechazaría): un release sin firmar no es nuestro.
+    const sessionKey = dato('session-key');
+    const checksum = dato('checksum-cifrado');
+    return web && sessionKey && checksum ? { tipo: 'web', version, url: web, checksum, sessionKey } : { tipo: 'nada' };
   }
+  if (!web) return pedirApk;
   // Sin huella no se instala: un zip cambiado en el camino se instalaría con la sesión del dueño.
   const checksum = dato('sha256');
   if (!checksum) return { tipo: 'nada' };
@@ -64,7 +74,8 @@ async function revisar(): Promise<Resultado> {
   // Si ya se bajó en otra apertura, no se vuelve a bajar. NO se usa next(): aplicaba la versión
   // al pasar a segundo plano y la recarga vaciaba el carrito (ir a WhatsApp o a Mercado Pago).
   if (!bundles.some(b => b.version === plan.version && listo(b.status))) {
-    await CapacitorUpdater.download({ url: plan.url, version: plan.version, checksum: plan.checksum });
+    await CapacitorUpdater.download({ url: plan.url, version: plan.version, checksum: plan.checksum,
+      ...(plan.sessionKey ? { sessionKey: plan.sessionKey } : {}) });
   }
   return { tipo: 'web', version: plan.version };
 }

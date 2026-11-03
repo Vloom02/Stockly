@@ -1,10 +1,36 @@
 /// <reference types="vitest" />
 import { existsSync, readFileSync } from 'node:fs';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig({
-  plugins: [react()],
+// Lista de lo que la app puede cargar (CSP): si se colara un script (un nombre de producto con código, una librería
+// comprometida), no puede mandar datos a otro lado ni cargar nada de afuera. Solo al compilar: en desarrollo Vite
+// mete scripts en línea. El Supabase sale del .env del build (producción o el local de pruebas).
+function csp(mode: string): Plugin {
+  const env = loadEnv(mode, process.cwd(), '');
+  const supa = env.VITE_SUPABASE_URL ? new URL(env.VITE_SUPABASE_URL).origin : '';
+  const politica = [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'", // estilos en línea de React e Ionic
+    `img-src 'self' data: blob: ${supa}`, // fotos de productos (Storage)
+    "font-src 'self' data:",
+    `connect-src 'self' ${supa} ${supa.replace(/^http/, 'ws')} https://api.github.com https://*.sentry.io`,
+    "media-src 'self' blob: mediastream:",
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join('; ');
+  return {
+    name: 'stockly-csp',
+    apply: 'build',
+    transformIndexHtml: () => [{ tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: politica }, injectTo: 'head-prepend' }],
+  };
+}
+
+export default defineConfig(({ mode }) => ({
+  plugins: [react(), csp(mode)],
   define: {
     // Sin google-services.json, PushNotifications.register() tira una excepción NATIVA
     // ("Default FirebaseApp is not initialized") que cierra la app y JS no puede atajar.
@@ -29,4 +55,4 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.{test,spec}.ts'],
   },
-});
+}));

@@ -3,6 +3,7 @@ import { CloudIcon, ArrowPathIcon, ExclamationTriangleIcon } from '@heroicons/re
 import { useOnline } from '../utils/useOnline';
 import { useStore } from '../context/StoreContext';
 import { useVentas } from '../ventas/context/VentasContext';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * Banner que informa el estado de conexión y sincronización.
@@ -14,6 +15,7 @@ const SyncBanner: React.FC = () => {
   const online = useOnline();
   const { sincronizando, state: stock, sincronizarAhora, reintentarFallidos } = useStore();
   const { state: ventas, sincronizar: mandarVentas } = useVentas();
+  const { esDueno } = useAuth();
   // Las dos colas juntas: antes Inicio decía "todo bien" con ventas sin subir.
   const state = {
     pendientesSync: stock.pendientesSync + Math.max(0, ventas.outboxLen - ventas.bloqueados),
@@ -36,7 +38,8 @@ const SyncBanner: React.FC = () => {
     bg = 'var(--level-vencido-bg)';
     color = 'var(--level-vencido-fg)';
     icon = <ExclamationTriangleIcon width={18} height={18} />;
-    texto = `${n} cambio${n !== 1 ? 's' : ''} no se pudo guardar en internet · tocá acá para reintentar`;
+    texto = `${n} cambio${n !== 1 ? 's no se pudieron' : ' no se pudo'} guardar en internet · tocá acá para reintentar`
+      + (esDueno ? '' : '. Si sigue, avisale al dueño');
     clickable = true;
     accion = () => { reintentarFallidos(); mandarVentas(); };
   } else if (!online) {
@@ -67,8 +70,9 @@ const SyncBanner: React.FC = () => {
     cursor: clickable ? 'pointer' : 'default',
   };
   // Botón de verdad cuando se puede tocar (se llega con el teclado y lo anuncia el lector de pantalla).
+  // role="status": el lector de pantalla avisa cuando cambia, sin que haya que ir a buscarlo.
   return clickable ? (
-    <button type="button" className="anim-bajar" onClick={accion} style={estilo}>{icon}<span>{texto}</span></button>
+    <div role="status"><button type="button" className="anim-bajar" onClick={accion} style={estilo}>{icon}<span>{texto}</span></button></div>
   ) : (
     <div role="status" className="anim-bajar" style={estilo}>{icon}<span>{texto}</span></div>
   );

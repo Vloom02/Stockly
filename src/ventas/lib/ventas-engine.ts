@@ -122,6 +122,7 @@ export function payloadVenta(input: AplicarVentaInput, ventaId: string, fechaISO
       // y viajan sin producto_id → el server los registra sin descontar stock.
       producto_id: c.productoId.startsWith('libre-') ? null : c.productoId,
       nombre: c.nombre, cantidad: c.qty, precio: c.precio,
+      ...(c.costo != null && c.costo >= 0 ? { costo: c.costo } : {}),
     })),
   };
 }
