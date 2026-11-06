@@ -31,16 +31,8 @@ export async function registrarPush(comercioId: string): Promise<void> {
     // Cuando FCM devuelve el token, lo guardamos (upsert por token = idempotente).
     await PushNotifications.addListener('registration', async (token) => {
       try {
-        // Por función del servidor: si el equipo cambió de cuenta, el upsert directo lo rechazaba la
-        // RLS y seguían llegando los avisos del comercio anterior. Sin la migración 13, el upsert de antes.
-        let { error } = await supabase.rpc('registrar_push_token', { p_token: token.value, p_comercio: comercioId });
-        if (error) {
-          const { data: { user } } = await supabase.auth.getUser();
-          ({ error } = await supabase.from('push_tokens').upsert({
-            token: token.value, comercio_id: comercioId, user_id: user?.id ?? null,
-            plataforma: 'android', updated_at: new Date().toISOString(),
-          }));
-        }
+        // Por función del servidor: es la única forma de cargar un celular (migración 19, con tope por comercio).
+        const { error } = await supabase.rpc('registrar_push_token', { p_token: token.value, p_comercio: comercioId });
         if (error) throw error;
         almacenSet(KEY_TOKEN, token.value);
         almacenSet(KEY_PUSH_OK, '1');
@@ -71,6 +63,7 @@ export async function olvidarPush(): Promise<void> {
     if (Capacitor.isNativePlatform() && __PUSH_DISPONIBLE__) {
       const { PushNotifications } = await import('@capacitor/push-notifications');
       await PushNotifications.removeAllListeners();
+      await PushNotifications.unregister(); // sin internet el token sigue en el servidor: que al menos el equipo no reciba más
     }
   } catch { /* sin internet: el servidor lo limpia cuando el token deje de servir */ }
 }

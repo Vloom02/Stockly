@@ -38,6 +38,18 @@ describe('precioLiquidacion', () => {
   });
 });
 
+describe('precios chicos y decimales', () => {
+  it('un precio chico no se redondea a $10 ni queda gratis', () => {
+    expect(precioLiquidacion(4, 40)).toBe(2);
+    expect(precioLiquidacion(25, 40)).toBe(15);
+    expect(precioLiquidacion(2, 90)).toBe(1);
+    expect(precioLiquidacion(1000, 100)).toBe(0);
+  });
+  it('los decimales de la cuenta no suben el precio $10 de más', () => {
+    expect(precioConMismaGanancia(118, 1000, 129.8)).toBe(1100);
+  });
+});
+
 describe('sugerirLiquidacion', () => {
   it('arma la sugerencia completa para un lote crítico', () => {
     const s = sugerirLiquidacion('critico', 1000);

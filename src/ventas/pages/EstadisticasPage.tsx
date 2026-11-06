@@ -1,13 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Estadísticas (dueño): top productos vendidos y ventas por hora, últimos 30
-// días. Agrega en el cliente (un almacén ronda cientos de ventas/mes).
-// ponytail: cap de 2000 ventas por consulta; si un comercio supera eso, pasar
-// la agregación a una RPC en el server.
+// Estadísticas (dueño): top productos vendidos y ventas por hora, últimos 30 días.
 // ═══════════════════════════════════════════════════════════════════════════
 import React, { useEffect, useState } from 'react';
 import { IonContent } from '@ionic/react';
 import { supabase } from '../lib/supabase';
-import { todas } from '../../lib/todas';
 import { useAuth } from '../context/AuthContext';
 import { formatMoney } from '../context/VentasContext';
 import { Card, EmptyState, Skeleton } from '../components/ui';
@@ -30,37 +26,13 @@ const EstadisticasPage: React.FC = () => {
       setLoading(true);
       setError(false);
       try {
-        const desde = new Date(Date.now() - 30 * 86400000).toISOString();
-        // De a 1.000: limit(2000) no sirve, el servidor corta en 1.000 y sin orden.
-        const vs = await todas<{ id: string; fecha: string; total: number }>((x, y) => supabase.from('ventas_ventas')
-          .select('id, fecha, total')
-          .eq('comercio_id', comercio.id).eq('anulada', false)
-          .gte('fecha', desde).order('id').range(x, y));
-        setTotales({ ventas: vs.length, plata: vs.reduce((s, v) => s + Number(v.total), 0) });
-
-        // Ventas por hora del día (0-23)
-        const horas = Array(24).fill(0) as number[];
-        for (const v of vs) horas[new Date(v.fecha).getHours()]++;
-        setPorHora(horas);
-
-        // Top productos (items de esas ventas)
-        const ids = vs.map(v => v.id);
-        const agg = new Map<string, TopProducto>();
-        // in() con listas grandes falla: de a 200 ids, todos los pedidos a la vez (uno detrás de otro tardaba).
-        // Cada tanda también de a 1.000 renglones: 200 ventas de 6 productos ya pasaban el tope y el resto no se contaba.
-        const tandas: string[][] = [];
-        for (let i = 0; i < ids.length; i += 200) tandas.push(ids.slice(i, i + 200));
-        const resultados = await Promise.all(tandas.map(t => todas<{ nombre_producto: string; cantidad: number; subtotal: number }>((x, y) =>
-          supabase.from('ventas_items').select('nombre_producto, cantidad, subtotal').in('venta_id', t).order('id').range(x, y))));
-        for (const items of resultados) {
-          for (const it of items) {
-            const e = agg.get(it.nombre_producto) ?? { nombre: it.nombre_producto, cantidad: 0, plata: 0 };
-            e.cantidad += it.cantidad;
-            e.plata += Number(it.subtotal);
-            agg.set(it.nombre_producto, e);
-          }
-        }
-        setTop(Array.from(agg.values()).sort((a, b) => b.cantidad - a.cantidad).slice(0, 10));
+        // Sumado en el servidor (migración 19): antes bajaba todas las ventas y renglones del mes, en más de 40 pedidos.
+        const { data, error: err } = await supabase.rpc('estadisticas_ventas', { p_comercio: comercio.id, p_dias: 30 });
+        if (err) throw err;
+        const r = data as { ventas: number; plata: number; por_hora: number[]; top: TopProducto[] };
+        setTotales({ ventas: Number(r.ventas), plata: Number(r.plata) });
+        setPorHora(r.por_hora.map(Number));
+        setTop(r.top.map(t => ({ nombre: t.nombre, cantidad: Number(t.cantidad), plata: Number(t.plata) })));
       } catch { setError(true); } // antes decía "Sin ventas este mes" aunque hubiera
       setLoading(false);
     })();

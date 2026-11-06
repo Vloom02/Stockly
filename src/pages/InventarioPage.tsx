@@ -13,7 +13,7 @@ import { useLectorFisico } from '../lib/useLectorFisico';
 import { useVentas } from '../ventas/context/VentasContext';
 
 const InventarioPage: React.FC = () => {
-  const { state, lotesEnriquecidos, updateLote, sincronizarAhora } = useStore();
+  const { state, lotesEnriquecidos, ajustarLotes, sincronizarAhora } = useStore();
   const { state: ventas } = useVentas();
   const history = useHistory();
   const [q, setQ] = useState('');
@@ -22,6 +22,8 @@ const InventarioPage: React.FC = () => {
   // Lo que decía el sistema cuando se empezó a contar cada lote: lo vendido después no se pisa.
   const [base, setBase] = useState<Record<string, number>>({});
   const [guardando, setGuardando] = useState(false);
+  // De a 60: con miles de lotes, cada número que se escribía redibujaba miles de filas y la pantalla se trababa.
+  const [mostrar, setMostrar] = useState(60);
   const [toast, setToast] = useState({ show: false, msg: '' });
   // Lo que vendió el otro equipo tiene que estar antes de contar: si no, el ajuste lo restaba otra vez.
   useIonViewWillEnter(() => { sincronizarAhora().catch(() => {}); });
@@ -53,18 +55,24 @@ const InventarioPage: React.FC = () => {
       return;
     }
     setGuardando(true);
-    let ok = 0;
+    const porId = new Map(state.lotes.map(x => [x.id, x]));
+    const nuevos = [];
     for (const l of diferencias) {
-      const lote = state.lotes.find(x => x.id === l.id);
+      const lote = porId.get(l.id);
       if (!lote) continue;
       const real = Math.max(0, parseInt(conteo[l.id!], 10) || 0);
       const desde = base[l.id!] ?? lote.cantidad;
-      try { await updateLote({ ...lote, cantidad: lote.cantidad + (real - desde) }); ok++; } catch { /* sigue */ }
+      nuevos.push({ ...lote, cantidad: lote.cantidad + (real - desde) });
+    }
+    try {
+      await ajustarLotes(nuevos);
+      setConteo({});
+      setBase({});
+      setToast({ show: true, msg: `Listo: ${nuevos.length} ${nuevos.length !== 1 ? 'compras ajustadas' : 'compra ajustada'}` });
+    } catch {
+      setToast({ show: true, msg: 'No se pudo guardar el conteo. Probá de nuevo: lo que contaste sigue acá.' });
     }
     setGuardando(false);
-    setConteo({});
-    setBase({});
-    setToast({ show: true, msg: `${ok} lote${ok !== 1 ? 's' : ''} ajustado${ok !== 1 ? 's' : ''}` });
   };
 
   return (
@@ -88,7 +96,7 @@ const InventarioPage: React.FC = () => {
             <EmptyState icon={<ClipboardDocumentCheckIcon width={32} height={32} />} title="Sin lotes" description="No hay stock para contar en esta sucursal." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {lotes.map(l => {
+              {lotes.slice(0, mostrar).map(l => {
                 const real = conteo[l.id!];
                 const diff = real !== undefined && real !== '' ? parseInt(real, 10) - l.cantidad : 0;
                 return (
@@ -110,11 +118,17 @@ const InventarioPage: React.FC = () => {
                         setConteo(c => ({ ...c, [l.id!]: e.target.value }));
                         setBase(b => (l.id! in b ? b : { ...b, [l.id!]: l.cantidad }));
                       }}
-                      style={{ width: 62, textAlign: 'center', padding: '8px 6px', borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700 }}
+                      style={{ width: 72, minHeight: 48, textAlign: 'center', padding: '8px 6px', borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 700 }}
                     />
                   </div>
                 );
               })}
+              {lotes.length > mostrar && (
+                <button type="button" onClick={() => setMostrar(m => m + 60)} className="pressable"
+                  style={{ minHeight: 56, border: 'none', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', color: 'var(--text)', fontSize: 17, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Ver más ({lotes.length - mostrar} más)
+                </button>
+              )}
             </div>
           )}
         </div>

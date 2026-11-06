@@ -24,6 +24,7 @@ const PreciosPage: React.FC = () => {
   const [abierto, setAbierto] = useState<string | null>(null); // producto en edición
   const [nuevo, setNuevo] = useState('');                      // precio nuevo (texto)
   const [guardando, setGuardando] = useState(false);
+  const [mostrar, setMostrar] = useState(60); // de a 60: escribir un precio redibujaba miles de filas
   const [toast, setToast] = useState({ show: false, msg: '' });
 
   const productos = useMemo(() => {
@@ -73,7 +74,7 @@ const PreciosPage: React.FC = () => {
               description={q ? 'Probá con otra búsqueda.' : 'No hay productos activos.'} />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {productos.map(p => {
+              {productos.slice(0, mostrar).map(p => {
                 const enEdicion = abierto === p.id;
                 const precioNuevo = parseMonto(nuevo) || 0;
                 const cambio = enEdicion && precioNuevo > 0 && p.precio > 0
@@ -123,6 +124,12 @@ const PreciosPage: React.FC = () => {
                   </div>
                 );
               })}
+              {productos.length > mostrar && (
+                <button type="button" onClick={() => setMostrar(m => m + 60)} className="pressable"
+                  style={{ minHeight: 56, border: 'none', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', color: 'var(--text)', fontSize: 17, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Ver más ({productos.length - mostrar} más)
+                </button>
+              )}
             </div>
           )}
         </div>

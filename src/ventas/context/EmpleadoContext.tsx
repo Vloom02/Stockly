@@ -10,6 +10,7 @@ import { useAuth as useAuthStockly } from '../../context/AuthContext';
 import { useOwner } from './OwnerContext';
 import { openDB, getLocalSetting, setLocalSetting } from '../lib/outbox';
 import { guardarCredencialOffline, verificarCredencialOffline, clavePorLegajo } from '../lib/authOffline';
+import { borrarHuella, CLAVE_HUELLA_DUENO } from '../lib/huella';
 
 export interface EmpleadoVenta { id: string; legajo: string; nombre: string; activo?: boolean; }
 export interface CajeroActivo { id: string; legajo: string; nombre: string; admin?: boolean; desde?: number; }
@@ -69,10 +70,10 @@ export const EmpleadoProvider: React.FC<{ children: ReactNode }> = ({ children }
             const c = JSON.parse(saved) as CajeroActivo;
             // Backfill: un cajero viejo sin `desde` rompía el agrupado del turno.
             if (!c.desde) { c.desde = Date.now(); setLocalSetting(KEY, JSON.stringify(c)).catch(() => {}); }
-            // El turno del dueño no sobrevive a la app cerrada más tiempo que el bloqueo.
-            if (c.admin && Date.now() - Number(localStorage.getItem(KEY_ACTIVIDAD) ?? 0) > lockMin * 60_000) {
-              setLocalSetting(KEY, '').catch(() => {});
-            } else setCajero(c);
+            // El turno del dueño no sobrevive a cerrar la app: con la tablet en la mano, atrasando el reloj se
+            // recuperaba sin la clave. Vuelve a poner la clave.
+            if (c.admin) setLocalSetting(KEY, '').catch(() => {});
+            else setCajero(c);
           } catch { /* */ }
         }
       } catch { /* */ }
@@ -137,9 +138,11 @@ export const EmpleadoProvider: React.FC<{ children: ReactNode }> = ({ children }
   // la tablet del local, el que sigue no entra con todo lo del dueño (antes no vencía nunca).
   useEffect(() => {
     if (!cajero?.admin) return;
-    const tocar = () => { try { localStorage.setItem(KEY_ACTIVIDAD, String(Date.now())); } catch { /* */ } };
+    let ultimoToque = performance.now(); // este reloj no se puede atrasar desde Ajustes de Android
+    const tocar = () => { ultimoToque = performance.now(); try { localStorage.setItem(KEY_ACTIVIDAD, String(Date.now())); } catch { /* */ } };
     const revisar = () => {
-      if (Date.now() - Number(localStorage.getItem(KEY_ACTIVIDAD) ?? 0) > lockMin * 60_000) cerrarTurno();
+      const paso = Date.now() - Number(localStorage.getItem(KEY_ACTIVIDAD) ?? 0);
+      if (paso < 0 || paso > lockMin * 60_000 || performance.now() - ultimoToque > lockMin * 60_000) cerrarTurno();
     };
     tocar();
     window.addEventListener('pointerdown', tocar, true);
@@ -154,6 +157,16 @@ export const EmpleadoProvider: React.FC<{ children: ReactNode }> = ({ children }
     };
   }, [cajero?.admin, lockMin, cerrarTurno]);
 
+  // "Atender sin turno" es solo para cuando no hay internet: al volver, cada uno entra con su nombre. Si no, se podía
+  // seguir días vendiendo a nombre de nadie (activando modo avión un momento) y salir del control de empleados.
+  useEffect(() => {
+    if (cajero?.id !== SIN_TURNO.id) return;
+    const alVolver = () => { if (navigator.onLine) cerrarTurno(); };
+    alVolver();
+    window.addEventListener('online', alVolver);
+    return () => window.removeEventListener('online', alVolver);
+  }, [cajero?.id, cerrarTurno]);
+
   // Con un cajero en turno, toda la app lo trata como empleado (sin precios, reportes, etc.).
   const { setCajeroEnTurno } = useAuthStockly();
   useEffect(() => { setCajeroEnTurno(cajero && !cajero.admin ? cajero.nombre : null); }, [cajero, setCajeroEnTurno]);
@@ -161,6 +174,8 @@ export const EmpleadoProvider: React.FC<{ children: ReactNode }> = ({ children }
   useEffect(() => { if (cajero && !cajero.admin) lock(); }, [cajero, lock]);
 
   const hayEmpleados = empleados.some(e => e.activo !== false);
+  // Android no distingue de quién es el dedo: con empleados, la huella de un cajero abría el modo dueño.
+  useEffect(() => { if (hayEmpleados) borrarHuella(CLAVE_HUELLA_DUENO).catch(() => {}); }, [hayEmpleados]);
 
   return (
     <C.Provider value={{ cajero, empleados, hayEmpleados, cargando, iniciarTurno, entrarComoAdmin, entrarSinTurno, cerrarTurno, recargar }}>

@@ -64,9 +64,10 @@ Deno.serve(async (req) => {
   }
   try {
     const supa = createClient(SUPABASE_URL, SERVICE_ROLE);
-    const hoy = new Date();
-    const limite = new Date(); limite.setDate(hoy.getDate() + DIAS_AVISO);
-    const limiteISO = limite.toISOString().slice(0, 10);
+    // El día de Argentina, no el del servidor (UTC): a las 9 de la mañana decía "ya vencido" a lo que vence hoy.
+    const diaAR = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(d);
+    const hoyAR = diaAR(new Date());
+    const limiteISO = diaAR(new Date(Date.now() + DIAS_AVISO * 86400000));
 
     // De a 1.000 (el tope del servidor): con más lotes por vencer entre todos los comercios,
     // los últimos se quedaban sin aviso.
@@ -88,7 +89,7 @@ Deno.serve(async (req) => {
     for (const l of lotes) {
       const e = porComercio.get(l.comercio_id) ?? { total: 0, vencidos: 0 };
       e.total++;
-      if (new Date(l.fecha_vencimiento + 'T00:00:00') < hoy) e.vencidos++;
+      if (l.fecha_vencimiento < hoyAR) e.vencidos++;
       porComercio.set(l.comercio_id, e);
     }
     if (porComercio.size === 0) return json({ enviados: 0, msg: 'nada por vencer' });
@@ -106,7 +107,13 @@ Deno.serve(async (req) => {
         const { data, error: errTokens } = await supa.from('push_tokens').select('token, comercio_id')
           .in('comercio_id', ids.slice(i, i + 200)).order('token').range(desde, desde + 999);
         if (errTokens) return json({ error: errTokens.message }, 500);
-        for (const t of data ?? []) tokensDe.set(t.comercio_id, [...(tokensDe.get(t.comercio_id) ?? []), { token: t.token }]);
+        // Hasta 20 por comercio: con miles de tokens falsos en uno solo, la función se quedaba sin tiempo y no le llegaba
+        // el aviso a nadie.
+        for (const t of data ?? []) {
+          const lista = tokensDe.get(t.comercio_id) ?? [];
+          if (lista.length < 20) lista.push({ token: t.token });
+          tokensDe.set(t.comercio_id, lista);
+        }
         if (!data || data.length < 1000) break;
       }
     }

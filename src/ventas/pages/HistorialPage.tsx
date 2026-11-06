@@ -21,7 +21,7 @@ import BotonVolver from '../components/BotonVolver';
 interface VentaRow { id: string; total: number; descuento: number; metodo_pago: string; cliente: string; fiado: boolean; usuario: string; fecha: string; anulada?: boolean; }
 
 const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avisar: (msg: string) => void }> = ({ venta, onAnulada, avisar }) => {
-  const { comercio, miembro } = useAuth();
+  const { comercio, miembro, sucursalActiva } = useAuth();
   const confirmar = useConfirm();
   const [open, setOpen] = useState(false);
   const [anulando, setAnulando] = useState(false);
@@ -36,17 +36,17 @@ const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avi
     if (!comercio || anulada) return;
     if (!(await confirmar('¿Anular esta venta y devolver el stock a los lotes? No se puede deshacer.', { peligro: true, okText: 'Anular' }))) return;
     setAnulando(true);
-    const payload = { ventaId: venta.id, comercioId: comercio.id, usuario: miembro?.nombre ?? null };
+    const payload = { ventaId: venta.id, comercioId: comercio.id, usuario: miembro?.nombre ?? null, fecha: Date.now(), sucursalId: sucursalActiva?.id };
     if (navigator.onLine) {
-      const { data, error } = await supabase.rpc('anular_venta', { p: { venta_id: venta.id, comercio_id: comercio.id, usuario: miembro?.nombre ?? null } });
+      const { data, error } = await supabase.rpc('anular_venta', { p: { venta_id: venta.id, comercio_id: comercio.id, usuario: miembro?.nombre ?? null, sucursal_id: sucursalActiva?.id } });
       setAnulando(false);
       // Sin recargar la lista: volvía al principio y se perdía el "Ver más".
       if (!error) {
         onAnulada(venta.id);
-        // Fiado que ya tenía pagos: el servidor anota esa plata como salida de caja (migración 18).
+        // Efectivo, o fiado con pagos: el servidor anota esa plata como salida de caja (migraciones 18 y 19).
         const devuelto = Number((data as { devuelto?: number } | null)?.devuelto ?? 0);
         avisar(devuelto > 0
-          ? `Venta anulada. Devolvele ${formatMoney(devuelto)} que ya había pagado: quedó anotado como salida de caja.`
+          ? `Venta anulada. Devolvele ${formatMoney(devuelto)}: quedó anotado como salida de caja.`
           : 'Venta anulada. El stock volvió a la mercadería.');
         return;
       }
@@ -92,7 +92,7 @@ const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avi
           <div style={{ fontSize: 14, color: 'var(--text-2)' }}>{time} {venta.usuario && <Badge color="purple" style={{ marginLeft: 4, fontSize: 14 }}>{venta.usuario}</Badge>}
             {anulada && <span style={{ marginLeft: 6, fontSize: 14, fontWeight: 700, color: 'var(--color-danger)', background: 'var(--color-danger-bg)', border: '1px solid var(--color-danger-border)', borderRadius: 'var(--radius-full)', padding: '1px 7px' }}>ANULADA</span>}
           </div>
-          <div style={{ fontSize: 14, color: 'var(--text-3)', marginTop: 1 }}>{metodoLabel}{venta.cliente ? ` · ${venta.cliente}` : ''}{venta.fiado ? ' · Fiado' : ''}</div>
+          <div style={{ fontSize: 14, color: 'var(--text-3)', marginTop: 1 }}>{venta.fiado ? 'Fiado' : metodoLabel}{venta.cliente ? ` · ${venta.cliente}` : ''}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--color-primary-dark)', fontFamily: 'var(--font-mono)', textDecoration: anulada ? 'line-through' : 'none' }}>{formatMoney(venta.total)}</span>
@@ -136,7 +136,7 @@ const HistorialPage: React.FC = () => {
     // De a 1.000 (con unas 40 ventas por día se pasaba y el total quedaba corto sin avisar).
     // Sin internet se deja lo que ya se veía.
     try {
-      setVentas(await todas<VentaRow>((a, b) => supabase.from('ventas_ventas').select('*')
+      setVentas(await todas<VentaRow>((a, b) => supabase.from('ventas_ventas').select('id, total, descuento, metodo_pago, cliente, fiado, usuario, fecha, anulada')
         .eq('comercio_id', comercio.id).gte('fecha', desde.toISOString())
         .order('fecha', { ascending: false }).order('id').range(a, b)));
       setSinInternet(false);
@@ -149,7 +149,8 @@ const HistorialPage: React.FC = () => {
   useAlVolver(() => { cargar(); });
 
   const filtered = useMemo(() => ventas
-    .filter(v => !filters.metodoPago || v.metodo_pago === filters.metodoPago)
+    // Lo fiado no entró como plata, aunque quede guardado con "efectivo".
+    .filter(v => !filters.metodoPago || (v.fiado ? 'fiado' : v.metodo_pago) === filters.metodoPago)
     .filter(v => !filters.cliente || (v.cliente ?? '').toLowerCase().includes(filters.cliente.toLowerCase()))
     // Por el día en hora local (la fecha guardada es UTC: una venta de las 22 h caía al día siguiente).
     .filter(v => !filters.dateFrom || fechaLocalISO(new Date(v.fecha)) >= filters.dateFrom)
@@ -210,7 +211,7 @@ const HistorialPage: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 8 }}>
               <div style={{ gridColumn: '1 / -1' }}><label style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: 6 }}>Cómo pagó</label>
                 <Opciones etiqueta="Cómo pagó" columnas={3} valor={filters.metodoPago} onChange={v => setFilters(f => ({ ...f, metodoPago: v }))}
-                  opciones={[{ valor: '', etiqueta: 'Todos' }, { valor: 'efectivo', etiqueta: 'Efectivo' }, { valor: 'transferencia', etiqueta: 'Transferencia' }, { valor: 'tarjeta', etiqueta: 'Tarjeta' }, { valor: 'qr', etiqueta: 'QR' }]} /></div>
+                  opciones={[{ valor: '', etiqueta: 'Todos' }, { valor: 'efectivo', etiqueta: 'Efectivo' }, { valor: 'transferencia', etiqueta: 'Transferencia' }, { valor: 'tarjeta', etiqueta: 'Tarjeta' }, { valor: 'qr', etiqueta: 'QR' }, { valor: 'fiado', etiqueta: 'Fiado' }]} /></div>
               <div><label style={{ fontSize: 14, color: 'var(--text-2)' }}>Cliente</label>
                 <input className="campo" value={filters.cliente} onChange={e => setFilters(f => ({ ...f, cliente: e.target.value }))} style={inputStyle} placeholder="Buscar..." /></div>
               <div><label style={{ fontSize: 14, color: 'var(--text-2)' }}>Desde</label>

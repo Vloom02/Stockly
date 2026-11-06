@@ -169,9 +169,11 @@ export async function resumenAExcel(d: DatosResumen): Promise<Uint8Array> {
       ['Fecha', 'Hora', 'Empleado', 'Medio de pago', 'Descuento', 'Total'],
       v.ventas.map(x => [fechaExcel(x.fecha), fechaExcel(x.fecha), x.usuario || '', x.fiado ? 'Fiado' : METODOS[x.metodo_pago ?? ''] ?? (x.metodo_pago || ''), Number(x.descuento || 0), Number(x.total)]),
       ['fecha', 'hora', undefined, undefined, 'plata', 'plata'], [4, 5]);
+    // Sobre lo que suman los productos: dividido por el total con descuento, un producto daba 111%.
+    const totalProductos = v.productos.reduce((s, p) => s + p.total, 0);
     hojaDetalle(wb, 'Productos vendidos', [40, 12, 16, 12, 16, 12],
       ['Producto', 'Cantidad', 'Total', '% de lo vendido', 'Ganancia', 'Margen'],
-      v.productos.map(p => [p.nombre, p.cantidad, p.total, pct(p.total, v.total), p.ganancia ?? null, p.ganancia == null ? null : pct(p.ganancia, p.total)]),
+      v.productos.map(p => [p.nombre, p.cantidad, p.total, pct(p.total, totalProductos), p.ganancia ?? null, p.ganancia == null ? null : pct(p.ganancia, p.total)]),
       [undefined, 'entero', 'plata', 'pct', 'plata', 'pct'], [1, 2, 4]);
     hojaDetalle(wb, d.rango.porTurno ? 'Por turno' : 'Por día', [20, 10, 16],
       [d.rango.porTurno ? 'Turno' : 'Día', 'Ventas', 'Total'],

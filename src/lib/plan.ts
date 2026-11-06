@@ -1,3 +1,4 @@
+import { diasRestantes, fechaLocalISO } from './vencimientos';
 import { Comercio } from '../types';
 
 export type EstadoPlan =
@@ -30,13 +31,11 @@ export function evaluarPlan(comercio: Comercio | null): EstadoPlan {
   // plan === 'trial' (o cualquier valor desconocido → tratamos como trial)
   if (comercio.trialHasta) {
     const fin = finDelDiaLocal(comercio.trialHasta);
-    const hoy = new Date();
-    const ms = fin.getTime() - hoy.getTime();
-    const dias = Math.ceil(ms / (1000 * 60 * 60 * 24));
-    if (ms < 0) {
+    if (fin.getTime() < Date.now()) {
       return { activo: false, tipo: 'trial_vencido' };
     }
-    return { activo: true, tipo: 'trial', diasRestantes: dias };
+    // Días de calendario: el último día son 0 ("vence hoy"). Antes decía "te queda 1 día" y al otro día se bloqueaba.
+    return { activo: true, tipo: 'trial', diasRestantes: diasRestantes(fechaLocalISO(fin)) };
   }
 
   // trial sin fecha definida → permitir (no bloquear por falta de dato)

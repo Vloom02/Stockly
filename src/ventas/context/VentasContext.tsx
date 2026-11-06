@@ -3,26 +3,29 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import { formatearPlata } from '../../lib/numeros';
-import { Producto, Lote, CartItem, OutboxItem } from '../types';
+import { Producto, CartItem, OutboxItem } from '../types';
 import { useAuth } from './AuthContext';
 import {
-  buscarProductoPorCodigo, buscarProductosPorNombre, lotesDisponibles,
-  stockTotal, aplicarVentaOnline, uuid,
+  buscarProductoPorCodigo, buscarProductosPorNombre, aplicarVentaOnline, uuid,
 } from '../lib/ventas-engine';
 import {
-  openDB, enqueueOutbox, flushOutbox, cacheCatalogo, idbGetAll,
-  idbPut, OfflineVentaPayload, reintentarBloqueados, descontarLotesLocales, esErrorPermanente,
+  openDB, enqueueOutbox, flushOutbox, idbGetAll, OfflineVentaPayload, reintentarBloqueados, esErrorPermanente,
+  AvisoDevolver, leerAvisosDevolver, quitarAvisoDevolver,
 } from '../lib/outbox';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../../context/StoreContext';
 import { getAll as stockGetAll, ItemOutbox } from '../../lib/localDb';
 
-/** Productos cargados en Mercadería que todavía no llegaron al servidor: una venta de ellos tiene que esperarlos,
- *  si no el servidor la rechaza ("no pertenece") y se iba a cuarentena. */
+/** Productos cargados en Mercadería (o con mercadería cargada) que todavía no llegaron al servidor: una venta de ellos
+ *  tiene que esperarlos. Si no, el servidor la rechazaba ("no pertenece") o salía como "vendido sin stock" a nombre del
+ *  cajero, aunque la mercadería estaba. */
 async function productosSinSubir(): Promise<Set<string>> {
   try {
-    return new Set((await stockGetAll<ItemOutbox>('outbox'))
-      .filter(i => i.tabla === 'productos' && i.operacion === 'insert').map(i => i.registroId));
+    const altas = (await stockGetAll<ItemOutbox>('outbox')).filter(i => i.operacion === 'insert');
+    return new Set([
+      ...altas.filter(i => i.tabla === 'productos').map(i => i.registroId),
+      ...altas.filter(i => i.tabla === 'lotes').map(i => i.payload?.productoId as string),
+    ]);
   } catch { return new Set(); }
 }
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -36,6 +39,7 @@ interface VentasState {
   cart: CartItem[];
   outboxLen: number;
   bloqueados: number; // ventas que el servidor rechazó (cuarentena): no se mandan solas
+  avisos: AvisoDevolver[]; // plata para devolverle a un cliente (cobros que resultaron estar pagados)
   isOnline: boolean;
   loading: boolean;
 }
@@ -48,7 +52,9 @@ type Action =
   | { type: 'SET_OUTBOX'; payload: number }
   | { type: 'SET_BLOQUEADOS'; payload: number }
   | { type: 'SET_ONLINE'; payload: boolean }
-  | { type: 'SET_LOADING'; payload: boolean };
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_AVISOS'; payload: AvisoDevolver[] }
+  | { type: 'RESTAR_VENDIDO'; vendido: CartItem[] };
 
 // El carrito cambia SOLO en el reducer, sobre el estado más nuevo: antes cada función armaba
 // el carrito con una copia vieja y dos escaneos rápidos con señal lenta se pisaban.
@@ -71,6 +77,13 @@ export function reducer(s: VentasState, a: Action): VentasState {
     case 'SET_BLOQUEADOS': return a.payload === s.bloqueados ? s : { ...s, bloqueados: a.payload };
     case 'SET_ONLINE': return { ...s, isOnline: a.payload };
     case 'SET_LOADING': return { ...s, loading: a.payload };
+    case 'SET_AVISOS': return { ...s, avisos: a.payload };
+    // Solo lo que se vendió: lo escaneado mientras se guardaba la venta (con señal floja, hasta 8 s) es del cliente
+    // siguiente, y antes se borraba del carrito sin cobrarse.
+    case 'RESTAR_VENDIDO': {
+      const vendido = new Map(a.vendido.map(c => [c.productoId, c.qty]));
+      return { ...s, cart: s.cart.map(c => ({ ...c, qty: c.qty - (vendido.get(c.productoId) ?? 0) })).filter(c => c.qty > 0) };
+    }
     default: return s;
   }
 }
@@ -97,20 +110,24 @@ interface VentasCtx {
   confirmarVenta: (opts: { metodoPago: string; cliente: string; fiado: boolean; descuento: number; usuario?: string | null }) =>
     Promise<{ ok: boolean; msg: string; ventaId?: string }>;
   sincronizar: () => Promise<void>;
+  marcarDevuelto: (id: string) => Promise<void>;
 }
 
 const Ctx = createContext<VentasCtx | undefined>(undefined);
 
-const init: VentasState = { cart: [], outboxLen: 0, bloqueados: 0, isOnline: navigator.onLine, loading: true };
+const init: VentasState = { cart: [], outboxLen: 0, bloqueados: 0, avisos: [], isOnline: navigator.onLine, loading: true };
 
 export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { comercio, sucursalActiva, miembro } = useAuth();
   const [state, dispatch] = useReducer(reducer, init);
-  const lotesCacheRef = useRef<Record<string, Lote[]>>({});
   const cartRef = useRef(state.cart);
   cartRef.current = state.cart;
   // Tras una venta que llegó al servidor, Mercadería baja el stock nuevo.
-  const { state: stock, sincronizarAhora } = useStore();
+  const { state: stock, sincronizarAhora, productosConLotes } = useStore();
+  // Todo sale de la memoria de Stockly, que ya descuenta lo vendido sin subir: antes cada producto escaneado leía todos
+  // los lotes del equipo y cada venta reescribía un catálogo entero aparte.
+  const productosRef = useRef(productosConLotes);
+  productosRef.current = productosConLotes;
 
   // Carrito guardado: se recupera al entrar al comercio y se guarda en cada cambio.
   const carritoListo = useRef(false);
@@ -127,12 +144,15 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, [state.cart, comercio]);
 
   const doFlush = useCallback(async () => {
-    if ((await productosSinSubir()).size > 0) await sincronizarAhora(); // primero que suban los productos nuevos
-    const n = await flushOutbox();
+    if ((await productosSinSubir()).size > 0) await sincronizarAhora(); // primero que suban los productos y lotes nuevos
+    const n = await flushOutbox(await productosSinSubir());
     const out = await idbGetAll<OutboxItem>('outbox');
     dispatch({ type: 'SET_OUTBOX', payload: out.length });
     dispatch({ type: 'SET_BLOQUEADOS', payload: out.filter(i => i.bloqueado).length });
-    if (n > 0) { lotesCacheRef.current = {}; sincronizarAhora(); }
+    if (n > 0) {
+      dispatch({ type: 'SET_AVISOS', payload: await leerAvisosDevolver() });
+      sincronizarAhora();
+    }
   }, [sincronizarAhora]);
 
   useEffect(() => {
@@ -141,6 +161,7 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const out = await idbGetAll<OutboxItem>('outbox');
       dispatch({ type: 'SET_OUTBOX', payload: out.length });
       dispatch({ type: 'SET_BLOQUEADOS', payload: out.filter(i => i.bloqueado).length });
+      dispatch({ type: 'SET_AVISOS', payload: await leerAvisosDevolver() });
       dispatch({ type: 'SET_LOADING', payload: false });
       if (navigator.onLine) doFlush();
     })();
@@ -158,34 +179,6 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     };
   }, [doFlush]);
 
-  // El catálogo para vender sin internet sale del de Stockly, que ya está en el equipo y se sincroniza de a
-  // poco (incluye lo cargado sin internet y los precios recién cambiados). Antes cada venta volvía a bajar
-  // del servidor todos los productos y lotes, en cada equipo.
-  useEffect(() => {
-    if (!comercio || !sucursalActiva || !stock.loaded) return;
-    lotesCacheRef.current = {};
-    const t = setTimeout(async () => {
-      const lotes: Lote[] = stock.lotes.filter(l => l.sucursalId === sucursalActiva.id && l.cantidad > 0).map(l => ({
-        id: l.id, comercio_id: comercio.id, producto_id: l.productoId, sucursal_id: l.sucursalId,
-        cantidad: l.cantidad, fecha_vencimiento: l.fechaVencimiento, retirado: false,
-      }) as Lote);
-      // Lo vendido sin subir todavía no está en los lotes de Mercadería: se descuenta, si no al rearmar el
-      // catálogo Vender volvía a mostrar el stock de antes de esas ventas.
-      try {
-        await openDB();
-        for (const it of await idbGetAll<OutboxItem>('outbox')) {
-          const v = it.payload as OfflineVentaPayload;
-          if (it.kind === 'venta' && v.sucursalId === sucursalActiva.id) descontarLotesLocales(lotes, v.cart);
-        }
-      } catch { /* sin la cola: el de Mercadería */ }
-      cacheCatalogo(
-        stock.productos.map(p => ({ id: p.id, comercio_id: comercio.id, nombre: p.nombre, codigo_barras: p.codigoBarras ?? '', categoria: p.categoria, precio: p.precio, activo: true })),
-        lotes,
-      ).catch(() => { /* queda el catálogo anterior */ });
-    }, 1000);
-    return () => clearTimeout(t);
-  }, [comercio, sucursalActiva, stock.loaded, stock.productos, stock.lotes]);
-
   // Realtime: si otro equipo cambia el stock, Stockly baja solo lo nuevo (y eso actualiza el catálogo).
   // No bloquea nada; si Realtime no está activado, simplemente no llega nada.
   useEffect(() => {
@@ -197,7 +190,6 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         { event: '*', schema: 'public', table: 'lotes', filter: `sucursal_id=eq.${sucursalActiva.id}` },
         () => {
           // Una venta toca varios lotes y llega un aviso por cada uno: se refresca una sola vez.
-          lotesCacheRef.current = {};
           clearTimeout(t);
           t = setTimeout(() => { sincronizarAhora(); }, 1500);
         }
@@ -211,39 +203,32 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     return () => { clearTimeout(t); supabase.removeChannel(canal); };
   }, [comercio, sucursalActiva, sincronizarAhora]);
 
-  // ── Catálogo: primero lo guardado en el celular (al instante), después el servidor ──
-  const agregarProducto = useCallback(async (prod: Producto) => {
-    if (!comercio || !sucursalActiva) return { ok: false, msg: 'Elegí el local en Ajustes para poder vender' };
-    let lotes = lotesCacheRef.current[prod.id];
-    if (!lotes) {
-      lotes = (await idbGetAll<Lote>('lotes')).filter(l => l.producto_id === prod.id && !l.retirado && l.cantidad > 0)
-        .sort((a, b) => (a.fecha_vencimiento ?? '9999').localeCompare(b.fecha_vencimiento ?? '9999'));
-      // Sin nada guardado (mercadería recién cargada): se pregunta al servidor, sin trabar si no contesta.
-      if (lotes.length === 0 && navigator.onLine) {
-        lotes = await lotesDisponibles(comercio.id, prod.id, sucursalActiva.id).catch(() => []);
-      }
-      lotesCacheRef.current[prod.id] = lotes;
-    }
-    const disp = stockTotal(lotes);
-    dispatch({
-      type: 'ADD_ITEM',
-      payload: { productoId: prod.id, nombre: prod.nombre, codigoBarras: prod.codigo_barras, precio: prod.precio, qty: 1, stockDisponible: disp,
-        costo: productosRef.current.find(p => p.id === prod.id)?.costo },
-    });
-    hapticTap();
-    const aviso = disp <= 0 ? ` (sin stock registrado)` : '';
-    return { ok: true, msg: `${prod.nombre} agregado${aviso}` };
-  }, [comercio, sucursalActiva]);
-
   // El catálogo ya está en memoria (Stockly): antes cada tecla del buscador leía todos los productos del equipo.
-  const productosRef = useRef(stock.productos);
-  productosRef.current = stock.productos;
+  const catalogoRef = useRef(stock.productos);
+  catalogoRef.current = stock.productos;
   const aProductoVenta = (p: (typeof stock.productos)[number], comercioId: string): Producto =>
     ({ id: p.id!, comercio_id: comercioId, nombre: p.nombre, codigo_barras: p.codigoBarras ?? '', categoria: p.categoria, precio: p.precio, activo: true }) as Producto;
 
+  // ── Catálogo: todo de la memoria de Stockly ──
+  const agregarProducto = useCallback(async (prod: Producto) => {
+    if (!comercio || !sucursalActiva) return { ok: false, msg: 'Elegí el local en Ajustes para poder vender' };
+    const enStock = productosRef.current().find(p => p.producto.id === prod.id);
+    // Precio y nombre de ahora: "Más vendidos" guarda una copia que puede tener días, y cobraba el precio viejo.
+    const precio = enStock?.producto.precio ?? prod.precio;
+    const nombre = enStock?.producto.nombre ?? prod.nombre;
+    const disp = Math.max(0, enStock?.cantidadTotal ?? 0);
+    dispatch({
+      type: 'ADD_ITEM',
+      payload: { productoId: prod.id, nombre, codigoBarras: prod.codigo_barras, precio, qty: 1, stockDisponible: disp, costo: enStock?.producto.costo },
+    });
+    hapticTap();
+    const aviso = disp <= 0 ? ` (sin stock registrado)` : '';
+    return { ok: true, msg: `${nombre} agregado${aviso}` };
+  }, [comercio, sucursalActiva]);
+
   const escanear = useCallback(async (codigo: string) => {
     if (!comercio) return { ok: false, msg: 'Sin comercio activo' };
-    const enMemoria = productosRef.current.find(p => p.codigoBarras === codigo);
+    const enMemoria = catalogoRef.current.find(p => p.codigoBarras === codigo);
     let prod: Producto | null = enMemoria ? aProductoVenta(enMemoria, comercio.id) : null;
     if (!prod && navigator.onLine) prod = await buscarProductoPorCodigo(comercio.id, codigo).catch(() => null);
     if (!prod) return { ok: false, msg: `No encontré ese código (${codigo}). Buscalo por nombre o cargalo en Mercadería.` };
@@ -253,7 +238,7 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const buscarPorNombre = useCallback(async (q: string) => {
     if (!comercio || q.length < 2) return [];
     const t = q.toLowerCase();
-    const locales = productosRef.current.filter(p => p.nombre.toLowerCase().includes(t)).slice(0, 8).map(p => aProductoVenta(p, comercio.id));
+    const locales = catalogoRef.current.filter(p => p.nombre.toLowerCase().includes(t)).slice(0, 8).map(p => aProductoVenta(p, comercio.id));
     if (locales.length > 0 || !navigator.onLine) return locales;
     return buscarProductosPorNombre(comercio.id, q).catch(() => []);
   }, [comercio]);
@@ -300,12 +285,9 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         descuento: opts.descuento, total, fecha: Date.now(), cart,
       };
       await enqueueOutbox('venta', payload);
-      // Reflejar lo vendido en el stock local (si no, se sigue mostrando el de antes).
-      for (const l of descontarLotesLocales(await idbGetAll<Lote>('lotes'), cart)) await idbPut('lotes', l);
-      lotesCacheRef.current = {};
       const out = await idbGetAll('outbox');
       dispatch({ type: 'SET_OUTBOX', payload: out.length });
-      vaciar(); hapticOk();
+      dispatch({ type: 'RESTAR_VENDIDO', vendido: cart }); hapticOk();
       return { ok: true, msg: 'Venta guardada. Se manda sola cuando haya internet.', ventaId };
     };
 
@@ -324,7 +306,7 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }),
         new Promise<never>((_, rej) => setTimeout(() => rej(new Error('sin respuesta del servidor')), 8000)),
       ]);
-      vaciar(); hapticOk(); lotesCacheRef.current = {}; sincronizarAhora();
+      dispatch({ type: 'RESTAR_VENDIDO', vendido: cart }); hapticOk(); sincronizarAhora();
       const aviso = res.faltantes.length > 0
         ? ` (faltó stock de: ${res.faltantes.map(f => f.nombre).join(', ')})`
         : '';
@@ -336,14 +318,19 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       if (esErrorPermanente(msg)) return { ok: false, msg: `La venta no se guardó: ${msg}` };
       return saveOffline(); // sin señal o se cortó: se guarda y se manda después con el mismo id
     }
-  }, [comercio, sucursalActiva, miembro, vaciar, sincronizarAhora]);
+  }, [comercio, sucursalActiva, miembro, sincronizarAhora]);
 
   // El sync manual saca de cuarentena los items bloqueados y reintenta.
   const sincronizar = useCallback(async () => { await reintentarBloqueados(); await doFlush(); }, [doFlush]);
 
+  const marcarDevuelto = useCallback(async (id: string) => {
+    await quitarAvisoDevolver(id);
+    dispatch({ type: 'SET_AVISOS', payload: await leerAvisosDevolver() });
+  }, []);
+
   const valor = useMemo(() => ({
-    state, escanear, buscarPorNombre, agregarProducto, agregarMontoLibre, setQty, quitar, vaciar, confirmarVenta, sincronizar,
-  }), [state, escanear, buscarPorNombre, agregarProducto, agregarMontoLibre, setQty, quitar, vaciar, confirmarVenta, sincronizar]);
+    state, escanear, buscarPorNombre, agregarProducto, agregarMontoLibre, setQty, quitar, vaciar, confirmarVenta, sincronizar, marcarDevuelto,
+  }), [state, escanear, buscarPorNombre, agregarProducto, agregarMontoLibre, setQty, quitar, vaciar, confirmarVenta, sincronizar, marcarDevuelto]);
 
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
 };

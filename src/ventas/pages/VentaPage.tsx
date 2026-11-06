@@ -29,6 +29,7 @@ import { avisoVentaOk, avisoToque } from '../lib/aviso';
 import { useContador } from '../../lib/useContador';
 import { useAlVolver } from '../../lib/useAlVolver';
 import CheckDibujo from '../components/CheckDibujo';
+import AvisosDevolver from '../components/AvisosDevolver';
 import { BanknotesIcon as IcoBanknotesIcon, CameraIcon as IcoCameraIcon, CreditCardIcon as IcoCreditCardIcon, DevicePhoneMobileIcon as IcoDevicePhoneMobileIcon, QrCodeIcon as IcoQrCodeIcon, UserIcon as IcoUserIcon } from '@heroicons/react/24/outline';
 import { useLectorFisico } from '../../lib/useLectorFisico';
 const payOptions = [
@@ -325,6 +326,7 @@ const VentaPage: React.FC = () => {
         </div>
 
         <div className="venta-col-buscar">
+        <AvisosDevolver />
         {/* Scanner: lector físico / tipeo + botón de cámara */}
         <Card variant="bordered" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--color-primary)', flexShrink: 0 }} />

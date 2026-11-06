@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { borrarHuella, guardarHuella, hayHuella, huellaDisponible, leerConHuella } from './huella';
 import { useConfirm } from '../../lib/useConfirm';
 import type React from 'react';
@@ -47,15 +47,17 @@ export function useHuella(clave: string | null) {
 
 // La pantalla "¿Quién va a vender?" se desmonta apenas el login sale bien, así que
 // la pregunta "¿usar huella?" la hace este componente, montado en la app ya logueada.
-let pendiente: { clave: string; secreto: string } | null = null;
-export const dejarOfertaHuella = (clave: string, secreto: string) => { pendiente = clave ? { clave, secreto } : null; };
+// Se llama recién cuando entró bien, y el secreto pasa directo a la pregunta: antes quedaba guardado en memoria hasta
+// reiniciar la app (y la pregunta no salía nunca, porque este componente ya estaba montado).
+let avisar: ((p: { clave: string; secreto: string }) => void) | null = null;
+export const dejarOfertaHuella = (clave: string, secreto: string) => { avisar?.({ clave, secreto }); };
 
 export const OfertaHuellaPendiente: React.FC = () => {
-  const [p] = useState(() => { const x = pendiente; pendiente = null; return x; });
+  const [p, setP] = useState<{ clave: string; secreto: string } | null>(null);
+  useEffect(() => { avisar = setP; return () => { avisar = null; }; }, []);
   const h = useHuella(p?.clave ?? null);
-  const hecho = useRef(false);
   useEffect(() => {
-    if (p && h.listo && !hecho.current) { hecho.current = true; h.ofrecer(p.secreto); }
+    if (p && h.listo) { setP(null); h.ofrecer(p.secreto); }
   }, [p, h]);
   return null;
 };

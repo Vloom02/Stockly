@@ -31,7 +31,7 @@ export function listaReposicion(items: ProductoConLotes[], umbralBajo: number): 
     let motivo: MotivoReposicion | null = null;
     if (it.cantidadTotal <= 0) motivo = 'sin_stock';
     else if (it.nivelPeor === 'vencido' || it.nivelPeor === 'critico' || it.nivelPeor === 'urgente') motivo = 'por_vencer';
-    else if (it.cantidadTotal <= umbralBajo) motivo = 'stock_bajo';
+    else if (it.cantidadTotal <= (it.producto.stockMinimo || umbralBajo)) motivo = 'stock_bajo'; // el mínimo de la ficha, como Inicio y Pedido
     if (!motivo) continue;
     out.push({ producto: it.producto, cantidadTotal: it.cantidadTotal, nivelPeor: it.nivelPeor, motivo });
   }

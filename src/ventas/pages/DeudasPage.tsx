@@ -17,12 +17,13 @@ import { BookOpenIcon, CheckIcon, MagnifyingGlass } from '../components/ui/icons
 
 import { parseMonto } from '../../lib/numeros';
 import BotonVolver from '../components/BotonVolver';
+import AvisosDevolver from '../components/AvisosDevolver';
 import { repartirPago, claveCliente as clave, diasDesde } from '../lib/fiado';
 import { ChatBubbleLeftRightIcon as IcoChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 interface DeudaRow { id: string; cliente: string; monto: number; pagada: boolean; fecha: string; }
 
 const DeudasPage: React.FC = () => {
-  const { comercio, miembro } = useAuth();
+  const { comercio, miembro, sucursalActiva } = useAuth();
   const { cajeroEnTurno } = useAuthStockly();
   const confirmar = useConfirm();
   const pedirTexto = usePedirTexto();
@@ -94,7 +95,7 @@ const DeudasPage: React.FC = () => {
 
     if (navigator.onLine) {
       const { data, error } = await supabase.rpc('registrar_pago_fiado', {
-        p: { pago_id: pagoId, deuda_id: d.id, comercio_id: comercio.id, monto, usuario },
+        p: { pago_id: pagoId, deuda_id: d.id, comercio_id: comercio.id, monto, usuario, sucursal_id: sucursalActiva?.id },
       });
       if (!error) {
         // El servidor nunca cobra más que el saldo: si otro equipo ya la había cobrado, acá se cobró menos (o nada).
@@ -113,7 +114,7 @@ const DeudasPage: React.FC = () => {
     }
     try {
       await openDB();
-      await enqueueOutbox('pago_fiado', { pagoId, deudaId: d.id, comercioId: comercio.id, monto, usuario, fecha: Date.now() });
+      await enqueueOutbox('pago_fiado', { pagoId, deudaId: d.id, comercioId: comercio.id, monto, usuario, fecha: Date.now(), sucursalId: sucursalActiva?.id, cliente: d.cliente });
       aplicarLocal(monto);
       return { cobrado: monto, enCola: true };
     } catch {
@@ -186,6 +187,7 @@ const DeudasPage: React.FC = () => {
         <BotonVolver />
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Fiado</h1>
         <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 14 }}>Clientes con fiado pendiente</p>
+        <AvisosDevolver />
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 14 }}>
           <Card variant="bordered" style={{ padding: 10 }}><div style={{ fontSize: 14, color: 'var(--text-2)' }}>Clientes que deben</div><div style={{ fontSize: 20, fontWeight: 700 }}>{nClientes}</div></Card>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { stockTotal, calcularFefo, payloadVenta } from './ventas-engine';
+import { stockTotal, payloadVenta } from './ventas-engine';
 import { Lote, CartItem } from '../types';
 
 const lote = (id: string, cantidad: number, venc: string | null): Lote => ({
@@ -16,23 +16,6 @@ describe('stockTotal', () => {
     expect(stockTotal([lote('a', 2, '2027-01-01'), lote('b', 9, '2027-02-01')])).toBe(11);
   });
   it('lista vacía → 0', () => expect(stockTotal([])).toBe(0));
-});
-
-describe('calcularFefo', () => {
-  it('descuenta del primer lote y continúa con el siguiente (orden FEFO recibido)', () => {
-    const lotes = [lote('a', 2, '2027-01-01'), lote('b', 9, '2027-02-01')];
-    const d = calcularFefo(lotes, 5);
-    expect(d).toHaveLength(2);
-    expect(d[0]).toMatchObject({ loteId: 'a', cantidadDescontada: 2, cantidadNueva: 0 });
-    expect(d[1]).toMatchObject({ loteId: 'b', cantidadDescontada: 3, cantidadNueva: 6 });
-  });
-  it('si no alcanza el stock, descuenta solo lo disponible', () => {
-    const d = calcularFefo([lote('a', 2, '2027-01-01')], 5);
-    expect(d.reduce((s, x) => s + x.cantidadDescontada, 0)).toBe(2);
-  });
-  it('sin lotes → sin deducciones', () => {
-    expect(calcularFefo([], 3)).toEqual([]);
-  });
 });
 
 describe('payloadVenta', () => {

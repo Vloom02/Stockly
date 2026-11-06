@@ -45,8 +45,10 @@ function clampPct(n: number): number {
 export function precioLiquidacion(precio: number, pct: number, redondeo = 10): number {
   if (precio <= 0) return 0;
   const bruto = precio * (1 - clampPct(pct) / 100);
-  if (redondeo > 1) return Math.max(0, Math.round(bruto / redondeo) * redondeo);
-  return Math.max(0, Math.round(bruto));
+  // Los precios chicos no se redondean a $10: uno de $4 salía "Liquidar $0". Lo rebajado nunca queda gratis.
+  const paso = precio >= redondeo * 10 ? redondeo : 1;
+  const final = Math.round(bruto / paso) * paso;
+  return clampPct(pct) < 100 ? Math.max(1, final) : 0;
 }
 
 export interface SugerenciaLiquidacion {
@@ -79,5 +81,6 @@ export function sugerirLiquidacion(
  *  null si no hay costo o precio anterior para comparar, o si el costo no cambió. */
 export function precioConMismaGanancia(costoAntes: number | null | undefined, precioAntes: number, costoNuevo: number): number | null {
   if (!costoAntes || costoAntes <= 0 || !precioAntes || costoNuevo <= 0 || costoNuevo === costoAntes) return null;
-  return Math.ceil((costoNuevo * precioAntes / costoAntes) / 10) * 10;
+  // A centavos antes de redondear: los decimales de la cuenta (1100,0000000002) subían el precio $10 de más.
+  return Math.ceil(Math.round(costoNuevo * precioAntes / costoAntes * 100) / 100 / 10) * 10;
 }

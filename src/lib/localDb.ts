@@ -198,6 +198,28 @@ export function setMeta(k: string, v: string): Promise<void> {
   return put('meta', { k, v });
 }
 
+// ─── Movimientos viejos ─────────────────────────────────────────────────────
+/** Saca del equipo los movimientos de hace más de `dias` días (siguen en el servidor). Crecían sin tope, unos 300.000
+ *  por año en un almacén con movimiento, y ninguna pantalla mira más de 6 meses. */
+export function podarMovimientos(dias = 210): Promise<number> {
+  return new Promise((res, rej) => {
+    if (!db) { rej(new Error('DB local no abierta')); return; }
+    const corte = new Date(Date.now() - dias * 86400000).toISOString();
+    const t = db.transaction('movimientos', 'readwrite');
+    let n = 0;
+    const r = t.objectStore('movimientos').openCursor();
+    r.onsuccess = () => {
+      const c = r.result;
+      if (!c) return;
+      if (String((c.value as Movimiento).fecha) < corte) { c.delete(); n++; }
+      c.continue();
+    };
+    t.oncomplete = () => res(n);
+    t.onerror = () => rej(t.error);
+    t.onabort = () => rej(t.error);
+  });
+}
+
 // ─── Reset completo (al cerrar sesión) ──────────────────────────────────────
 /** Cambios guardados en el celular que todavía no llegaron al servidor (Mercadería + ventas). */
 export async function contarSinSubir(): Promise<number> {

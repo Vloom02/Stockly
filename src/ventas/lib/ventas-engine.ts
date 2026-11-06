@@ -52,27 +52,6 @@ export function stockTotal(lotes: Lote[]): number {
   return lotes.reduce((s, l) => s + l.cantidad, 0);
 }
 
-// ─── Calcular descuento FEFO en memoria ───────────────────────────────────────
-// Descuenta del lote que vence antes. Si no alcanza, descuenta lo que haya
-// (no agrega lotes inexistentes; el faltante se reporta aparte).
-export function calcularFefo(lotes: Lote[], cantidad: number): FefoDeduction[] {
-  const deducciones: FefoDeduction[] = [];
-  let restante = cantidad;
-  for (const lote of lotes) {
-    if (restante <= 0) break;
-    const descontar = Math.min(restante, lote.cantidad);
-    deducciones.push({
-      loteId: lote.id,
-      cantidadDescontada: descontar,
-      cantidadAnterior: lote.cantidad,
-      cantidadNueva: lote.cantidad - descontar,
-      fechaVencimiento: lote.fecha_vencimiento,
-    });
-    restante -= descontar;
-  }
-  return deducciones;
-}
-
 // ─── Aplicar venta online vía RPC atómica registrar_venta ─────────────────────
 // Toda la venta (cabecera + items + descuento FEFO de lotes + movimientos) ocurre
 // en UNA transacción del lado servidor, con lock de filas e idempotencia por id.
@@ -106,7 +85,9 @@ interface RegistrarVentaResp {
 }
 
 /** Construye el payload jsonb que espera la función registrar_venta(p). */
-export function payloadVenta(input: AplicarVentaInput, ventaId: string, fechaISO: string) {
+/** `fechaISO` solo para la venta guardada sin internet: con internet manda la hora del servidor (una tablet con la
+ *  fecha atrasada metía todas las ventas en otro día). */
+export function payloadVenta(input: AplicarVentaInput, ventaId: string, fechaISO?: string) {
   return {
     id: ventaId,
     comercio_id: input.comercioId,
@@ -116,7 +97,7 @@ export function payloadVenta(input: AplicarVentaInput, ventaId: string, fechaISO
     cliente: input.cliente,
     fiado: input.fiado,
     descuento: input.descuento,
-    fecha: fechaISO,
+    ...(fechaISO ? { fecha: fechaISO } : {}),
     items: input.cart.map((c) => ({
       // Los items de "venta rápida" (monto libre) usan un id sintético 'libre-…'
       // y viajan sin producto_id → el server los registra sin descontar stock.
@@ -130,7 +111,7 @@ export function payloadVenta(input: AplicarVentaInput, ventaId: string, fechaISO
 export async function aplicarVentaOnline(input: AplicarVentaInput): Promise<AplicarVentaResult> {
   const ventaId = input.ventaId ?? uuid();
   const { data, error } = await supabase.rpc('registrar_venta', {
-    p: payloadVenta(input, ventaId, new Date().toISOString()),
+    p: payloadVenta(input, ventaId),
   });
   if (error) throw new Error(error.message);
 

@@ -492,11 +492,122 @@ def main():
     caso('anular otra vez no anota otra salida', sal2 and len(sal2) == 1, f'{sal2}')
     vcom = str(uuid.uuid4())
     http('POST', '/rest/v1/rpc/registrar_venta', tok_d, {'p': {
-        'id': vcom, 'comercio_id': comercio, 'sucursal_id': sucursal, 'metodo_pago': 'efectivo',
+        'id': vcom, 'comercio_id': comercio, 'sucursal_id': sucursal, 'metodo_pago': 'tarjeta',
         'items': [{'producto_id': None, 'nombre': 'Varios', 'cantidad': 1, 'precio': 300}]}})
     s, r = http('POST', '/rest/v1/rpc/anular_venta', tok_d, {'p': {'venta_id': vcom, 'comercio_id': comercio}})
     _, sal3 = sql_service('GET', f'/rest/v1/ventas_caja_mov?comercio_id=eq.{comercio}&motivo=like.*{vcom[:8]}*&select=monto')
-    caso('una venta común anulada no anota salida (no hubo pagos de fiado)', s == 200 and float(r.get('devuelto', -1)) == 0 and sal3 == [], f'{s} {r} {sal3}')
+    caso('una venta con tarjeta anulada no anota salida (la plata no sale del cajón)', s == 200 and float(r.get('devuelto', -1)) == 0 and sal3 == [], f'{s} {r} {sal3}')
+
+    print('\n── O) Migración 19: tercera auditoría')
+    # Anular en efectivo: salida por el total, con la fecha de la devolución.
+    vef = str(uuid.uuid4())
+    http('POST', '/rest/v1/rpc/registrar_venta', tok_d, {'p': {
+        'id': vef, 'comercio_id': comercio, 'sucursal_id': sucursal, 'metodo_pago': 'efectivo',
+        'items': [{'producto_id': None, 'nombre': 'Varios', 'cantidad': 1, 'precio': 800}]}})
+    s, r = http('POST', '/rest/v1/rpc/anular_venta', tok_d, {'p': {'venta_id': vef, 'comercio_id': comercio, 'fecha': '2026-01-15T12:00:00Z'}})
+    _, se = sql_service('GET', f'/rest/v1/ventas_caja_mov?comercio_id=eq.{comercio}&motivo=like.*{vef[:8]}*&select=monto,fecha')
+    caso('anular en efectivo anota la salida por el total, con la fecha de la devolución',
+         s == 200 and float(r.get('devuelto', -1)) == 800 and se and float(se[0]['monto']) == 800 and se[0]['fecha'].startswith('2026-01-15'), f'{s} {r} {se}')
+
+    # Lo vencido se vende al final.
+    p3 = str(uuid.uuid4())
+    http('POST', '/rest/v1/productos', tok_d, {'id': p3, 'comercio_id': comercio, 'nombre': 'Yogur M19', 'categoria': 'Lácteos', 'precio': 500})
+    l_vencido, l_fresco = str(uuid.uuid4()), str(uuid.uuid4())
+    http('POST', '/rest/v1/lotes', tok_d, {'id': l_vencido, 'comercio_id': comercio, 'producto_id': p3, 'sucursal_id': sucursal,
+                                           'cantidad': 3, 'fecha_vencimiento': '2020-01-01', 'dias_aviso': 7})
+    http('POST', '/rest/v1/lotes', tok_d, {'id': l_fresco, 'comercio_id': comercio, 'producto_id': p3, 'sucursal_id': sucursal,
+                                           'cantidad': 12, 'fecha_vencimiento': '2030-01-01', 'dias_aviso': 7})
+    s, r = http('POST', '/rest/v1/rpc/registrar_venta', tok_d, {'p': {
+        'id': str(uuid.uuid4()), 'comercio_id': comercio, 'sucursal_id': sucursal, 'metodo_pago': 'efectivo',
+        'items': [{'producto_id': p3, 'nombre': 'Yogur M19', 'cantidad': 3, 'precio': 500}]}})
+    _, lv = http('GET', f'/rest/v1/lotes?id=in.({l_vencido},{l_fresco})&select=id,cantidad', tok_d)
+    cant = {x['id']: x['cantidad'] for x in lv or []}
+    caso('la venta sale de lo fresco: lo vencido queda para darlo de baja', s == 200 and cant.get(l_vencido) == 3 and cant.get(l_fresco) == 9, f'{s} {r} {cant}')
+    s, r = http('POST', '/rest/v1/rpc/registrar_venta', tok_d, {'p': {
+        'id': str(uuid.uuid4()), 'comercio_id': comercio, 'sucursal_id': sucursal, 'metodo_pago': 'efectivo',
+        'items': [{'producto_id': p3, 'nombre': 'Yogur M19', 'cantidad': 10, 'precio': 500}]}})
+    _, lv = http('GET', f'/rest/v1/lotes?id=in.({l_vencido},{l_fresco})&select=id,cantidad', tok_d)
+    cant = {x['id']: x['cantidad'] for x in lv or []}
+    caso('si no alcanza lo fresco, recién ahí toca lo vencido', s == 200 and cant.get(l_fresco) == 0 and cant.get(l_vencido) == 2, f'{s} {r} {cant}')
+
+    # Un local con ventas no se borra.
+    _, ventas_antes = sql_service('GET', f'/rest/v1/ventas_ventas?sucursal_id=eq.{sucursal}&select=id&limit=1')
+    s, r = http('DELETE', f'/rest/v1/sucursales?id=eq.{sucursal}', tok_d)
+    _, sigue = http('GET', f'/rest/v1/sucursales?id=eq.{sucursal}&select=id', tok_d)
+    caso('el dueño no puede borrar un local por la API', s >= 400 and sigue and ventas_antes, f'{s} {r} {sigue}')
+    s, r = sql_service('DELETE', f'/rest/v1/sucursales?id=eq.{sucursal}')
+    _, sigue = http('GET', f'/rest/v1/sucursales?id=eq.{sucursal}&select=id', tok_d)
+    caso('ni el servidor borra un local con ventas (se desactiva)', s >= 400 and sigue, f'{s} {r} {sigue}')
+
+    # Celulares para avisos: tope y sin quitarle el de otro.
+    s, r = http('POST', '/rest/v1/push_tokens', tok_d, {'token': 'falso-' + secrets.token_hex(4), 'comercio_id': comercio, 'user_id': uid_d, 'plataforma': 'android'})
+    caso('no se pueden cargar celulares directo a la tabla', s >= 400, f'{s} {r}')
+    tok_propio = 'token-m19-' + secrets.token_hex(4)
+    s, r = http('POST', '/rest/v1/rpc/registrar_push_token', tok_d, {'p_token': tok_propio, 'p_comercio': comercio})
+    caso('registrar el celular por la función sigue andando', s < 300, f'{s} {r}')
+    s, r = http('POST', '/rest/v1/rpc/registrar_push_token', tok_v, {'p_token': tok_propio, 'p_comercio': mdev[0]['comercio_id']})
+    _, dueno_tok = sql_service('GET', f'/rest/v1/push_tokens?token=eq.{tok_propio}&select=comercio_id')
+    caso('otra cuenta no le saca el celular a un comercio', dueno_tok and dueno_tok[0]['comercio_id'] == comercio, f'{s} {r} {dueno_tok}')
+    ultimo = None
+    for _i in range(21):
+        ultimo = http('POST', '/rest/v1/rpc/registrar_push_token', tok_v, {'p_token': f'tope-{secrets.token_hex(6)}', 'p_comercio': mdev[0]['comercio_id']})
+    caso('un comercio no puede cargar más de 20 celulares', ultimo[0] >= 400 and 'demasiados' in json.dumps(ultimo[1], ensure_ascii=False), f'{ultimo}')
+    sql_service('DELETE', f'/rest/v1/push_tokens?comercio_id=eq.{mdev[0]["comercio_id"]}&token=like.tope-*')
+    sql_service('DELETE', f'/rest/v1/push_tokens?token=eq.{tok_propio}')
+
+    # Ids de otro comercio.
+    _, pago_ajeno = sql_service('GET', f'/rest/v1/ventas_pagos?comercio_id=eq.{comercio}&select=id&limit=1')
+    vdev = str(uuid.uuid4())
+    http('POST', '/rest/v1/rpc/registrar_venta', tok_v, {'p': {
+        'id': vdev, 'comercio_id': mdev[0]['comercio_id'], 'sucursal_id': sv[0]['id'], 'metodo_pago': 'efectivo', 'fiado': True, 'cliente': 'Otro',
+        'items': [{'producto_id': None, 'nombre': 'Varios', 'cantidad': 1, 'precio': 10}]}})
+    _, ddev = http('GET', f'/rest/v1/ventas_deudas?venta_id=eq.{vdev}&select=id', tok_v)
+    s, r = http('POST', '/rest/v1/rpc/registrar_pago_fiado', tok_v, {'p': {'pago_id': pago_ajeno[0]['id'], 'deuda_id': ddev[0]['id'], 'comercio_id': mdev[0]['comercio_id'], 'monto': 1}})
+    caso('un cobro con el id de otro comercio es un error', s >= 400, f'{s} {r}')
+    _, mov_ajeno = sql_service('GET', f'/rest/v1/movimientos?comercio_id=eq.{comercio}&select=id&limit=1')
+    s, r = http('POST', '/rest/v1/rpc/ajustar_stock', tok_v, {'p': {'mov_id': mov_ajeno[0]['id'], 'comercio_id': mdev[0]['comercio_id'], 'lote_id': str(uuid.uuid4()), 'delta': 1}})
+    caso('un ajuste con el id de otro comercio es un error, no "duplicado"', s >= 400, f'{s} {r}')
+
+    # Cobro: en el local donde entró la plata.
+    vfl = str(uuid.uuid4())
+    http('POST', '/rest/v1/rpc/registrar_venta', tok_d, {'p': {
+        'id': vfl, 'comercio_id': comercio, 'sucursal_id': sucursal, 'metodo_pago': 'efectivo', 'fiado': True, 'cliente': 'Local M19',
+        'items': [{'producto_id': None, 'nombre': 'Varios', 'cantidad': 1, 'precio': 100}]}})
+    _, dfl = http('GET', f'/rest/v1/ventas_deudas?venta_id=eq.{vfl}&select=id', tok_d)
+    otro_local = str(uuid.uuid4())
+    http('POST', '/rest/v1/sucursales', tok_d, {'id': otro_local, 'comercio_id': comercio, 'nombre': 'Local M19'})
+    pl = str(uuid.uuid4())
+    http('POST', '/rest/v1/rpc/registrar_pago_fiado', tok_d, {'p': {'pago_id': pl, 'deuda_id': dfl[0]['id'], 'comercio_id': comercio, 'monto': 40, 'sucursal_id': otro_local}})
+    pl2 = str(uuid.uuid4())
+    http('POST', '/rest/v1/rpc/registrar_pago_fiado', tok_d, {'p': {'pago_id': pl2, 'deuda_id': dfl[0]['id'], 'comercio_id': comercio, 'monto': 10}})
+    _, plr = http('GET', f'/rest/v1/ventas_pagos?id=in.({pl},{pl2})&select=id,sucursal_id', tok_d)
+    locs = {x['id']: x['sucursal_id'] for x in plr or []}
+    caso('el cobro queda en el local donde entró la plata (o el de la venta, con una app vieja)', locs.get(pl) == otro_local and locs.get(pl2) == sucursal, f'{locs}')
+    http('PATCH', f'/rest/v1/sucursales?id=eq.{otro_local}', tok_d, {'activa': False})
+
+    # Bloqueo: al vencer no arranca de cero.
+    clave_l = 'legajo:' + 'M19' + secrets.token_hex(2).upper()
+    com_dev = mdev[0]['comercio_id']
+    legajo = clave_l.split(':')[1]
+    for _i in range(5):
+        http('POST', '/rest/v1/rpc/verificar_empleado_venta', tok_v, {'p': {'comercio_id': com_dev, 'legajo': legajo, 'pass': 'mal'}})
+    _, ai = sql_service('GET', f'/rest/v1/auth_intentos?comercio_id=eq.{com_dev}&clave=eq.{clave_l}&select=fallos,bloqueado_hasta')
+    caso('a los 5 fallos se bloquea', ai and ai[0]['fallos'] == 5 and ai[0]['bloqueado_hasta'], f'{ai}')
+    sql_service('PATCH', f'/rest/v1/auth_intentos?comercio_id=eq.{com_dev}&clave=eq.{clave_l}', {'bloqueado_hasta': '2020-01-01T00:00:00Z'})
+    http('POST', '/rest/v1/rpc/verificar_empleado_venta', tok_v, {'p': {'comercio_id': com_dev, 'legajo': legajo, 'pass': 'mal'}})
+    _, ai = sql_service('GET', f'/rest/v1/auth_intentos?comercio_id=eq.{com_dev}&clave=eq.{clave_l}&select=fallos')
+    caso('al vencer el bloqueo la cuenta sigue (no vuelve a cero)', ai and ai[0]['fallos'] == 6, f'{ai}')
+
+    # Estadísticas sumadas en el servidor.
+    s, r = http('POST', '/rest/v1/rpc/estadisticas_ventas', tok_d, {'p_comercio': comercio, 'p_dias': 30})
+    caso('las estadísticas suman en el servidor', s == 200 and len(r.get('por_hora', [])) == 24 and sum(r['por_hora']) == r['ventas'] and r['ventas'] > 0, f'{s} {str(r)[:200]}')
+    s, r = http('POST', '/rest/v1/rpc/estadisticas_ventas', tok_v, {'p_comercio': comercio, 'p_dias': 30})
+    caso('otro comercio no ve las estadísticas ajenas', s >= 400, f'{s} {r}')
+
+    # Cupo de claves por comercio.
+    respuestas = [http('POST', '/rest/v1/rpc/verificar_empleado_venta', tok_v, {'p': {'comercio_id': com_dev, 'legajo': f'C{n}', 'pass': 'x'}})[0] for n in range(32)]
+    _, cu = sql_service('GET', f'/rest/v1/auth_intentos?comercio_id=eq.{com_dev}&clave=like.cupo:*&select=fallos&order=actualizado_en.desc&limit=1')
+    caso('el cupo de claves frena a quien prueba de más', all(x == 200 for x in respuestas) and cu and cu[0]['fallos'] > 30, f'{cu}')
 
     fallas = [n for n, ok in resultados if not ok]
     print(f'\n{len(resultados) - len(fallas)}/{len(resultados)} pruebas OK')

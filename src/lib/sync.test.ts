@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('./supabase', () => ({ supabase: {} }));
 vi.mock('./localDb', () => ({}));
 
-import { deltasPendientesPorLote, fusionarCambios, esperaAlta, cambiosSinSubir } from './sync';
+import { deltasPendientesPorLote, fusionarCambios, esperaAlta, cambiosSinSubir, marcaNueva, sinCambios } from './sync';
 import type { ItemOutbox } from './localDb';
 
 const item = (tabla: string, loteId: string | undefined, cantidad: number): ItemOutbox =>
@@ -73,6 +73,22 @@ describe('esperaAlta', () => {
     expect(esperaAlta(item_('ajuste_stock', 'insert', 'm1', { loteId: 'l-nuevo' }), altas)).toBe(true);
     expect(esperaAlta(item_('movimientos', 'insert', 'm2', { productoId: 'p-nuevo', sucursalId: '' }), altas)).toBe(true);
     expect(esperaAlta(item_('movimientos', 'insert', 'm3', { productoId: 'p-viejo', sucursalId: '' }), altas)).toBe(false);
+  });
+});
+
+describe('marcaNueva', () => {
+  it('toma el mayor horario comparando por hora (no como texto) y nunca retrocede', () => {
+    expect(marcaNueva('2026-11-01T10:00:00Z', ['2026-11-01T09:00:00Z', null])).toBe('2026-11-01T10:00:00Z');
+    expect(marcaNueva('2026-11-01T10:00:00Z', ['2026-11-01T08:00:00-03:00'])).toBe('2026-11-01T08:00:00-03:00');
+    expect(marcaNueva('2026-11-01T10:00:00Z', [])).toBe('2026-11-01T10:00:00Z');
+  });
+});
+
+describe('sinCambios', () => {
+  it('sin filas o sin resultado no hay nada que aplicar', () => {
+    expect(sinCambios(undefined)).toBe(true);
+    expect(sinCambios({ productos: [], lotes: [], sucursales: [], movimientos: [] })).toBe(true);
+    expect(sinCambios({ productos: [], lotes: [{}], sucursales: [], movimientos: [] })).toBe(false);
   });
 });
 

@@ -1,11 +1,10 @@
 import { supabase } from './supabase';
 
-/** Cobros de fiado del comercio; con local, solo los de ventas de ese local (antes el arqueo de un local sumaba
- *  la plata que entró en el otro). */
+/** Cobros de fiado del comercio; con local, los que entraron en ese local (migración 19). Si la clienta fió en un local y
+ *  paga en otro, la plata cuenta donde está. */
 export function cobrosDeFiado(comercioId: string, sucursalId?: string) {
-  if (!sucursalId) return supabase.from('ventas_pagos').select('monto').eq('comercio_id', comercioId);
-  return supabase.from('ventas_pagos').select('monto, ventas_deudas!inner(ventas_ventas!inner(sucursal_id))')
-    .eq('comercio_id', comercioId).eq('ventas_deudas.ventas_ventas.sucursal_id', sucursalId);
+  const q = supabase.from('ventas_pagos').select('monto').eq('comercio_id', comercioId);
+  return sucursalId ? q.eq('sucursal_id', sucursalId) : q;
 }
 
 // Fiado por cliente: el nombre se escribe a mano en cada venta, así que "Marta" y "marta " son la misma persona.

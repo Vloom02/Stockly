@@ -44,12 +44,10 @@ const ReportesPage: React.FC = () => {
 
   const lotesDelDia = useMemo(() => {
     if (!diaSeleccionado) return [];
+    const prodPorId = new Map(state.productos.map(p => [p.id, p]));
     return state.lotes
-      .filter(l => l.fechaVencimiento === diaSeleccionado && l.sucursalId === state.sucursalActivaId)
-      .map(l => {
-        const prod = state.productos.find(p => p.id === l.productoId);
-        return { lote: l, nombre: prod?.nombre || '(eliminado)' };
-      });
+      .filter(l => l.fechaVencimiento === diaSeleccionado && l.sucursalId === state.sucursalActivaId && l.cantidad > 0) // como el calendario
+      .map(l => ({ lote: l, nombre: prodPorId.get(l.productoId)?.nombre || '(eliminado)' }));
   }, [diaSeleccionado, state.lotes, state.productos, state.sucursalActivaId]);
 
   const hayDatos = state.productos.length > 0;

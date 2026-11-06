@@ -50,13 +50,18 @@ const CajeroCierrePage: React.FC = () => {
       const turnoDesde = new Date(cajero.desde ?? Date.now()).toISOString();
       // shortcut: las ventas se atribuyen por nombre (no hay id del cajero en la venta); dos cajeros
       // con el mismo nombre se sumarían. CajerosPage no deja repetir nombres.
-      const [rv, rm, rp] = await Promise.all([
-        supabase.from('ventas_ventas').select('id, total, metodo_pago, fiado, anulada')
+      // Las devoluciones de ventas anuladas no son de un turno: salen del cajón de este local si se hicieron ahora.
+      let qDevol = supabase.from('ventas_caja_mov').select('id, tipo, monto, fecha, turno_desde')
+        .eq('comercio_id', comercio.id).eq('tipo', 'egreso').is('turno_desde', null).gte('fecha', desde.toISOString());
+      if (sucursalActiva) qDevol = qDevol.eq('sucursal_id', sucursalActiva.id);
+      const [rv, rm, rp, rd] = await Promise.all([
+        supabase.from('ventas_ventas').select('id, total, metodo_pago, fiado, anulada, descuento')
           .eq('comercio_id', comercio.id).eq('usuario', cajero.nombre).gte('fecha', desde.toISOString()),
         supabase.from('ventas_caja_mov').select('id, tipo, monto, fecha, turno_desde')
           .eq('comercio_id', comercio.id).eq('turno_desde', turnoDesde),
         supabase.from('ventas_pagos').select('id, monto')
           .eq('comercio_id', comercio.id).eq('usuario', cajero.nombre).gte('fecha', desde.toISOString()),
+        qDevol,
       ]);
       // Lo guardado sin internet en este celular también es del turno.
       await openDB();
@@ -68,18 +73,22 @@ const CajeroCierrePage: React.FC = () => {
       const anuladasCola = new Set(cola.filter(i => i.kind === 'anulacion').map(i => (i.payload as { ventaId: string }).ventaId));
       const ventasCola = cola.filter(i => i.kind === 'venta').map(i => i.payload as OfflineVentaPayload)
         .filter(p => p.usuario === cajero.nombre && p.fecha >= desde.getTime() && !idsVenta.has(p.ventaId))
-        .map(p => ({ id: p.ventaId, total: p.total, metodo_pago: p.metodoPago, fiado: p.fiado, anulada: anuladasCola.has(p.ventaId) }));
+        .map(p => ({ id: p.ventaId, total: p.total, metodo_pago: p.metodoPago, fiado: p.fiado, anulada: anuladasCola.has(p.ventaId), descuento: p.descuento }));
       const idsPago = new Set(((rp.data ?? []) as { id: string }[]).map(p => p.id));
       const cobrosCola = cola.filter(i => i.kind === 'pago_fiado').map(i => i.payload as OfflinePagoPayload)
         .filter(p => p.usuario === cajero.nombre && p.fecha >= desde.getTime() && !idsPago.has(p.pagoId)).reduce((s, p) => s + p.monto, 0);
       const movsCola = cola.filter(i => i.kind === 'caja_mov').map(i => i.payload as unknown as CajaMov & { id: string; turno_desde: string })
         .filter(m => m.turno_desde === turnoDesde);
-      const movsServer = (rm.data ?? []) as (CajaMov & { id: string })[];
+      const movsServer = [...(rm.data ?? []), ...(rd.data ?? [])] as (CajaMov & { id: string })[];
+      // Una anulación en efectivo todavía en la cola: la salida se anota al subir, pero la plata ya se devolvió.
+      const devolucionesCola = [...ventasServer, ...ventasCola]
+        .filter(v => anuladasCola.has(v.id) && !v.anulada && !v.fiado && v.metodo_pago === 'efectivo')
+        .map(v => ({ id: `cola-${v.id}`, tipo: 'egreso' as const, monto: Number(v.total) }));
       const idsMov = new Set(movsServer.map(m => m.id));
 
       setSinInternet(!!(rv.error || rm.error || rp.error));
       setVentas([...ventasServer.map(v => (anuladasCola.has(v.id) ? { ...v, anulada: true } : v)), ...ventasCola]);
-      setMovs([...movsServer, ...movsCola.filter(m => !idsMov.has(m.id))]);
+      setMovs([...movsServer, ...movsCola.filter(m => !idsMov.has(m.id)), ...devolucionesCola]);
       setCobros((rp.data ?? []).reduce((s: number, p: { monto: number }) => s + Number(p.monto), 0) + cobrosCola);
       setLoading(false);
     })();
@@ -90,7 +99,8 @@ const CajeroCierrePage: React.FC = () => {
   const porMetodo = useMemo(() => totalesPorMetodo(validas), [validas]);
   // La apertura registrada manda; si no hay, se puede declarar el fondo a mano.
   const aperturaMov = movs.some(m => m.tipo === 'apertura');
-  const a = arqueo(validas, movs, cobros, parseMonto(fondo) || 0);
+  const a = arqueo(ventas, movs, cobros, parseMonto(fondo) || 0); // con las anuladas: ver lib/caja.ts
+  const descuentos = validas.reduce((s, v) => s + Number(v.descuento ?? 0), 0);
   const { fondo: fondoNum, ventasEfectivo: efectivoVentas, ingresos, egresos, esperado } = a;
   const contadoNum = parseMonto(contado);
   const diferencia = contado.trim() === '' || !Number.isFinite(contadoNum) ? null : contadoNum - esperado;
@@ -150,7 +160,7 @@ const CajeroCierrePage: React.FC = () => {
             <Card style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
                 <span style={{ fontSize: 14, color: 'var(--text-2)' }}>Ventas del turno</span>
-                <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{ventas.length}</span>
+                <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{validas.length}</span>
               </div>
               {Object.entries(porMetodo).sort((a, b) => b[1] - a[1]).map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14 }}>
@@ -162,6 +172,13 @@ const CajeroCierrePage: React.FC = () => {
                 <span style={{ fontWeight: 700 }}>Total</span>
                 <span style={{ fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--color-primary-dark)' }}>{formatMoney(total)}</span>
               </div>
+              {/* A la vista del que cierra: un descuento a mano baja el efectivo esperado sin que el arqueo lo note. */}
+              {descuentos > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, fontSize: 15, color: 'var(--text-2)' }}>
+                  <span>Descuentos que se hicieron</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{formatMoney(descuentos)}</span>
+                </div>
+              )}
             </Card>
 
             {/* Arqueo */}

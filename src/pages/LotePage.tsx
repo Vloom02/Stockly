@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { sumarFecha, fechaLocalISO } from '../lib/vencimientos';
 import { useConfirm } from '../lib/useConfirm';
 import { parseMonto } from '../lib/numeros';
@@ -47,6 +47,8 @@ const LoteForm: React.FC = () => {
 
   const productoIdInicial = new URLSearchParams(location.search).get('productoId');
   const loteExistente = loteId ? state.lotes.find(l => l.id === loteId) : undefined;
+  // Como estaba al abrir: lo que otro equipo corrija mientras tanto no se pisa con los valores viejos del formulario.
+  const alAbrir = useRef(loteExistente);
 
   const [productoId, setProductoId] = useState<string>(
     loteExistente?.productoId ?? (productoIdInicial || '')
@@ -110,7 +112,7 @@ const LoteForm: React.FC = () => {
     };
     setProcesando(true);
     try {
-      if (loteExistente) { await updateLote({ ...loteExistente, ...datos }); history.goBack(); }
+      if (loteExistente) { await updateLote({ ...loteExistente, ...datos }, alAbrir.current ?? loteExistente); history.goBack(); }
       else {
         await addLote(datos);
         const costo = parseMonto(costoTxt);
@@ -131,7 +133,7 @@ const LoteForm: React.FC = () => {
   const ponerEnOferta = async (pctSugerido: number) => {
     if (!producto || !loteExistente) return;
     const tope = producto.costo && producto.precio > 0 && nivel !== 'critico'
-      ? Math.floor((1 - producto.costo / producto.precio) * 100) : 90;
+      ? Math.floor((producto.precio - producto.costo) * 100 / producto.precio) : 90; // así: (1 - 0,8) * 100 daba 19
     const pct = Math.min(pctSugerido, tope);
     if (pct <= 0) { setToast({ show: true, msg: 'Con este costo no hay margen para descontar sin perder plata' }); return; }
     // Se confirma con el descuento que de verdad se pone (puede ser menos que el sugerido, para no perder plata).

@@ -216,8 +216,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Limpiar caché local primero (esto siempre funciona). Antes se frena la sincronización: una pasada en
     // curso escribía lo de esta cuenta en el equipo ya limpio y lo veía la próxima que entrara.
     try {
-      const { frenarSincronizacion } = await import('../lib/sync');
+      const { frenarSincronizacion, esperarSincronizacion } = await import('../lib/sync');
       frenarSincronizacion();
+      await esperarSincronizacion();
       const { limpiarTodoLocal } = await import('../lib/localDb');
       await limpiarTodoLocal();
     } catch { /* */ }

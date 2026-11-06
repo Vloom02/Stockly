@@ -79,13 +79,13 @@ const ResumenesPage: React.FC = () => {
       stock: { valorTotal: r.valorTotal, lotesVencidos: r.lotesVencidos, valorVencido: r.valorVencido, lotesPorVencer: r.lotesCriticos + r.lotesUrgentes, valorEnRiesgo: r.valorEnRiesgo, productosEnNegativo: r.productosEnNegativo, unidadesFaltantes: r.unidadesFaltantes,
         valorCosto: productosConLotes().reduce((t, p) => t + (p.cantidadTotal > 0 && p.producto.costo ? p.cantidadTotal * p.producto.costo : 0), 0) },
       // Del local elegido, igual que las ventas: antes sumaba las pérdidas y conteos de todos los locales.
-      perdidas: perdidasEntre(movsDelLocal, state.productos, rango.desde, rango.hasta),
+      perdidas: perdidasEntre(movsDelLocal, [...state.productos, ...state.inactivos], rango.desde, rango.hasta),
       empleados: controlEmpleados(ventas === 'cargando' || !ventas ? [] : ventas.porEmpleado, movsDelLocal, cierres, rango.desde, rango.hasta, miembro?.nombre),
       productosStock: productosConLotes().filter(p => p.cantidadTotal !== 0)
         .map(p => ({ nombre: p.producto.nombre, categoria: p.producto.categoria || '', cantidad: p.cantidadTotal, precio: p.producto.precio || 0, valor: p.valorTotal, vence: p.proximoVencimiento, estado: p.cantidadTotal < 0 ? 'Vendido sin stock' : ESTADOS[p.nivelPeor] ?? p.nivelPeor }))
         .sort((a, b) => a.nombre.localeCompare(b.nombre)),
     };
-  }, [comercio, sucursal, rango, ventas, resumen, productosConLotes, movsDelLocal, state.productos, miembro]);
+  }, [comercio, sucursal, rango, ventas, resumen, productosConLotes, movsDelLocal, state.productos, state.inactivos, miembro]);
 
   // "Resumen 26-10-2026", "Resumen del 20-10-2026 al 26-10-2026", "Resumen Octubre 2026" (sin "/": no van en nombres de archivo)
   const nombreArchivo = 'Resumen ' + (rango.porTurno ? fechaCorta(rango.desde) : rango.titulo.replace(/^Del/, 'del')).replace(/\//g, '-');

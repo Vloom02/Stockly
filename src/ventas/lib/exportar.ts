@@ -37,7 +37,7 @@ export function ventasACSV(ventas: VentaExport[]): string {
         d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
         v.usuario ?? '',
         v.cliente ?? '',
-        METODOS[v.metodo_pago] ?? v.metodo_pago,
+        v.fiado ? 'Fiado' : METODOS[v.metodo_pago] ?? v.metodo_pago,
         v.descuento ?? 0,
         v.total,
         v.fiado ? 'Sí' : 'No',

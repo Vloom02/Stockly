@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useAlVolver } from '../lib/useAlVolver';
 import { IonContent, IonPage, IonToast } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import { TruckIcon, ShareIcon } from '@heroicons/react/24/outline';
@@ -28,6 +29,11 @@ const PedidoPage: React.FC = () => {
   const [toast, setToast] = useState('');
   const [dias, setDias] = useState(15);
   const [vendido, setVendido] = useState<Map<string, number> | null>(null); // null = buscando
+  // El historial solo hace falta sin internet: como dependencia, cada venta de cualquier equipo volvía a preguntarle al servidor.
+  const movimientosRef = useRef(state.movimientos);
+  movimientosRef.current = state.movimientos;
+  const [veces, setVeces] = useState(0);
+  useAlVolver(() => setVeces(n => n + 1));
 
   useEffect(() => {
     let vigente = true;
@@ -44,13 +50,13 @@ const PedidoPage: React.FC = () => {
       } catch { /* sin internet: lo de abajo */ }
       // Sin internet (o sin la suma del servidor): del historial que ya está en el equipo, más lo vendido sin subir.
       if (m.size === 0 && state.sucursalActivaId) {
-        for (const [k, v] of vendidoDesdeMovimientos(state.movimientos, state.sucursalActivaId, new Date(Date.now() - DIAS_VENTAS * 86400000))) m.set(k, v);
+        for (const [k, v] of vendidoDesdeMovimientos(movimientosRef.current, state.sucursalActivaId, new Date(Date.now() - DIAS_VENTAS * 86400000))) m.set(k, v);
         for (const [k, v] of await leerUnidadesPendientes(state.sucursalActivaId).catch(() => new Map<string, number>())) m.set(k, (m.get(k) ?? 0) + v);
       }
       if (vigente) setVendido(m);
     })();
     return () => { vigente = false; };
-  }, [comercio, state.sucursalActivaId, state.movimientos]);
+  }, [comercio, state.sucursalActivaId, veces]);
 
   const porProveedor = useMemo(
     () => [...pedidoSugerido(productosConLotes(), vendido ?? new Map(), DIAS_VENTAS, dias).entries()].map(([proveedor, items]) => ({ proveedor, items })),

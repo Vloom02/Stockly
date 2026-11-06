@@ -13,8 +13,9 @@ import { Button, Input } from './ui';
 import { LockClosedIcon, UserIcon } from './ui/icons';
 import PinPad from './PinPad';
 import BotonHuella from './BotonHuella';
+import MeOlvideLaClave from './MeOlvideLaClave';
 import { useHuella, dejarOfertaHuella } from '../lib/useHuella';
-import { CLAVE_HUELLA_DUENO, claveHuellaCajero } from '../lib/huella';
+import { claveHuellaCajero } from '../lib/huella';
 import { useOnline } from '../../utils/useOnline';
 
 interface Elegido { legajo: string; nombre: string; }
@@ -34,7 +35,6 @@ const CajeroGate: React.FC = () => {
 
   const activos = empleados.filter(e => e.activo !== false);
   const huellaCajero = useHuella(elegido ? claveHuellaCajero(elegido.legajo) : null);
-  const huellaDueno = useHuella(CLAVE_HUELLA_DUENO);
 
   const entrarCajero = async (clave: string) => {
     if (!elegido) return false;
@@ -133,9 +133,11 @@ const CajeroGate: React.FC = () => {
             </button>
           </>}
           onSuccess={async (clave) => {
-            if (huellaCajero.disponible && !huellaCajero.activa) dejarOfertaHuella(claveHuellaCajero(elegido.legajo), clave);
             const ok = await entrarCajero(clave);
-            if (ok === true) setElegido(null); else dejarOfertaHuella('', ''); // clave mal (o un error con su motivo): no ofrecer
+            if (ok === true) {
+              if (huellaCajero.disponible && !huellaCajero.activa) dejarOfertaHuella(claveHuellaCajero(elegido.legajo), clave);
+              setElegido(null);
+            }
             return ok;
           }}
           onCancel={() => setElegido(null)}
@@ -147,13 +149,10 @@ const CajeroGate: React.FC = () => {
           mode="unlock"
           titulo="Hola, dueño"
           subtitulo="Poné tu clave para entrar a todo"
-          extra={huellaDueno.activa ? (
-            <BotonHuella onClick={async () => { if (await huellaDueno.entrar(entrarDueno)) setShowPinDueno(false); }} />
-          ) : undefined}
+          extra={<MeOlvideLaClave />}
           onSuccess={async (pin) => {
-            if (huellaDueno.disponible && !huellaDueno.activa) dejarOfertaHuella(CLAVE_HUELLA_DUENO, pin);
             const ok = await entrarDueno(pin);
-            if (ok) setShowPinDueno(false); else dejarOfertaHuella('', ''); // PIN mal: no ofrecer
+            if (ok) setShowPinDueno(false);
             return ok;
           }}
           onCancel={() => setShowPinDueno(false)}

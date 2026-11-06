@@ -140,5 +140,13 @@ export async function marcarArranqueOk(): Promise<void> {
     localStorage.removeItem(KEY_INTENTO);
   } catch { /* */ }
   const { CapacitorUpdater } = await import('@capgo/capacitor-updater');
+  // Lo que corre tiene que ser lo que dice ser. Una versión vieja firmada, publicada con un número nuevo (quien pueda
+  // editar los Releases), se instalaba igual con sus errores: se vuelve a la del APK y no se reintenta.
+  const { bundle } = await CapacitorUpdater.current();
+  if (bundle.id !== 'builtin' && bundle.version !== __APP_VERSION__) {
+    try { localStorage.setItem(KEY_FALLIDAS, JSON.stringify([...fallidas(), bundle.version])); } catch { /* */ }
+    await CapacitorUpdater.reset();
+    return;
+  }
   await CapacitorUpdater.notifyAppReady();
 }

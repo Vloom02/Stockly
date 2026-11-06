@@ -1,5 +1,5 @@
 import { useConfirm } from '../lib/useConfirm';
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { IonContent, IonPage, IonToast } from '@ionic/react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -43,6 +43,8 @@ const ProductoForm: React.FC = () => {
   const productoId = !esNuevo ? id : undefined;
 
   const productoExistente = productoId ? state.productos.find(p => p.id === productoId) : undefined;
+  // Como estaba al abrir: si otro equipo cambia el precio mientras tanto, guardar acá otro campo no se lo vuelve atrás.
+  const alAbrir = useRef(productoExistente);
 
   const [nombre, setNombre] = useState(productoExistente?.nombre || '');
   const [codigoBarras, setCodigoBarras] = useState(productoExistente?.codigoBarras || '');
@@ -120,7 +122,7 @@ const ProductoForm: React.FC = () => {
     setGuardando(true);
     try {
       if (productoExistente) {
-        await updateProducto({ ...productoExistente, ...datos });
+        await updateProducto({ ...productoExistente, ...datos }, alAbrir.current ?? productoExistente);
         history.goBack();
       } else {
         const nuevoId = await addProducto(datos);

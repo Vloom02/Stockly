@@ -27,8 +27,8 @@ describe('evaluarPlan', () => {
     const r = evaluarPlan(base({ plan: 'trial', trialHasta: '2026-06-16' }));
     expect(r.activo).toBe(true);
     expect(r.tipo).toBe('trial');
-    // 11: cuenta hasta el FIN del día de trialHasta (23:59:59) con Math.ceil
-    expect(r.diasRestantes).toBe(11);
+    // Días de calendario hasta el último día de prueba (el último día da 0: "vence hoy")
+    expect(r.diasRestantes).toBe(10);
   });
 
   it('trial vencido → bloqueado', () => {

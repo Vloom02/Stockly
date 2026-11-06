@@ -10,7 +10,7 @@ import { useHistory } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useStore } from '../../context/StoreContext';
-import { formatMoney } from '../context/VentasContext';
+import { formatMoney, useVentas } from '../context/VentasContext';
 import { Card } from '../components/ui';
 import Button from '../../components/ui/Button';
 import BotonVolver from '../components/BotonVolver';
@@ -30,6 +30,7 @@ const fila = (izq: React.ReactNode, der: React.ReactNode, fuerte = false) => (
 
 const CerrarDiaPage: React.FC = () => {
   const { comercio, sucursalActiva } = useAuth();
+  const { state: { outboxLen: cola } } = useVentas();
   const { state } = useStore();
   const history = useHistory();
   const [ventas, setVentas] = useState<VentaCaja[]>([]);
@@ -92,6 +93,7 @@ const CerrarDiaPage: React.FC = () => {
           {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}{sucursalActiva ? ` · ${sucursalActiva.nombre}` : ''}
         </p>
         {sinInternet && <p role="alert" style={{ fontSize: 16, color: 'var(--danger)', marginBottom: 12 }}>Sin internet: lo de la caja puede estar incompleto.</p>}
+        {!sinInternet && cola > 0 && <p role="alert" style={{ fontSize: 16, color: 'var(--danger)', marginBottom: 12 }}>Hay {cola} {cola === 1 ? 'venta o cobro' : 'ventas o cobros'} sin subir de este equipo: todavía no {cola === 1 ? 'cuenta' : 'cuentan'} acá.</p>}
         {cargando && <p role="status" style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-2)', marginBottom: 12 }}>Buscando lo de hoy…</p>}
 
         {!cargando && <>

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { reducer } from './VentasContext';
 
-const base = { cart: [], outboxLen: 0, bloqueados: 0, isOnline: true, loading: false };
+const base = { cart: [], outboxLen: 0, bloqueados: 0, avisos: [], isOnline: true, loading: false };
 const item = (productoId: string) => ({ productoId, nombre: productoId, codigoBarras: '', precio: 100, qty: 1, stockDisponible: 5 });
 
 describe('carrito (reducer)', () => {
@@ -17,6 +17,14 @@ describe('carrito (reducer)', () => {
     s = reducer(s, { type: 'ADD_ITEM', payload: item('b') });
     s = reducer(s, { type: 'SET_QTY', productoId: 'a', qty: 0 });
     expect(s.cart.map(c => c.productoId)).toEqual(['b']);
+  });
+
+  it('al guardar la venta queda lo que se escaneó mientras tanto', () => {
+    const vendido = [item('a'), item('b')];
+    let s = reducer({ ...base, cart: vendido }, { type: 'ADD_ITEM', payload: item('a') });
+    s = reducer(s, { type: 'ADD_ITEM', payload: item('c') });
+    s = reducer(s, { type: 'RESTAR_VENDIDO', vendido });
+    expect(s.cart.map(c => [c.productoId, c.qty])).toEqual([['a', 1], ['c', 1]]);
   });
 
   it('el mismo número de pendientes no redibuja', () => {

@@ -75,14 +75,23 @@ describe('resumirVentas', () => {
     ]);
   });
 
+  it('el descuento solo resta de la ganancia la parte que cae sobre lo que tiene costo', () => {
+    const conDesc = [{ ...ventas[0], id: 'x', descuento: 100 }];
+    const g = resumirVentas(conDesc, [
+      { venta_id: 'x', producto_id: 'p1', nombre_producto: 'Leche', cantidad: 1, subtotal: 600, costo_unit: 200 },
+      { venta_id: 'x', producto_id: null, nombre_producto: null, cantidad: 1, subtotal: 400 },
+    ], {}, r);
+    expect(g.ganancia.total).toBe(400 - 60); // 60% del descuento cae sobre la leche
+  });
+
   it('ganancia con el costo de cada venta, menos descuentos; avisa lo que no tiene costo', () => {
     const g = resumirVentas(ventas, [
       { venta_id: 'a', producto_id: 'p1', nombre_producto: 'Leche', cantidad: 2, subtotal: 1000, costo_unit: 300 },
       { venta_id: 'b', producto_id: 'p2', nombre_producto: 'Pan', cantidad: 1, subtotal: 500, costo_unit: null },
       { venta_id: 'd', producto_id: null, nombre_producto: null, cantidad: 1, subtotal: 200 }, // monto suelto
     ], { p1: 'Leche 1L' }, r);
-    // (1000 - 2×300) - 50 de descuento de la venta b
-    expect(g.ganancia).toEqual({ total: 350, vendidoConCosto: 1000, margen: 0.35, unidadesSinCosto: 1 });
+    // (1000 - 2×300): el descuento de la venta b cae sobre el pan, que no tiene costo
+    expect(g.ganancia).toEqual({ total: 400, vendidoConCosto: 1000, margen: 0.4, unidadesSinCosto: 1 });
     expect(g.productos.map(f => [f.nombre, f.ganancia])).toEqual([['Leche 1L', 400], ['Pan', null], ['Venta sin producto', null]]);
   });
 

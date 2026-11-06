@@ -15,9 +15,11 @@ interface Props {
   /** true = entró; false = clave incorrecta; un texto = el error real para mostrar (bloqueado, sin internet…). */
   onSuccess: (pin: string) => Promise<boolean | string>;
   onCancel: () => void;
+  /** Mínimo de números al crear la clave (la del dueño, 6; una que ya existe sigue andando aunque tenga 4). */
+  minimo?: number;
 }
 
-const PinPad: React.FC<Props> = ({ mode, titulo: tituloProp, subtitulo: subtituloProp, extra, onSuccess, onCancel }) => {
+const PinPad: React.FC<Props> = ({ mode, titulo: tituloProp, subtitulo: subtituloProp, extra, onSuccess, onCancel, minimo = 4 }) => {
   const [pin, setPin]       = useState('');
   const [confirm, setConfirm] = useState('');
   const [stage, setStage]   = useState<'first' | 'confirm'>('first'); // solo para create
@@ -35,7 +37,7 @@ const PinPad: React.FC<Props> = ({ mode, titulo: tituloProp, subtitulo: subtitul
     stage === 'first' ? (tituloProp ?? 'Creá una clave de dueño') : 'Repetí la clave';
   const subtitulo =
     mode === 'unlock' ? (subtituloProp ?? 'Acceso a secciones del dueño') :
-    stage === 'first' ? (subtituloProp ?? 'Mínimo 4 números. La vas a necesitar para ver caja, reportes y deudas.') :
+    stage === 'first' ? (subtituloProp ?? `${minimo === 6 ? '6 números' : `Mínimo ${minimo} números`}. La vas a necesitar para ver caja, reportes y deudas.`) :
     'Confirmá la clave para guardarla';
 
   const press = async (d: string) => {
@@ -53,7 +55,7 @@ const PinPad: React.FC<Props> = ({ mode, titulo: tituloProp, subtitulo: subtitul
     if (busy) return;
     if (mode === 'create') {
       if (stage === 'first') {
-        if (pin.length < 4) { setError('Mínimo 4 dígitos'); return; }
+        if (pin.length < minimo) { setError(minimo === 6 ? 'Tienen que ser 6 números' : `Mínimo ${minimo} números`); return; }
         setStage('confirm'); return;
       }
       // confirm stage

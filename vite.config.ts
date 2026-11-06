@@ -9,13 +9,15 @@ import react from '@vitejs/plugin-react';
 function csp(mode: string): Plugin {
   const env = loadEnv(mode, process.cwd(), '');
   const supa = env.VITE_SUPABASE_URL ? new URL(env.VITE_SUPABASE_URL).origin : '';
+  const sentry = new URL(env.VITE_SENTRY_DSN || 'https://o4511522176499712.ingest.us.sentry.io').origin;
   const politica = [
     "default-src 'self'",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline'", // estilos en línea de React e Ionic
     `img-src 'self' data: blob: ${supa}`, // fotos de productos (Storage)
     "font-src 'self' data:",
-    `connect-src 'self' ${supa} ${supa.replace(/^http/, 'ws')} https://api.github.com https://*.sentry.io`,
+    // Destinos exactos: con "*.sentry.io" o toda la API de GitHub, un script colado podía mandar datos a una cuenta propia.
+    `connect-src 'self' ${supa} ${supa.replace(/^http/, 'ws')} https://api.github.com/repos/Vloom02/Stockly/releases/latest ${sentry}`,
     "media-src 'self' blob: mediastream:",
     "worker-src 'self' blob:",
     "object-src 'none'",

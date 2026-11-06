@@ -23,6 +23,11 @@ export function initSentry(): void {
     ignoreErrors: ['Failed to fetch', 'NetworkError', 'Load failed', 'AbortError', 'Timeout'],
     // Los toques guardan el nombre del botón ("Cobrar a Marta", un empleado) y la consola puede llevar
     // datos de una fila: nada de eso viaja (datos personales de clientes de fiado y empleados).
-    beforeBreadcrumb: (b) => (b.category === 'ui.click' || b.category === 'console' ? null : b),
+    // Las direcciones de los pedidos, sin lo que va después del "?": ahí viajan el token del celular y lo que se buscó.
+    beforeBreadcrumb: (b) => {
+      if (b.category === 'ui.click' || b.category === 'console') return null;
+      if ((b.category === 'fetch' || b.category === 'xhr') && typeof b.data?.url === 'string') b.data.url = b.data.url.split('?')[0];
+      return b;
+    },
   });
 }

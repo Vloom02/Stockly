@@ -5,8 +5,10 @@
 import React, { ReactNode } from 'react';
 import { IonContent } from '@ionic/react';
 import { useOwner } from '../context/OwnerContext';
+import { useEmpleado } from '../context/EmpleadoContext';
 import PinPad from './PinPad';
 import BotonHuella from './BotonHuella';
+import MeOlvideLaClave from './MeOlvideLaClave';
 import BotonVolver from './BotonVolver';
 import { useHuella } from '../lib/useHuella';
 import { CLAVE_HUELLA_DUENO } from '../lib/huella';
@@ -16,7 +18,9 @@ import { Button } from './ui';
 const OwnerGuard: React.FC<{ children: ReactNode; titulo: string }> = ({ children, titulo }) => {
   const { hasPin, isUnlocked, loading, setPin, tryUnlock, keepAlive } = useOwner();
   const [showPad, setShowPad] = React.useState(false);
-  const huella = useHuella(CLAVE_HUELLA_DUENO);
+  // Sin huella si hay empleados: Android no distingue de quién es el dedo y la de un cajero abría el modo dueño.
+  const { hayEmpleados } = useEmpleado();
+  const huella = useHuella(hayEmpleados ? null : CLAVE_HUELLA_DUENO);
 
   if (loading) {
     return (
@@ -39,9 +43,11 @@ const OwnerGuard: React.FC<{ children: ReactNode; titulo: string }> = ({ childre
       {showPad && (
         <PinPad
           mode={hasPin ? 'unlock' : 'create'}
-          extra={hasPin && huella.activa ? (
-            <BotonHuella onClick={async () => { if (await huella.entrar(tryUnlock)) setShowPad(false); }} />
-          ) : undefined}
+          minimo={6}
+          extra={hasPin ? (<>
+            {huella.activa && <BotonHuella onClick={async () => { if (await huella.entrar(tryUnlock)) setShowPad(false); }} />}
+            <MeOlvideLaClave />
+          </>) : undefined}
           onSuccess={async (pin) => {
             const ok = hasPin ? await tryUnlock(pin) : await setPin(pin);
             if (ok) { await huella.ofrecer(pin); setShowPad(false); }

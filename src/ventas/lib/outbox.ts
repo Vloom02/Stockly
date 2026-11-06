@@ -4,8 +4,9 @@
 // stock MÁS RECIENTE de la nube (aplica delta, no pisa cantidad vieja).
 // ═══════════════════════════════════════════════════════════════════════════
 import { supabase } from './supabase';
-import { OutboxItem, CartItem, Lote } from '../types';
-import { payloadVenta, calcularFefo } from './ventas-engine';
+import { OutboxItem, CartItem } from '../types';
+import { payloadVenta } from './ventas-engine';
+import { formatearPlata } from '../../lib/numeros';
 
 const DB_NAME = 'ventas-db';
 const DB_VER  = 1;
@@ -92,6 +93,8 @@ export interface OfflineAnulacionPayload {
   ventaId: string;
   comercioId: string;
   usuario: string | null;
+  fecha?: number;       // cuándo se devolvió la plata (la salida de caja va ese día, no cuando vuelve la señal)
+  sucursalId?: string;  // el local donde se devolvió
 }
 
 // Pago de fiado encolado offline (idempotente por pagoId).
@@ -102,6 +105,26 @@ export interface OfflinePagoPayload {
   monto: number;
   usuario: string | null;
   fecha: number;
+  sucursalId?: string;  // el local donde entró la plata
+  cliente?: string;     // para el aviso, si resulta que ya estaba pagado
+}
+
+// ─── Plata para devolver ──────────────────────────────────────────────────────
+// Lo que se cobró o anuló sin internet y, al subir, resulta que hay que devolverle al cliente. Antes el cobro se
+// descartaba sin avisar: la clienta pagaba dos veces y en la caja "sobraba" plata.
+export interface AvisoDevolver { id: string; texto: string; monto: number; fecha: number }
+const CLAVE_AVISOS = 'avisos-devolver';
+
+export async function leerAvisosDevolver(): Promise<AvisoDevolver[]> {
+  await openDB();
+  try { return JSON.parse((await getLocalSetting(CLAVE_AVISOS)) || '[]'); } catch { return []; }
+}
+async function anotarAvisoDevolver(a: AvisoDevolver): Promise<void> {
+  const lista = await leerAvisosDevolver();
+  if (!lista.some(x => x.id === a.id)) await setLocalSetting(CLAVE_AVISOS, JSON.stringify([...lista, a]));
+}
+export async function quitarAvisoDevolver(id: string): Promise<void> {
+  await setLocalSetting(CLAVE_AVISOS, JSON.stringify((await leerAvisosDevolver()).filter(x => x.id !== id)));
 }
 
 // ─── Flush con guarda contra solapamiento ─────────────────────────────────────
@@ -127,17 +150,25 @@ export function esErrorDeRed(msg?: string): boolean {
           'timeout', 'aborted', 'sin sesión'].some(p => m.includes(p));
 }
 
-export async function flushOutbox(): Promise<number> {
+/** `esperan`: productos que todavía no subieron de Mercadería. Sus ventas quedan para la próxima pasada: si llegaban
+ *  antes que la mercadería salían como "vendido sin stock" a nombre del cajero, o el servidor las rechazaba. */
+export async function flushOutbox(esperan: Set<string> = new Set()): Promise<number> {
   if (flushing || !navigator.onLine) return 0;
   flushing = true;
   let processed = 0;
   try {
-    // Sin sesión el servidor rechaza todo como "no autorizado" y cada venta se iba a cuarentena.
-    if (!(await supabase.auth.getSession()).data.session) return 0;
+    // Sin sesión el servidor rechaza todo como "no autorizado" y cada venta se iba a cuarentena. Con tiempo límite: con
+    // Wi-Fi sin salida justo cuando toca renovar la sesión, la cola no se volvía a mandar por minutos.
+    const sesion = await Promise.race([
+      supabase.auth.getSession().then(r => r.data.session),
+      new Promise<null>(r => setTimeout(() => r(null), 15000)),
+    ]);
+    if (!sesion) return 0;
     const items: OutboxItem[] = await idbGetAll('outbox');
     items.sort((a, b) => a.createdAt - b.createdAt);
     for (const item of items) {
       if (item.bloqueado) continue; // en cuarentena: no se reintenta hasta acción manual
+      if (item.kind === 'venta' && (item.payload as OfflineVentaPayload).cart.some(c => esperan.has(c.productoId))) continue;
       try {
         // Con tiempo límite: con Wi-Fi sin salida el pedido quedaba colgado y la cola no se volvía a mandar nunca.
         // Si el servidor igual lo aplicó, reintentarlo no duplica (todo va por id).
@@ -205,21 +236,35 @@ async function syncVentaOffline(p: OfflineVentaPayload): Promise<void> {
 
 // Anulación: el RPC devuelve `duplicada: true` si ya estaba anulada → reintentar es seguro.
 async function syncAnulacionOffline(p: OfflineAnulacionPayload): Promise<void> {
-  const { error } = await supabase.rpc('anular_venta', {
-    p: { venta_id: p.ventaId, comercio_id: p.comercioId, usuario: p.usuario },
+  const { data, error } = await supabase.rpc('anular_venta', {
+    p: { venta_id: p.ventaId, comercio_id: p.comercioId, usuario: p.usuario, sucursal_id: p.sucursalId,
+         ...(p.fecha ? { fecha: new Date(p.fecha).toISOString() } : {}) },
   });
   if (error) throw new Error(error.message);
+  const devuelto = Number((data as { devuelto?: number } | null)?.devuelto ?? 0);
+  if (devuelto > 0) {
+    await anotarAvisoDevolver({ id: p.ventaId, monto: devuelto, fecha: Date.now(),
+      texto: `Venta anulada sin internet: si todavía no lo hiciste, devolvé ${formatearPlata(devuelto)}. Quedó anotado como salida de caja.` });
+  }
 }
 
 // Pago de fiado: idempotente por pago_id (on conflict do nothing en el server).
 async function syncPagoOffline(p: OfflinePagoPayload): Promise<void> {
-  const { error } = await supabase.rpc('registrar_pago_fiado', {
+  const { data, error } = await supabase.rpc('registrar_pago_fiado', {
     p: {
-      pago_id: p.pagoId, deuda_id: p.deudaId, comercio_id: p.comercioId,
+      pago_id: p.pagoId, deuda_id: p.deudaId, comercio_id: p.comercioId, sucursal_id: p.sucursalId,
       monto: p.monto, usuario: p.usuario, fecha: new Date(p.fecha).toISOString(),
     },
   });
   if (error) throw new Error(error.message);
+  // El servidor nunca cobra más que el saldo: si otro equipo ya lo cobró, se anotó menos (o nada) y hay que devolver.
+  const r = (data ?? {}) as { sin_saldo?: boolean; duplicado?: boolean; cobrado?: number };
+  const cobrado = r.sin_saldo ? 0 : r.cobrado;
+  if (!r.duplicado && cobrado !== undefined && cobrado < p.monto) {
+    const devolver = Math.round((p.monto - cobrado) * 100) / 100;
+    await anotarAvisoDevolver({ id: p.pagoId, monto: devolver, fecha: Date.now(),
+      texto: `${p.cliente ?? 'Un cliente'} ya había pagado en otro equipo: devolvele ${formatearPlata(devolver)}.` });
+  }
 }
 
 // ─── Caja: cierres y entradas/salidas de plata ────────────────────────────────
@@ -253,44 +298,6 @@ export async function guardarFilaCaja(kind: 'cierre' | 'caja_mov', fila: FilaCaj
 export async function filasCajaEnCola(kind: 'cierre' | 'caja_mov'): Promise<FilaCaja[]> {
   await openDB();
   return (await idbGetAll<OutboxItem>('outbox')).filter(i => i.kind === kind).map(i => i.payload as FilaCaja);
-}
-
-// ─── Cache catálogo + lotes para vender offline ───────────────────────────────
-// Una sola transacción: si la app se cierra a mitad de camino, IndexedDB
-// descarta todo y queda el catálogo anterior (nunca uno vacío o a medias).
-export async function cacheCatalogo(productos: unknown[], lotes: unknown[]): Promise<void> {
-  await openDB();
-  await new Promise<void>((res, rej) => {
-    const t = db!.transaction(['productos', 'lotes'], 'readwrite');
-    const sp = t.objectStore('productos');
-    const sl = t.objectStore('lotes');
-    sp.clear(); sl.clear();
-    for (const p of productos) sp.put(p);
-    for (const l of lotes)     sl.put(l);
-    t.oncomplete = () => res();
-    t.onerror = () => rej(t.error);
-    t.onabort = () => rej(t.error);
-  });
-}
-
-/**
- * Descuenta del cache local de lotes lo vendido offline (FEFO, igual que el server),
- * para que el stock mostrado no quede viejo hasta reconectar. Devuelve solo los
- * lotes que cambiaron. Al sincronizar, el server recalcula y el cache se reemplaza.
- */
-export function descontarLotesLocales(lotes: Lote[], cart: CartItem[]): Lote[] {
-  const cambiados: Lote[] = [];
-  for (const item of cart) {
-    const delProducto = lotes
-      .filter(l => l.producto_id === item.productoId && !l.retirado && l.cantidad > 0)
-      .sort((a, b) => (a.fecha_vencimiento ?? '9999').localeCompare(b.fecha_vencimiento ?? '9999'));
-    for (const d of calcularFefo(delProducto, item.qty)) {
-      const lote = delProducto.find(l => l.id === d.loteId)!;
-      lote.cantidad = d.cantidadNueva;
-      if (!cambiados.includes(lote)) cambiados.push(lote);
-    }
-  }
-  return cambiados;
 }
 
 /**

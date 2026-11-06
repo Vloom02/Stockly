@@ -12,6 +12,7 @@ import { useHistory } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { cobrosDeFiado } from '../lib/fiado';
 import { useAuth } from '../context/AuthContext';
+import { useVentas } from '../context/VentasContext';
 import { useOwner } from '../context/OwnerContext';
 import { openDB, getLocalSetting, setLocalSetting } from '../lib/outbox';
 import { formatMoney } from '../context/VentasContext';
@@ -24,7 +25,7 @@ import { totalesPorMetodo, arqueo, MovCaja } from '../lib/caja';
 import BotonVolver from '../components/BotonVolver';
 import { MoonIcon as IcoMoonIcon, SunIcon as IcoSunIcon } from '@heroicons/react/24/outline';
 import { ClockIcon as IcoClockIcon } from '@heroicons/react/24/outline';
-interface VentaRow { id: string; total: number; metodo_pago: string; fecha: string; fiado: boolean; }
+interface VentaRow { id: string; total: number; metodo_pago: string; fecha: string; fiado: boolean; anulada?: boolean; }
 interface CierreRow { id: string; cajero_nombre: string; hasta: string; total: number; diferencia: number; efectivo_contado: number; }
 type TurnoId = 'manana' | 'tarde' | 'noche';
 interface Turno { id: TurnoId; nombre: string; Icono: typeof IcoSunIcon; startHour: number; endHour: number; }
@@ -76,6 +77,7 @@ const metodoLabel = (k: string) =>
 
 const CierrePage: React.FC = () => {
   const { comercio, sucursalActiva } = useAuth();
+  const { state: { outboxLen: cola } } = useVentas();
   const { setPin } = useOwner();
   const history = useHistory();
   const [ventas, setVentas]   = useState<VentaRow[]>([]);
@@ -123,8 +125,8 @@ const CierrePage: React.FC = () => {
     setLoading(true);
     const desdeIso = inicio.toISOString(), hastaIso = fin.toISOString();
     let q = supabase
-      .from('ventas_ventas').select('id, total, metodo_pago, fecha, fiado')
-      .eq('comercio_id', comercio.id).eq('anulada', false)
+      .from('ventas_ventas').select('id, total, metodo_pago, fecha, fiado, anulada')
+      .eq('comercio_id', comercio.id)
       .gte('fecha', desdeIso).lt('fecha', hastaIso);
     let qm = supabase.from('ventas_caja_mov').select('tipo, monto, fecha, turno_desde')
       .eq('comercio_id', comercio.id).gte('fecha', desdeIso).lt('fecha', hastaIso);
@@ -159,12 +161,14 @@ const CierrePage: React.FC = () => {
     })();
   }, [comercio, ventas]);
 
-  const total      = useMemo(() => ventas.reduce((s, v) => s + v.total, 0), [ventas]);
-  const cantidad   = ventas.length;
+  // Las anuladas no son ventas, pero la plata entró: el arqueo las cuenta (ver lib/caja.ts).
+  const validas    = useMemo(() => ventas.filter(v => !v.anulada), [ventas]);
+  const total      = useMemo(() => validas.reduce((s, v) => s + v.total, 0), [validas]);
+  const cantidad   = validas.length;
   const ticketProm = cantidad > 0 ? total / cantidad : 0;
 
   // Fiado aparte (no entró plata); el esperado suma fondo, entradas/salidas y cobros de fiado.
-  const porMetodo = useMemo(() => totalesPorMetodo(ventas), [ventas]);
+  const porMetodo = useMemo(() => totalesPorMetodo(validas), [validas]);
   const caja = useMemo(() => arqueo(ventas, movs, cobros), [ventas, movs, cobros]);
   const totalEfectivo = caja.esperado;
 
@@ -245,6 +249,14 @@ const CierrePage: React.FC = () => {
           )}
         </div>
 
+        {/* Lo que está en la cola de este equipo todavía no cuenta: arquear así da "Sobran" sin sobrar nada. */}
+        {!loading && (sinInternet || cola > 0) && (
+          <p role="alert" style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-danger-dark)', background: 'var(--color-danger-bg)', borderRadius: 'var(--radius)', padding: 12, margin: '0 0 12px' }}>
+            {cola > 0
+              ? `Hay ${cola} ${cola === 1 ? 'venta o cobro' : 'ventas o cobros'} sin subir de este equipo: no ${cola === 1 ? 'está contado' : 'están contados'} acá. Esperá que suban antes de contar la caja.`
+              : 'Sin internet: estos números pueden estar incompletos.'}
+          </p>
+        )}
         {loading ? (
           <><Skeleton height={70} style={{ marginBottom: 8 }} /><Skeleton height={140} style={{ marginBottom: 8 }} /><Skeleton height={120} /></>
         ) : cantidad === 0 ? (
@@ -361,6 +373,7 @@ const CierrePage: React.FC = () => {
       {showPinPad && (
         <PinPad
           mode="create"
+          minimo={6}
           titulo="Nueva clave de dueño"
           onSuccess={async (pin) => {
             const ok = await setPin(pin);

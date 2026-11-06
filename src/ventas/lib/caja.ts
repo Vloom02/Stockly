@@ -4,7 +4,7 @@
 // incluía el fondo, las entradas/salidas ni los cobros de fiado → "faltan $7.000" sin faltar nada.
 // ═══════════════════════════════════════════════════════════════════════════
 
-export interface VentaCaja { total: number; metodo_pago: string; fiado: boolean; anulada?: boolean | null }
+export interface VentaCaja { total: number; metodo_pago: string; fiado: boolean; anulada?: boolean | null; descuento?: number | null }
 export interface MovCaja { tipo: 'apertura' | 'ingreso' | 'egreso'; monto: number; fecha?: string; turno_desde?: string | null }
 
 /** Total por forma de pago. Lo fiado va aparte (no entró plata) y lo anulado no cuenta. */
@@ -35,11 +35,13 @@ const hora = (f?: string) => { const t = f ? new Date(f).getTime() : 0; return N
 
 export interface Arqueo { fondo: number; ventasEfectivo: number; ingresos: number; egresos: number; cobrosFiado: number; esperado: number }
 
-/** Efectivo que tendría que haber en la caja. */
+/** Efectivo que tendría que haber en la caja. Una venta en efectivo anulada sigue contando en su turno, porque la plata
+ *  entró, y la devolución es una salida de caja (migración 19) en el turno en que se devuelve: así anular una venta de
+ *  ayer no descuadra el cierre de ayer, y en el mismo turno da cero. */
 export function arqueo(ventas: VentaCaja[], movs: MovCaja[], cobrosFiado: number, fondoManual = 0): Arqueo {
   const hayApertura = movs.some(m => m.tipo === 'apertura');
   const fondo = hayApertura ? fondoDeApertura(movs) : fondoManual;
-  const ventasEfectivo = totalesPorMetodo(ventas)['efectivo'] ?? 0;
+  const ventasEfectivo = ventas.filter(v => !v.fiado && v.metodo_pago === 'efectivo').reduce((s, v) => s + Number(v.total), 0);
   const ingresos = movs.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + Number(m.monto), 0);
   const egresos = movs.filter(m => m.tipo === 'egreso').reduce((s, m) => s + Number(m.monto), 0);
   return { fondo, ventasEfectivo, ingresos, egresos, cobrosFiado, esperado: fondo + ventasEfectivo + ingresos - egresos + cobrosFiado };

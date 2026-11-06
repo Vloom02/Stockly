@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { esErrorPermanente, ventasLocalesDeHoy, descontarLotesLocales, unidadesPendientes } from './outbox';
-import type { Lote, CartItem, OutboxItem } from '../types';
+import { esErrorPermanente, ventasLocalesDeHoy, unidadesPendientes } from './outbox';
+import type { CartItem, OutboxItem } from '../types';
 
 describe('esErrorPermanente (clasificación para cuarentena)', () => {
   it('marca como permanentes los errores de validación/RLS/constraint', () => {
@@ -50,25 +50,6 @@ describe('ventasLocalesDeHoy (ventas offline del día)', () => {
       { id: 'b', fecha: 'no-es-fecha' },
     ];
     expect(ventasLocalesDeHoy(items, base).map(v => v.id)).toEqual(['a']);
-  });
-});
-
-describe('descontarLotesLocales (stock local tras vender offline)', () => {
-  const lote = (id: string, producto_id: string, cantidad: number, fecha_vencimiento: string | null) =>
-    ({ id, producto_id, cantidad, fecha_vencimiento, retirado: false }) as unknown as Lote;
-  const item = (productoId: string, qty: number) => ({ productoId, qty }) as unknown as CartItem;
-
-  it('descuenta FEFO: primero el que vence antes, y pasa al siguiente si no alcanza', () => {
-    const lotes = [lote('tarde', 'p1', 5, '2026-12-01'), lote('pronto', 'p1', 2, '2026-11-01'), lote('otro', 'p2', 9, null)];
-    const cambiados = descontarLotesLocales(lotes, [item('p1', 3)]);
-    expect(cambiados.map(l => [l.id, l.cantidad])).toEqual([['pronto', 0], ['tarde', 4]]);
-    expect(lotes.find(l => l.id === 'otro')!.cantidad).toBe(9);
-  });
-
-  it('no deja stock negativo ni toca productos sin lotes (venta rápida)', () => {
-    const lotes = [lote('a', 'p1', 1, null)];
-    const cambiados = descontarLotesLocales(lotes, [item('p1', 5), item('libre-1', 1)]);
-    expect(cambiados.map(l => l.cantidad)).toEqual([0]);
   });
 });
 

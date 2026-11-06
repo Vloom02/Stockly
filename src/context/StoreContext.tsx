@@ -8,11 +8,13 @@ import {
 import { haptic } from '../utils/haptics';
 import { useAuth } from './AuthContext';
 import {
-  abrirDB, guardarYEncolar,
+  abrirDB, guardarYEncolar, getMeta, setMeta, limpiarTodoLocal, podarMovimientos,
   cargarProductos, cargarLotes, cargarSucursales, cargarMovimientos,
   obtenerPendientes, obtenerBloqueados, reintentarBloqueados,
 } from '../lib/localDb';
-import { sincronizar } from '../lib/sync';
+import type { TablaSync } from '../lib/localDb';
+import { sincronizar, CambiosBajados, sinCambios } from '../lib/sync';
+import { aplicarPorId, sumarMovimientos } from '../lib/aplicarCambios';
 import { supabaseConfigurado } from '../lib/supabase';
 import { almacenGet, almacenSet } from '../lib/almacen';
 import { diasRestantes, calcularNivelAlerta as _calcNivel, ordenNivel, etiquetaNivel, fechaLocalISO } from '../lib/vencimientos';
@@ -83,10 +85,30 @@ export function textoEstado(fechaVencimiento: string): string {
 
 const hoyISO = () => fechaLocalISO();
 
+/** Crear fechas para cada lote en cada cambio pesaba con miles de lotes, y fechas distintas hay pocas. */
+function nivelesConMemoria() {
+  const niveles = new Map<string, NivelAlerta>();
+  return (fecha: string, diasAviso?: number): NivelAlerta => {
+    const k = `${fecha}|${diasAviso ?? ''}`;
+    let n = niveles.get(k);
+    if (!n) { n = calcularNivelAlerta(fecha, diasAviso); niveles.set(k, n); }
+    return n;
+  };
+}
+
+const CAMPOS_PRODUCTO = ['nombre', 'codigoBarras', 'categoria', 'precio', 'diasAvisoDefault', 'proveedor', 'stockMinimo', 'costo', 'fotoUrl'];
+const CAMPOS_LOTE = ['fechaVencimiento', 'diasAviso', 'fechaIngreso', 'proveedor', 'numeroLote'];
+/** Lo que cambió entre dos versiones de un registro (lo vacío va como null, para poder borrarlo en el servidor). */
+function camposCambiados(antes: object | undefined, ahora: object, campos: string[]): Record<string, unknown> {
+  const a = (antes ?? {}) as Record<string, unknown>, b = ahora as Record<string, unknown>;
+  return Object.fromEntries(campos.filter(k => (a[k] ?? null) !== (b[k] ?? null)).map(k => [k, b[k] ?? null]));
+}
+
 
 // ─── Estado ─────────────────────────────────────────────────────────────────
 interface State {
   productos: Producto[];
+  inactivos: Producto[]; // dados de baja: no se muestran, pero lo que se perdió de ellos sigue valiendo plata
   lotes: Lote[];
   sucursales: Sucursal[];
   movimientos: Movimiento[];
@@ -96,7 +118,8 @@ interface State {
   bloqueadosSync: number;
 }
 type Action =
-  | { type: 'INIT'; productos: Producto[]; lotes: Lote[]; sucursales: Sucursal[]; movimientos: Movimiento[]; sucursalActivaId: string }
+  | { type: 'INIT'; productos: Producto[]; inactivos: Producto[]; lotes: Lote[]; sucursales: Sucursal[]; movimientos: Movimiento[]; sucursalActivaId: string }
+  | { type: 'APLICAR_CAMBIOS'; cambios: CambiosBajados }
   | { type: 'SET_SUCURSAL_ACTIVA'; id: string }
   | { type: 'UPSERT_PRODUCTO'; producto: Producto }
   | { type: 'REMOVE_PRODUCTO'; id: string }
@@ -110,6 +133,18 @@ type Action =
 function reducer(state: State, a: Action): State {
   switch (a.type) {
     case 'INIT': return { ...state, ...a, loaded: true };
+    case 'APLICAR_CAMBIOS': {
+      const c = a.cambios;
+      const productos = aplicarPorId<Producto>(state.productos, c.productos, p => p.activo);
+      const inactivos = aplicarPorId<Producto>(state.inactivos, c.productos, p => !p.activo);
+      const lotes = aplicarPorId<Lote>(state.lotes, c.lotes, l => !l.retirado);
+      const sucursales = aplicarPorId<Sucursal>(state.sucursales, c.sucursales, s => s.activa);
+      const movimientos = sumarMovimientos<Movimiento>(state.movimientos, c.movimientos);
+      if (productos === state.productos && inactivos === state.inactivos && lotes === state.lotes
+        && sucursales === state.sucursales && movimientos === state.movimientos) return state; // nada cambió: no se redibuja
+      const sucursalActivaId = sucursales.some(s => s.id === state.sucursalActivaId) ? state.sucursalActivaId : sucursales[0]?.id || '';
+      return { ...state, productos, inactivos, lotes, sucursales, movimientos, sucursalActivaId };
+    }
     case 'SET_SUCURSAL_ACTIVA': return { ...state, sucursalActivaId: a.id };
     case 'UPSERT_PRODUCTO': {
       const ex = state.productos.some(p => p.id === a.producto.id);
@@ -126,8 +161,8 @@ function reducer(state: State, a: Action): State {
       return { ...state, sucursales: ex ? state.sucursales.map(s => s.id === a.sucursal.id ? a.sucursal : s) : [...state.sucursales, a.sucursal] };
     }
     case 'PREPEND_MOVIMIENTO': return { ...state, movimientos: [a.movimiento, ...state.movimientos] };
-    case 'SET_PENDIENTES': return { ...state, pendientesSync: a.n };
-    case 'SET_BLOQUEADOS': return { ...state, bloqueadosSync: a.n };
+    case 'SET_PENDIENTES': return state.pendientesSync === a.n ? state : { ...state, pendientesSync: a.n };
+    case 'SET_BLOQUEADOS': return state.bloqueadosSync === a.n ? state : { ...state, bloqueadosSync: a.n };
     default: return state;
   }
 }
@@ -139,11 +174,12 @@ interface StoreContextValue {
   reintentarFallidos: () => Promise<void>;
   estadoNube: { configurado: boolean; ultimoError: string | null; ultimaSyncOk: string | null };
   addProducto: (p: Omit<Producto, 'id' | 'fechaCreacion' | 'activo' | 'comercioId'>) => Promise<string | null>;
-  updateProducto: (p: Producto) => Promise<void>;
+  updateProducto: (p: Producto, original?: Producto) => Promise<void>;
   deleteProducto: (id: string) => Promise<void>;
   buscarProductoPorCodigo: (codigo: string) => Producto | undefined;
   addLote: (l: Omit<Lote, 'id' | 'fechaIngreso' | 'retirado' | 'comercioId'>) => Promise<string | null>;
-  updateLote: (l: Lote) => Promise<void>;
+  updateLote: (l: Lote, original?: Lote) => Promise<void>;
+  ajustarLotes: (nuevos: Lote[]) => Promise<void>;
   retirarLote: (id: string, tipo: 'retiro_venta' | 'retiro_vencido' | 'retiro_roto', cantidad?: number, notas?: string) => Promise<void>;
   addSucursal: (s: Omit<Sucursal, 'id' | 'activa' | 'comercioId'>) => Promise<string | null>;
   updateSucursal: (s: Sucursal) => Promise<void>;
@@ -164,7 +200,7 @@ const StoreContext = createContext<StoreContextValue | null>(null);
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { comercio, miembro, cajeroEnTurno } = useAuth();
   const [state, dispatch] = useReducer(reducer, {
-    productos: [], lotes: [], sucursales: [], movimientos: [],
+    productos: [], inactivos: [], lotes: [], sucursales: [], movimientos: [],
     sucursalActivaId: '', loaded: false, pendientesSync: 0, bloqueadosSync: 0,
   });
   const [sincronizando, setSincronizando] = useState(false);
@@ -187,6 +223,21 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     dispatch({ type: 'SET_PENDIENTES', n: p.length });
     const b = await obtenerBloqueados();
     dispatch({ type: 'SET_BLOQUEADOS', n: b.length });
+  }, []);
+
+  // Los niveles dependen del día: con la tablet prendida toda la noche, lo que venció seguía "Crítico" hasta la primera venta.
+  const [hoy, setHoy] = useState(hoyISO);
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout>;
+    const programar = () => {
+      const medianoche = new Date();
+      medianoche.setHours(24, 0, 5, 0);
+      t = setTimeout(() => { setHoy(hoyISO()); programar(); }, medianoche.getTime() - Date.now());
+    };
+    programar();
+    const alVolver = () => { if (!document.hidden) setHoy(hoyISO()); };
+    document.addEventListener('visibilitychange', alVolver);
+    return () => { clearTimeout(t); document.removeEventListener('visibilitychange', alVolver); };
   }, []);
 
   // Cambian los umbrales en Ajustes → se recalculan los niveles (antes hacía falta reabrir la app).
@@ -224,19 +275,25 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     dispatch({
       type: 'INIT',
-      productos: activos, lotes: lotesActivos,
+      productos: activos, inactivos: productos.filter(p => !p.activo), lotes: lotesActivos,
       sucursales: sucursalesActivas, movimientos, sucursalActivaId,
     });
   }, []);
 
-  // Sincroniza y redibuja solo si bajó algo nuevo: antes cada 30 s se recargaba todo
-  // (catálogo, lotes, historial) y se redibujaban todas las pantallas aunque no cambiara nada.
+  // Sincroniza y aplica solo lo que bajó, sobre lo que ya está en memoria: antes cada venta, propia o de otro equipo,
+  // releía todo el almacenamiento local y redibujaba todas las pantallas.
+  const sucursalActivaRef = useRef('');
+  sucursalActivaRef.current = state.sucursalActivaId;
   const sincronizarYRecargar = useCallback(async (id: string) => {
     const res = await sincronizar(id);
-    if (res.bajados > 0) await recargarLocal();
+    if (!sinCambios(res.cambios)) {
+      // Se leen junto con los lotes: si una venta acaba de subir, sale de la cola y entra a los lotes a la vez.
+      setVendidoSinSubir(await leerUnidadesPendientes(sucursalActivaRef.current).catch(() => new Map<string, number>()));
+      dispatch({ type: 'APLICAR_CAMBIOS', cambios: res.cambios! });
+    }
     await refrescarPendientes();
     return res;
-  }, [recargarLocal, refrescarPendientes]);
+  }, [refrescarPendientes]);
 
   // ─── Init: abrir DB local, cargar, y sincronizar si hay internet ──────────
   useEffect(() => {
@@ -250,8 +307,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
     (async () => {
       await abrirDB();
+      // Lo guardado en el equipo es de una sola cuenta. Si la sesión se cortó sola y entra otra, veía los productos de
+      // la anterior y su cola se subía dentro del comercio nuevo.
+      const deQuien = await getMeta('comercio-datos');
+      if (deQuien && deQuien !== comercioId) await limpiarTodoLocal().catch(() => { /* */ });
+      if (deQuien !== comercioId) await setMeta('comercio-datos', comercioId);
       await recargarLocal();   // mostrar lo local YA (instantáneo)
       await refrescarPendientes();
+      // Una vez por día, en segundo plano: los movimientos viejos ya están en el servidor.
+      if ((await getMeta('poda-movimientos')) !== hoyISO()) {
+        setMeta('poda-movimientos', hoyISO()).then(() => podarMovimientos()).catch(() => { /* */ });
+      }
 
       // Sincronizar en segundo plano si hay internet
       if (navigator.onLine) {
@@ -312,11 +378,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setSincronizando(true);
     try {
       const res = await sincronizarYRecargar(comercioId);
-      setEstadoNube({
-        configurado: supabaseConfigurado,
-        ultimoError: res.error,
-        ultimaSyncOk: res.error ? estadoNubeRef.current.ultimaSyncOk : new Date().toISOString(),
-      });
+      // Solo si cambia el error: la hora de la última sincronización sola no vale redibujar toda la app.
+      if (res.error !== estadoNubeRef.current.ultimoError || !estadoNubeRef.current.ultimaSyncOk) {
+        setEstadoNube({
+          configurado: supabaseConfigurado,
+          ultimoError: res.error,
+          ultimaSyncOk: res.error ? estadoNubeRef.current.ultimaSyncOk : new Date().toISOString(),
+        });
+      }
     } finally {
       if (--enVuelo.current === 0) {
         sincronizandoRef.current = false;
@@ -364,13 +433,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return prod.id!;
   }, [comercioId, state.sucursalActivaId, registrarMovimiento, sincronizarAhora]);
 
-  const updateProducto = useCallback(async (p: Producto) => {
+  // `original`: como estaba al abrir el formulario. Si otro equipo cambió el precio mientras tanto, guardar acá solo
+  // la categoría no le vuelve el precio atrás.
+  const updateProducto = useCallback(async (p: Producto, original?: Producto) => {
     // Solo los campos que cambiaron: si otro equipo cambió otro campo del mismo producto, no se lo pisa.
-    const anterior = state.productos.find(x => x.id === p.id) as Record<string, unknown> | undefined;
-    const campos = Object.keys(p).filter(k => !['id', 'comercioId', 'activo', 'fechaCreacion'].includes(k)
-      && (!anterior || anterior[k] !== (p as unknown as Record<string, unknown>)[k]));
-    if (campos.length > 0) {
-      const parche = Object.fromEntries(campos.map(k => [k, (p as unknown as Record<string, unknown>)[k] ?? null]));
+    const parche = camposCambiados(original ?? state.productos.find(x => x.id === p.id), p, CAMPOS_PRODUCTO);
+    if (Object.keys(parche).length > 0) {
       await guardarYEncolar('productos', p, { tabla: 'productos', operacion: 'update', registroId: p.id!, payload: parche });
     }
     dispatch({ type: 'UPSERT_PRODUCTO', producto: p });
@@ -402,21 +470,50 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return lote.id!;
   }, [comercioId, registrarMovimiento, sincronizarAhora]);
 
-  const updateLote = useCallback(async (l: Lote) => {
+  const updateLote = useCallback(async (l: Lote, original?: Lote) => {
     const anterior = state.lotes.find(x => x.id === l.id);
     const diff = l.cantidad - (anterior?.cantidad || 0);
-    const cambio = { tabla: 'lotes' as const, operacion: 'update' as const, registroId: l.id!, payload: l };
+    // Solo lo que cambió: si solo cambió la cantidad no se sube la fila (pisaba una fecha corregida en otro equipo).
+    const parche = camposCambiados(original ?? anterior, l, CAMPOS_LOTE);
+    const cambio = Object.keys(parche).length > 0
+      ? [{ tabla: 'lotes' as const, operacion: 'update' as const, registroId: l.id!, payload: parche }] : [];
     // El ajuste, el lote y su cambio en una sola transacción: si la app se corta, queda todo o nada.
     if (diff !== 0) {
       await registrarMovimiento({ loteId: l.id, productoId: l.productoId, sucursalId: l.sucursalId, tipo: 'ajuste', cantidad: diff, cantidadAnterior: anterior?.cantidad || 0, cantidadNueva: l.cantidad, notas: `Ajuste (${diff > 0 ? '+' : ''}${diff})` },
-        true, { filas: [['lotes', l]], items: [cambio] });
-    } else {
-      await guardarYEncolar('lotes', l, cambio);
+        true, { filas: [['lotes', l]], items: cambio });
+    } else if (cambio.length > 0) {
+      await guardarYEncolar('lotes', l, cambio[0]);
     }
     dispatch({ type: 'UPSERT_LOTE', lote: l });
     await refrescarPendientes();
     sincronizarAhora();
   }, [state.lotes, registrarMovimiento, refrescarPendientes, sincronizarAhora]);
+
+  // Conteo de la mercadería: todos los ajustes en una sola transacción y un solo redibujo. Antes, lote por lote, 300
+  // diferencias dejaban la pantalla trabada varios minutos.
+  const ajustarLotes = useCallback(async (nuevos: Lote[]) => {
+    if (!comercioId) return;
+    const porId = new Map(state.lotes.map(l => [l.id, l]));
+    const movs: Movimiento[] = [];
+    const cambiados: Lote[] = [];
+    for (const l of nuevos) {
+      const ant = porId.get(l.id)?.cantidad ?? 0;
+      const diff = l.cantidad - ant;
+      if (diff === 0) continue;
+      cambiados.push(l);
+      movs.push({ id: crypto.randomUUID(), comercioId, fecha: new Date().toISOString(), usuario, loteId: l.id, productoId: l.productoId, sucursalId: l.sucursalId,
+        tipo: 'ajuste', cantidad: diff, cantidadAnterior: ant, cantidadNueva: l.cantidad, notas: `Ajuste (${diff > 0 ? '+' : ''}${diff})` });
+    }
+    if (movs.length === 0) return;
+    const items = movs.map(m => ({ tabla: 'ajuste_stock' as const, operacion: 'insert' as const, registroId: m.id!, payload: m }));
+    await guardarYEncolar('movimientos', movs[0], items[0], {
+      filas: [...movs.slice(1).map((m): [TablaSync, object] => ['movimientos', m]), ...cambiados.map((l): [TablaSync, object] => ['lotes', l])],
+      items: items.slice(1),
+    });
+    dispatch({ type: 'APLICAR_CAMBIOS', cambios: { productos: [], sucursales: [], lotes: cambiados, movimientos: movs } });
+    await refrescarPendientes();
+    sincronizarAhora();
+  }, [comercioId, usuario, state.lotes, refrescarPendientes, sincronizarAhora]);
 
   const retirarLote = useCallback(async (id: string, tipo: 'retiro_venta' | 'retiro_vencido' | 'retiro_roto', cantidad?: number, notas?: string) => {
     const lote = state.lotes.find(l => l.id === id);
@@ -452,11 +549,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [comercioId, refrescarPendientes]);
 
   const updateSucursal = useCallback(async (s: Sucursal) => {
-    await guardarYEncolar('sucursales', s, { tabla: 'sucursales', operacion: 'update', registroId: s.id!, payload: s });
+    // Solo lo que cambió: renombrar sin internet un local que otro equipo borró lo revivía.
+    const parche = camposCambiados(state.sucursales.find(x => x.id === s.id), s, ['nombre', 'direccion', 'activa']);
+    await guardarYEncolar('sucursales', s, { tabla: 'sucursales', operacion: 'update', registroId: s.id!, payload: parche });
     dispatch({ type: 'UPSERT_SUCURSAL', sucursal: s });
     await refrescarPendientes();
     sincronizarAhora();
-  }, [refrescarPendientes, sincronizarAhora]);
+  }, [state.sucursales, refrescarPendientes, sincronizarAhora]);
 
   const setSucursalActiva = useCallback((id: string) => {
     setSetting('sucursal-activa', id);
@@ -479,52 +578,65 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return m;
   }, [lotesDeSucursal]);
 
-  const productosConLotesCalc = useMemo((): ProductoConLotes[] =>
-    state.productos.map(producto => {
+  const productosConLotesCalc = useMemo((): ProductoConLotes[] => {
+    const nivelDe = nivelesConMemoria();
+    return state.productos.map(producto => {
       const lotes = lotesPorProducto.get(producto.id!) ?? [];
       const cantidadTotal = lotes.reduce((s, l) => s + l.cantidad, 0) - (vendidoSinSubir.get(producto.id!) ?? 0); // con negativos: vendido sin stock
       let nivelPeor: NivelAlerta = 'ok';
       let proxVenc: string | undefined;
       for (const l of lotes) {
         if (l.cantidad <= 0) continue; // un lote vacío o en negativo no vence
-        const n = calcularNivelAlerta(l.fechaVencimiento, l.diasAviso);
+        const n = nivelDe(l.fechaVencimiento, l.diasAviso);
         if (ordenNivel(n) < ordenNivel(nivelPeor)) nivelPeor = n;
         if (!proxVenc || l.fechaVencimiento < proxVenc) proxVenc = l.fechaVencimiento;
       }
-      return { producto, lotes, cantidadTotal, valorTotal: cantidadTotal * producto.precio, nivelPeor, proximoVencimiento: proxVenc };
-    }), [state.productos, lotesPorProducto, vendidoSinSubir, umbralesN]);
+      // Lo que falta (en negativo) no resta plata del inventario: la misma cuenta en Inicio, Mercadería, Reportes y el Excel.
+      return { producto, lotes, cantidadTotal, valorTotal: Math.max(0, cantidadTotal) * producto.precio, nivelPeor, proximoVencimiento: proxVenc };
+    });
+  }, [state.productos, lotesPorProducto, vendidoSinSubir, umbralesN, hoy]);
   const productosConLotes = useCallback(() => productosConLotesCalc, [productosConLotesCalc]);
 
   const lotesEnriquecidosCalc = useMemo((): LoteConProducto[] => {
     const prodPorId = new Map(state.productos.map(p => [p.id, p]));
     const suc = state.sucursales.find(s => s.id === state.sucursalActivaId);
+    const nivelDe = nivelesConMemoria();
+    const diasPorFecha = new Map<string, number>();
+    const diasDe = (f: string) => { let d = diasPorFecha.get(f); if (d === undefined) { d = diasRestantes(f); diasPorFecha.set(f, d); } return d; };
     return lotesDeSucursal.map(l => {
       const prod = prodPorId.get(l.productoId);
       return {
         ...l, productoNombre: prod?.nombre || '(eliminado)', productoCategoria: prod?.categoria || '',
         productoPrecio: prod?.precio || 0, productoProveedor: prod?.proveedor, sucursalNombre: suc?.nombre || '',
-        nivelAlerta: l.cantidad > 0 ? calcularNivelAlerta(l.fechaVencimiento, l.diasAviso) : 'ok',
-        diasRestantes: diasRestantes(l.fechaVencimiento), valorLote: l.cantidad * (prod?.precio || 0),
+        nivelAlerta: l.cantidad > 0 ? nivelDe(l.fechaVencimiento, l.diasAviso) : 'ok',
+        diasRestantes: diasDe(l.fechaVencimiento), valorLote: l.cantidad * (prod?.precio || 0),
       };
     });
-  }, [lotesDeSucursal, state.productos, state.sucursales, state.sucursalActivaId, umbralesN]);
+  }, [lotesDeSucursal, state.productos, state.sucursales, state.sucursalActivaId, umbralesN, hoy]);
   const lotesEnriquecidos = useCallback(() => lotesEnriquecidosCalc, [lotesEnriquecidosCalc]);
 
-  // Reprogramar el aviso de vencimiento cuando cambian los lotes / productos.
+  // El aviso de vencimiento se reprograma al arrancar y al salir de la app, que es cuando sirve. Hacerlo en cada venta
+  // recorría todos los lotes y llamaba tres veces al sistema.
+  const lotesParaAvisos = useRef(lotesEnriquecidos);
+  lotesParaAvisos.current = lotesEnriquecidos;
   useEffect(() => {
     if (!state.loaded) return;
-    sincronizarNotificaciones(lotesEnriquecidos());
-  }, [state.lotes, state.productos, state.sucursalActivaId, state.loaded, lotesEnriquecidos]);
+    sincronizarNotificaciones(lotesParaAvisos.current());
+    const alSalir = () => { if (document.hidden) sincronizarNotificaciones(lotesParaAvisos.current()); };
+    document.addEventListener('visibilitychange', alSalir);
+    return () => document.removeEventListener('visibilitychange', alSalir);
+  }, [state.loaded, state.sucursalActivaId]);
 
   const resumenCalc = useMemo((): Resumen => {
     const e = lotesEnriquecidosCalc;
     const negativos = productosConLotesCalc.filter(p => p.cantidadTotal < 0);
     const r: Resumen = { productosTotales: productosConLotesCalc.filter(p => p.cantidadTotal > 0).length, lotesTotales: 0, unidadesTotales: 0, valorTotal: 0, lotesVencidos: 0, lotesCriticos: 0, lotesUrgentes: 0, lotesAviso: 0, lotesOk: 0, valorVencido: 0, valorEnRiesgo: 0,
       productosEnNegativo: negativos.length, unidadesFaltantes: negativos.reduce((s, p) => s - p.cantidadTotal, 0) };
+    // Valor y unidades, por producto y con lo vendido sin subir: antes Inicio decía una cosa y Mercadería y el Excel otra.
+    for (const p of productosConLotesCalc) { r.unidadesTotales += Math.max(0, p.cantidadTotal); r.valorTotal += p.valorTotal; }
     for (const l of e) {
       if (l.cantidad <= 0) continue; // lo que hay en el local: los negativos van aparte
       r.lotesTotales++;
-      r.unidadesTotales += l.cantidad; r.valorTotal += l.valorLote;
       switch (l.nivelAlerta) {
         case 'vencido': r.lotesVencidos++; r.valorVencido += l.valorLote; break;
         case 'critico': r.lotesCriticos++; r.valorEnRiesgo += l.valorLote; break;
@@ -551,24 +663,27 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       res.push({ mes: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, etiqueta: ET[d.getMonth()], valorVencido: 0, valorRoto: 0, unidadesVencidas: 0 });
     }
     const idx = new Map(res.map((r, i) => [r.mes, i]));
+    // También los dados de baja: lo tirado de un producto que después se borró sigue siendo plata perdida.
+    const prodPorId = new Map([...state.productos, ...state.inactivos].map(p => [p.id, p]));
     for (const m of state.movimientos) {
       if (m.tipo !== 'retiro_vencido' && m.tipo !== 'retiro_roto') continue;
       if (m.sucursalId !== state.sucursalActivaId) continue; // del local elegido, como el resto de Reportes
       const i = idx.get(fechaLocalISO(new Date(m.fecha)).slice(0, 7));
       if (i === undefined) continue;
-      const prod = state.productos.find(p => p.id === m.productoId);
+      const prod = prodPorId.get(m.productoId);
       const valor = Math.abs(m.cantidad) * (prod?.costo || prod?.precio || 0); // al costo: la plata perdida
       if (m.tipo === 'retiro_vencido') { res[i].valorVencido += valor; res[i].unidadesVencidas += Math.abs(m.cantidad); }
       else res[i].valorRoto += valor;
     }
     return res;
-  }, [state.movimientos, state.productos, state.sucursalActivaId]);
+  }, [state.movimientos, state.productos, state.inactivos, state.sucursalActivaId]);
 
   const distribucionPorCategoria = useCallback((): DistribucionCategoria[] => {
     const mapa = new Map<string, DistribucionCategoria>();
+    const prodPorId = new Map(state.productos.map(p => [p.id, p]));
     for (const l of state.lotes) {
       if (l.sucursalId !== state.sucursalActivaId || l.cantidad <= 0) continue;
-      const prod = state.productos.find(p => p.id === l.productoId);
+      const prod = prodPorId.get(l.productoId);
       if (!prod) continue;
       const cat = prod.categoria || 'Sin categoría';
       const valor = l.cantidad * prod.precio;
@@ -582,16 +697,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const vencimientosDelMes = useCallback((anio: number, mes: number): Map<string, DiaVencimiento> => {
     const mapa = new Map<string, DiaVencimiento>();
     const prefijo = `${anio}-${String(mes + 1).padStart(2, '0')}`;
+    const nivelDe = nivelesConMemoria();
     for (const l of state.lotes) {
       if (l.sucursalId !== state.sucursalActivaId || l.cantidad <= 0) continue;
       if (!l.fechaVencimiento.startsWith(prefijo)) continue;
-      const nivel = calcularNivelAlerta(l.fechaVencimiento, l.diasAviso);
+      const nivel = nivelDe(l.fechaVencimiento, l.diasAviso);
       const ex = mapa.get(l.fechaVencimiento);
       if (ex) { ex.lotes++; ex.unidades += l.cantidad; if (ordenNivel(nivel) < ordenNivel(ex.nivelPeor)) ex.nivelPeor = nivel; }
       else mapa.set(l.fechaVencimiento, { fecha: l.fechaVencimiento, lotes: 1, unidades: l.cantidad, nivelPeor: nivel });
     }
     return mapa;
-  }, [state.lotes, state.sucursalActivaId, umbralesN]);
+  }, [state.lotes, state.sucursalActivaId, umbralesN, hoy]);
 
   // ─── Backup ────────────────────────────────────────────────────────────
   const exportarBackup = useCallback((): string => {
@@ -686,13 +802,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const valor = useMemo(() => ({
     state, sincronizando, sincronizarAhora, reintentarFallidos, estadoNube,
     addProducto, updateProducto, deleteProducto, buscarProductoPorCodigo,
-    addLote, updateLote, retirarLote, addSucursal, updateSucursal, setSucursalActiva,
+    addLote, updateLote, ajustarLotes, retirarLote, addSucursal, updateSucursal, setSucursalActiva,
     productosConLotes, lotesEnriquecidos, resumen, fefoSugeridos,
     perdidasPorMes, distribucionPorCategoria, vencimientosDelMes,
     exportarBackup, importarBackup,
   }), [state, sincronizando, sincronizarAhora, reintentarFallidos, estadoNube,
     addProducto, updateProducto, deleteProducto, buscarProductoPorCodigo,
-    addLote, updateLote, retirarLote, addSucursal, updateSucursal, setSucursalActiva,
+    addLote, updateLote, ajustarLotes, retirarLote, addSucursal, updateSucursal, setSucursalActiva,
     productosConLotes, lotesEnriquecidos, resumen, fefoSugeridos,
     perdidasPorMes, distribucionPorCategoria, vencimientosDelMes,
     exportarBackup, importarBackup]);

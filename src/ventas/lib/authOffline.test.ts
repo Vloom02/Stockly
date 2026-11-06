@@ -25,6 +25,30 @@ describe('authOffline (fallback sin conexión)', () => {
     expect((await verificarCredencialOffline('k2', '9999')).ok).toBe(false);
   });
 
+  it('a los 10 fallos se borra la clave guardada: hace falta internet', async () => {
+    await guardarCredencialOffline('k-tope', '2202');
+    for (let i = 0; i < 4; i++) await verificarCredencialOffline('k-tope', '0000');
+    expect((await verificarCredencialOffline('k-tope', '0000')).bloqueadoHasta).toBeGreaterThan(Date.now()); // el 5.º traba
+    mem.set('k-tope:fallos', JSON.stringify({ n: 9, hasta: 0 })); // como si hubiera adelantado el reloj
+    expect((await verificarCredencialOffline('k-tope', '0000')).ok).toBe(false);
+    expect((await verificarCredencialOffline('k-tope', '2202')).ok).toBe(false); // la buena ya no sirve sin internet
+    expect(await hayCredencialOffline('k-tope')).toBe(false);
+  });
+
+  it('entrar con internet no perdona los fallos', async () => {
+    await guardarCredencialOffline('k-perdon', '2202');
+    await verificarCredencialOffline('k-perdon', '0000');
+    await guardarCredencialOffline('k-perdon', '2202');
+    expect(JSON.parse(mem.get('k-perdon:fallos') as string).n).toBe(1);
+  });
+
+  it('con el reloj atrasado no entra', async () => {
+    await guardarCredencialOffline('k-reloj', '2202');
+    mem.set('auth_offline_hora', String(Date.now() + 3 * 3600 * 1000));
+    expect((await verificarCredencialOffline('k-reloj', '2202')).ok).toBe(false);
+    mem.set('auth_offline_hora', String(Date.now()));
+  });
+
   it('rechaza si no hay credencial cacheada', async () => {
     expect((await verificarCredencialOffline('inexistente', '2202')).ok).toBe(false);
     expect(await hayCredencialOffline('inexistente')).toBe(false);

@@ -60,10 +60,14 @@ export function rangoDe(p: Periodo, ahora = new Date()): Rango {
   const finMes = new Date(desde.getFullYear(), desde.getMonth() + 1, 1);
   const antDesde = new Date(desde.getFullYear(), desde.getMonth() - 1, 1);
   const mesAnt = MESES[antDesde.getMonth()];
+  const diasMesAnt = dia(desde, -1).getDate();
   return {
     desde, hasta: p === 'mes' ? dia(hoy, 1) : finMes, porTurno: false, // el mes en curso, hasta hoy
     titulo: `${mayus(MESES[desde.getMonth()])} ${desde.getFullYear()}`,
-    anterior: anterior(desde, finMes, antDesde, p === 'mes' ? `en ${mesAnt} hasta el día ${hoy.getDate()}` : `en ${mesAnt}`),
+    // Un mes ya cerrado se compara con el mes anterior entero: febrero contra "enero" cortado el 28 decía "en enero" sin los últimos 3 días.
+    anterior: p === 'mes'
+      ? anterior(desde, finMes, antDesde, `en ${mesAnt} hasta el día ${Math.min(hoy.getDate(), diasMesAnt)}`)
+      : { desde: antDesde, hasta: desde, frase: `en ${mesAnt}` },
   };
 }
 
@@ -145,7 +149,18 @@ export function resumirVentas(ventas: VentaRes[], items: ItemRes[], nombres: Rec
   }
   for (const f of productos) f.ganancia = gananciaPorNombre.get(f.nombre) ?? null;
   const descuentos = validas.reduce((s, v) => s + Number(v.descuento || 0), 0);
-  ganancia -= descuentos;
+  // A la ganancia le resta solo la parte del descuento que cae sobre lo que tiene costo: un descuento sobre una venta
+  // rápida o un producto sin costo daba "ganancia negativa" aunque todo lo demás dejara plata.
+  const subtotalDe = new Map<string, number>();
+  const conCostoDe = new Map<string, number>();
+  for (const i of delPeriodoItems) {
+    subtotalDe.set(i.venta_id, (subtotalDe.get(i.venta_id) ?? 0) + Number(i.subtotal));
+    if (i.producto_id && i.costo_unit != null) conCostoDe.set(i.venta_id, (conCostoDe.get(i.venta_id) ?? 0) + Number(i.subtotal));
+  }
+  for (const v of validas) {
+    const sub = subtotalDe.get(v.id) ?? 0;
+    if (sub > 0) ganancia -= Number(v.descuento || 0) * (conCostoDe.get(v.id) ?? 0) / sub;
+  }
 
   return {
     ganancia: { total: ganancia, vendidoConCosto, margen: vendidoConCosto > 0 ? ganancia / vendidoConCosto : 0, unidadesSinCosto },
