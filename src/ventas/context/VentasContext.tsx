@@ -29,6 +29,7 @@ async function productosSinSubir(): Promise<Set<string>> {
   } catch { return new Set(); }
 }
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import * as Sentry from '@sentry/react';
 
 async function hapticOk()  { try { await Haptics.impact({ style: ImpactStyle.Medium }); } catch { /* no-op */ } }
 async function hapticTap() { try { await Haptics.impact({ style: ImpactStyle.Light });  } catch { /* no-op */ } }
@@ -315,7 +316,10 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const msg = e instanceof Error ? e.message : '';
       // El servidor la RECHAZÓ (precio mal, producto borrado): guardarla para después solo la mandaba
       // a cuarentena y la pantalla decía "guardada". Se avisa y el carrito queda para corregir.
-      if (esErrorPermanente(msg)) return { ok: false, msg: `La venta no se guardó: ${msg}` };
+      if (esErrorPermanente(msg)) {
+        Sentry.captureMessage(`Venta rechazada: ${msg}`);
+        return { ok: false, msg: 'La venta no se guardó: el sistema la rechazó. Revisá los precios del carrito y probá de nuevo. Si sigue, avisale al dueño.' };
+      }
       return saveOffline(); // sin señal o se cortó: se guarda y se manda después con el mismo id
     }
   }, [comercio, sucursalActiva, miembro, sincronizarAhora]);

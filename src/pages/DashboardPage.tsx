@@ -162,11 +162,13 @@ const DashboardPage: React.FC = () => {
           )}
 
           {/* ─── BENTO GRID (misma ubicación, look libro) ─────────────── */}
-          <div className="lista-animada" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+          {/* Una arriba de otra en un celular; lado a lado si hay lugar. En 4 columnas fijas, con letra grande el número
+              se salía de la tarjeta y pisaba la de al lado. */}
+          <div className="lista-animada" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 10, marginBottom: 20 }}>
 
-            {/* Hero: valor inventario (2x2) — tarjeta editorial */}
+            {/* Hero: valor inventario — tarjeta editorial */}
             <div style={{
-              gridColumn: 'span 2', gridRow: 'span 2', position: 'relative',
+              position: 'relative',
               background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: 18,
               boxShadow: 'var(--shadow-md)',
             }}>
@@ -188,7 +190,7 @@ const DashboardPage: React.FC = () => {
 
             {/* En riesgo (2x1) */}
             {esDueno && <div style={{
-              gridColumn: 'span 2', background: 'var(--surface)', borderRadius: 'var(--radius-lg)',
+              background: 'var(--surface)', borderRadius: 'var(--radius-lg)',
               padding: 16, boxShadow: 'var(--shadow-md)',
             }}>
               <div style={{ fontSize: 15, color: 'var(--level-vencido-fg)', fontWeight: 800, marginBottom: 10 }}>
@@ -242,7 +244,7 @@ const DashboardPage: React.FC = () => {
             <EmptyState
               icon={<ArchiveBoxIcon width={32} height={32} />}
               title="Tu stock está vacío"
-              description="Empezá creando tu primer producto y cargá lotes con sus fechas de vencimiento."
+              description="Empezá creando tu primer producto y cargá la mercadería con su fecha de vencimiento."
               action={
                 <Button variant="primary" size="md" onClick={() => history.push('/producto/nuevo')} icon={<PlusCircleIcon width={18} height={18} />}>
                   Crear primer producto
@@ -261,7 +263,7 @@ const DashboardPage: React.FC = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <IcoCubeIcon width={22} height={22} style={{ flexShrink: 0 }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 16, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                           {p.producto.nombre}
                         </div>
                         <div style={{ fontSize: 14, color: 'var(--text-2)' }}>
@@ -393,7 +395,7 @@ export const LoteListItem: React.FC<{ lote: LoteConProducto; onClick: () => void
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
       <span style={{ width: 11, height: 11, borderRadius: '50%', background: colorNivel(lote.nivelAlerta), flexShrink: 0, boxShadow: '0 0 0 3px var(--surface-2)' }} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 16, marginBottom: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', letterSpacing: '-0.01em' }}>
           {lote.productoNombre}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-2)' }}>

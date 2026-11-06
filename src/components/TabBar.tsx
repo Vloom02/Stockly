@@ -17,17 +17,17 @@ interface TabConfig {
   IconActive: React.ComponentType<{ width?: number; height?: number; style?: React.CSSProperties }>;
   label: string;
   fab?: boolean;
-  ancho: number; // fr: "Mercadería" necesita más lugar que "Cargar"
+  ancho: number; // fr, según lo que mide cada palabra: con letra Muy grande en 360 dp entran justo
   empleado?: boolean; // la ve también un empleado en turno
 }
 
 const TABS: TabConfig[] = [
-  { path: '/dashboard',   Icon: HomeIcon,    IconActive: HomeSolid,  label: 'Inicio', ancho: 1 },
-  { path: '/ventas',      Icon: ShoppingCartIcon, IconActive: CartSolid, label: 'Vender', ancho: 1, empleado: true },
-  { path: '/lote/nuevo',  Icon: PlusIcon,    IconActive: PlusIcon,   label: 'Cargar', fab: true, ancho: 0.8 },
-  { path: '/stock',       Icon: CubeIcon,    IconActive: CubeSolid,  label: 'Mercadería', ancho: 1.3 },
+  { path: '/dashboard',   Icon: HomeIcon,    IconActive: HomeSolid,  label: 'Inicio', ancho: 0.72 },
+  { path: '/ventas',      Icon: ShoppingCartIcon, IconActive: CartSolid, label: 'Vender', ancho: 0.96, empleado: true },
+  { path: '/lote/nuevo',  Icon: PlusIcon,    IconActive: PlusIcon,   label: 'Cargar', fab: true, ancho: 0.92 },
+  { path: '/stock',       Icon: CubeIcon,    IconActive: CubeSolid,  label: 'Mercadería', ancho: 1.48 },
   // Historial se abre desde Ajustes; caja y fiado, desde Vender.
-  { path: '/config',      Icon: Cog6ToothIcon, IconActive: CogSolid, label: 'Ajustes', ancho: 1, empleado: true },
+  { path: '/config',      Icon: Cog6ToothIcon, IconActive: CogSolid, label: 'Ajustes', ancho: 1.04, empleado: true },
 ];
 
 const estaActiva = (t: TabConfig, ruta: string) =>
@@ -46,16 +46,16 @@ const TabBar: React.FC = () => {
   return (
     <nav aria-label="Secciones" style={{
       // En tablet no se estira de punta a punta: ancho máximo y centrada.
-      position: 'fixed', left: 0, right: 0, margin: '0 auto', width: 'calc(100% - 20px)', maxWidth: 640,
+      position: 'fixed', left: 0, right: 0, margin: '0 auto', width: 'calc(100% - 12px)', maxWidth: 640,
       bottom: 'calc(10px + var(--sab,env(safe-area-inset-bottom)))',
-      height: 72, padding: 6, zIndex: 100,
+      height: 72, padding: 4, zIndex: 100, // con letra Muy grande se cortaba "Mercadería": cada píxel cuenta
       display: 'grid', gridTemplateColumns: tabs.map(t => `minmax(0, ${t.ancho}fr)`).join(' '),
       background: 'var(--surface)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-lg)',
     }}>
       <span aria-hidden="true" style={{
-        position: 'absolute', top: 6, bottom: 6,
-        left: `calc(6px + (100% - 12px) * ${desde(Math.max(activa, 0))})`,
-        width: `calc((100% - 12px) * ${tabs[Math.max(activa, 0)].ancho / total})`,
+        position: 'absolute', top: 4, bottom: 4,
+        left: `calc(4px + (100% - 8px) * ${desde(Math.max(activa, 0))})`,
+        width: `calc((100% - 8px) * ${tabs[Math.max(activa, 0)].ancho / total})`,
         // Lo elegido se marca por luminosidad (azul lleno, texto blanco), no por un tinte
         // pálido: a los mayores los tonos claros parecidos se les confunden.
         borderRadius: 20, background: 'var(--boton-marca)', boxShadow: 'var(--relieve), 0 2px 0 var(--boton-base)',
@@ -74,7 +74,7 @@ const TabBar: React.FC = () => {
             onClick={() => { if (t.fab) history.push(`${t.path}?t=${Date.now()}`); else if (location.pathname !== t.path) history.push(t.path); }}
             aria-current={active ? 'page' : undefined}
             style={{
-              position: 'relative', background: 'none', border: 'none', cursor: 'pointer',
+              position: 'relative', background: 'none', border: 'none', padding: 0, cursor: 'pointer',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
               color: active && !t.fab ? 'var(--text-on-brand)' : active ? 'var(--marca-texto)' : 'var(--text-2)',
               fontFamily: 'inherit', fontSize: 14, letterSpacing: '-0.01em', fontWeight: active ? 800 : 700, minWidth: 0,

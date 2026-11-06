@@ -115,7 +115,7 @@ const PreciosPage: React.FC = () => {
                           </button>
                         </div>
                         {cambio !== null && cambio !== 0 && (
-                          <p style={{ margin: '8px 0 0', fontSize: 14, color: cambio > 0 ? 'var(--brand-600)' : 'var(--level-vencido-fg)', fontWeight: 600 }}>
+                          <p style={{ margin: '8px 0 0', fontSize: 14, color: cambio > 0 ? 'var(--marca-texto)' : 'var(--level-vencido-fg)', fontWeight: 600 }}>
                             {cambio > 0 ? '▲' : '▼'} {Math.abs(cambio)}% vs precio actual
                           </p>
                         )}

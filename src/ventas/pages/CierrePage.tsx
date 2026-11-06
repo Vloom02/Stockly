@@ -291,7 +291,7 @@ const CierrePage: React.FC = () => {
                 Contá el efectivo en la caja al cerrar este turno y anotalo para verificar que cuadre.
               </p>
               {([
-                ['Fondo de apertura', caja.fondo], ['Ventas en efectivo', caja.ventasEfectivo],
+                ['Fondo de apertura', caja.fondo], ['Entró por ventas en efectivo', caja.ventasEfectivo],
                 ['Entradas de plata', caja.ingresos], ['Salidas de plata', -caja.egresos], ['Cobros de fiado', caja.cobrosFiado],
               ] as [string, number][]).filter(([, n]) => n !== 0).map(([k, n]) => (
                 <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>

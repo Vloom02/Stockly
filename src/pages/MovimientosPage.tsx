@@ -111,7 +111,7 @@ const MovItem: React.FC<{ m: Movimiento; nombre: string }> = ({ m, nombre }) => 
           {m.cantidad !== 0 && (
             <div style={{ fontSize: 14, color: 'var(--text-2)' }}>
               {m.cantidadAnterior} → {m.cantidadNueva}{' '}
-              <span style={{ color: m.cantidad > 0 ? 'var(--brand-600)' : 'var(--level-vencido-fg)', fontWeight: 600 }}>
+              <span style={{ color: m.cantidad > 0 ? 'var(--marca-texto)' : 'var(--level-vencido-fg)', fontWeight: 600 }}>
                 ({m.cantidad > 0 ? '+' : ''}{m.cantidad})
               </span>
             </div>
@@ -129,12 +129,12 @@ const MovItem: React.FC<{ m: Movimiento; nombre: string }> = ({ m, nombre }) => 
 function tipoInfo(t: TipoMovimiento): { icon: React.ReactNode; label: string; color: string; bg: string } {
   const ico = (C: any) => <C width={18} height={18} />;
   switch (t) {
-    case 'ingreso':        return { icon: ico(ArrowDownTrayIcon), label: 'Ingreso', color: 'var(--brand-600)', bg: 'var(--brand-50)' };
+    case 'ingreso':        return { icon: ico(ArrowDownTrayIcon), label: 'Ingreso', color: 'var(--marca-texto)', bg: 'var(--brand-50)' };
     case 'retiro_venta':   return { icon: ico(BanknotesIcon), label: 'Venta', color: 'var(--info)', bg: '#dbeafe' };
     case 'retiro_vencido': return { icon: ico(TrashIcon), label: 'Retiro vencido', color: 'var(--danger)', bg: 'var(--level-vencido-bg)' };
     case 'retiro_roto':    return { icon: ico(HeartIcon), label: 'Retiro roto', color: 'var(--warning)', bg: 'var(--level-aviso-bg)' };
     case 'ajuste':         return { icon: ico(AdjustmentsHorizontalIcon), label: 'Ajuste', color: 'var(--text-2)', bg: 'var(--surface-2)' };
-    case 'creacion':       return { icon: ico(SparklesIcon), label: 'Producto creado', color: 'var(--brand-600)', bg: 'var(--brand-50)' };
+    case 'creacion':       return { icon: ico(SparklesIcon), label: 'Producto creado', color: 'var(--marca-texto)', bg: 'var(--brand-50)' };
     case 'edicion':        return { icon: ico(PencilIcon), label: 'Producto editado', color: 'var(--text-2)', bg: 'var(--surface-2)' };
   }
 }

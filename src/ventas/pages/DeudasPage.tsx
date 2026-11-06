@@ -107,7 +107,8 @@ const DeudasPage: React.FC = () => {
       }
       // Rechazado por el servidor: guardarlo para después solo lo mandaba a cuarentena.
       if (esErrorPermanente(error.message)) {
-        setToast({ show: true, msg: `No se pudo registrar el pago: ${error.message}`, color: 'danger' });
+        console.warn('[fiado]', error.message);
+        setToast({ show: true, msg: 'No se pudo anotar el pago. Probá de nuevo; si sigue, avisale al dueño.', color: 'danger' });
         return null;
       }
       // Sin señal o se cortó: cae al outbox.

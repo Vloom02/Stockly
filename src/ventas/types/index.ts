@@ -120,15 +120,6 @@ export interface CartItem {
   costo?: number;            // el de la ficha al agregarlo: una venta sin internet que sube días después lleva el costo de ese día
 }
 
-// ─── Resultado de aplicar FEFO a un producto ──────────────────────────────────
-export interface FefoDeduction {
-  loteId: string;
-  cantidadDescontada: number;
-  cantidadAnterior: number;
-  cantidadNueva: number;
-  fechaVencimiento: string | null;
-}
-
 // ─── Outbox (offline-first) ────────────────────────────────────────────────────
 export type OutboxKind = 'venta' | 'anulacion' | 'pago_fiado' | 'cierre' | 'caja_mov';
 

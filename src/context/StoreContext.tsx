@@ -603,7 +603,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const nivelDe = nivelesConMemoria();
     const diasPorFecha = new Map<string, number>();
     const diasDe = (f: string) => { let d = diasPorFecha.get(f); if (d === undefined) { d = diasRestantes(f); diasPorFecha.set(f, d); } return d; };
-    return lotesDeSucursal.map(l => {
+    // Dar de baja un producto no retira sus lotes: sin este filtro seguían en Inventario y avisos como "(eliminado)".
+    return lotesDeSucursal.filter(l => prodPorId.has(l.productoId)).map(l => {
       const prod = prodPorId.get(l.productoId);
       return {
         ...l, productoNombre: prod?.nombre || '(eliminado)', productoCategoria: prod?.categoria || '',

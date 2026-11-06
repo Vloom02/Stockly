@@ -93,7 +93,7 @@ const InventarioPage: React.FC = () => {
           </div>
 
           {lotes.length === 0 ? (
-            <EmptyState icon={<ClipboardDocumentCheckIcon width={32} height={32} />} title="Sin lotes" description="No hay stock para contar en esta sucursal." />
+            <EmptyState icon={<ClipboardDocumentCheckIcon width={32} height={32} />} title="Nada para contar" description="No hay mercadería cargada en este local." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {lotes.slice(0, mostrar).map(l => {
@@ -106,7 +106,7 @@ const InventarioPage: React.FC = () => {
                       <div style={{ fontSize: 14, color: 'var(--text-3)' }}>Vence {formatearFecha(l.fechaVencimiento)} · sistema: {l.cantidad}</div>
                     </div>
                     {diff !== 0 && (
-                      <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: diff > 0 ? 'var(--brand-600)' : 'var(--level-vencido-fg)' }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: diff > 0 ? 'var(--marca-texto)' : 'var(--level-vencido-fg)' }}>
                         {diff > 0 ? '+' : ''}{diff}
                       </span>
                     )}

@@ -60,7 +60,7 @@ const PlanBloqueado: React.FC<Props> = ({ estado, onReintentar, onCerrarSesion }
             <div style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 4 }}>
               Para activar tu cuenta, escribinos:
             </div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--brand-600)' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--marca-texto)' }}>
               WhatsApp: +54 9 11 2538-9308
             </div>
           </div>

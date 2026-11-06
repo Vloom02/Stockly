@@ -151,8 +151,11 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
     if (!file) return;
     try {
       const texto = await file.text();
+      // Se pregunta acá y no antes de elegir el archivo: el equipo puede bloquear el selector si viene de un diálogo.
+      if (!(await confirmar('Esto AGREGA los productos, locales y mercadería de la copia a lo que ya tenés. Si ya están cargados van a quedar repetidos y el stock se duplica. ¿Seguir?',
+        { peligro: true, okText: 'Sí, agregar' }))) return;
       const { ok, error } = await importarBackup(texto);
-      setToast({ show: true, msg: `Importados: ${ok}${error ? ` · Errores: ${error}` : ''}` });
+      setToast({ show: true, msg: `Listo: se agregaron ${ok} cosas de la copia${error ? ` · ${error} no se pudieron leer` : ''}` });
     } catch {
       setToast({ show: true, msg: 'No se pudo leer el archivo' });
     } finally {
@@ -235,7 +238,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           {esDueno && (
           <Card padding="md" style={{ marginBottom: 12 }}>
             <SectionTitle icon={<InformationCircleIcon width={16} height={16} />}>Resumen</SectionTitle>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginTop: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginTop: 8 }}>
               <Stat label="Productos" value={state.productos.length} />
               <Stat label="Compras" value={state.lotes.length} />
               <Stat label="Locales" value={state.sucursales.length} />
@@ -339,7 +342,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
               )}
               {estadoNube.ultimoError && (
                 <div style={{ marginTop: 8, padding: 10, borderRadius: 8, background: 'var(--level-vencido-bg)', color: 'var(--level-vencido-fg)', fontSize: 14 }}>
-                  Último error: {estadoNube.ultimoError}
+                  Hubo un problema al guardar en la nube. Lo que cargaste quedó guardado en este equipo y se manda solo.
                 </div>
               )}
             </div>
@@ -421,14 +424,14 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           <Card padding="md" style={{ marginBottom: 12 }}>
             <SectionTitle icon={<BellAlertIcon width={16} height={16} />}>Niveles de alerta</SectionTitle>
             <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '0 0 12px' }}>
-              Días de anticipación para cada nivel de escalado.
+              ¿Con cuántos días de anticipación te aviso en cada color?
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
               <UmbralField nivel="aviso" label="Aviso" value={uAviso} onChange={setUAviso} />
               <UmbralField nivel="urgente" label="Urgente" value={uUrgente} onChange={setUUrgente} />
               <UmbralField nivel="critico" label="Crítico" value={uCritico} onChange={setUCritico} />
             </div>
-            <Field label="Días aviso default (nuevos lotes)">
+            <Field label="Avisarme antes de que venza (días, para productos nuevos)">
               <Input value={diasAviso} onChange={e => setDiasAviso(e.target.value)} inputMode="numeric" />
             </Field>
           </Card>
@@ -437,7 +440,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           <Card padding="md" style={{ marginBottom: 12 }}>
             <SectionTitle icon={<BanknotesIcon width={16} height={16} />}>Descuentos para lo que está por vencer</SectionTitle>
             <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '0 0 12px' }}>
-              Descuento (%) sugerido para rematar lotes según su nivel de vencimiento. Poné 0 para desactivar uno.
+              Descuento (%) sugerido para rematar lo que está por vencer, según cuánto le falte. Poné 0 para no sugerir ninguno.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
               <DescField nivel="critico" label="Crítico" value={descCritico} onChange={setDescCritico} />

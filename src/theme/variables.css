@@ -151,6 +151,10 @@
    con el color del modo claro (títulos ilegibles). La clase se togglea en
    documentElement. */
 :root.dark {
+  /* Como texto sobre fondo oscuro: con los del modo claro quedaban casi invisibles (2:1 y 3:1). Ninguno se usa de fondo. */
+  --warning: #e0a84a;
+  --success: #6fcf97;
+  --info: #8ab4f0;
   --danger:     #e0806f;  /* rojo legible sobre fondo oscuro (6:1) */
   /* Noche "Tacto": gris verdoso profundo, tarjetas apenas más claras */
   --bg:         #121615;

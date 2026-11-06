@@ -65,7 +65,7 @@ const ReportesPage: React.FC = () => {
             <EmptyState
               icon={<ChartPieIcon width={32} height={32} />}
               title="Sin datos para mostrar"
-              description="Cargá productos y lotes para ver reportes y estadísticas."
+              description="Cargá productos y mercadería para ver reportes y estadísticas."
             />
           ) : (
             <>
@@ -121,7 +121,7 @@ const ReportesPage: React.FC = () => {
                   </div>
                 </div>
                 {totalPerdido === 0 ? (
-                  <p style={{ textAlign: 'center', color: 'var(--brand-600)', padding: 16, margin: 0, fontSize: 14, fontWeight: 500 }}>
+                  <p style={{ textAlign: 'center', color: 'var(--marca-texto)', padding: 16, margin: 0, fontSize: 14, fontWeight: 500 }}>
                     Sin pérdidas registradas. ¡Buen trabajo!
                   </p>
                 ) : (
@@ -142,7 +142,7 @@ const ReportesPage: React.FC = () => {
               <SectionHeader icon={<ShoppingCartIcon width={16} height={16} />} title="Qué reponer" />
               <Card padding="md" style={{ marginBottom: 16 }}>
                 {reposicion.length === 0 ? (
-                  <p style={{ textAlign: 'center', color: 'var(--brand-600)', padding: 16, margin: 0, fontSize: 14, fontWeight: 500 }}>
+                  <p style={{ textAlign: 'center', color: 'var(--marca-texto)', padding: 16, margin: 0, fontSize: 14, fontWeight: 500 }}>
                     Nada para reponer por ahora.
                   </p>
                 ) : (
@@ -210,7 +210,7 @@ const ReportesPage: React.FC = () => {
 
 const SectionHeader: React.FC<{ icon: React.ReactNode; title: string }> = ({ icon, title }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 11 }}>
-    <span style={{ color: 'var(--brand-600)', display: 'flex' }}>{icon}</span>
+    <span style={{ color: 'var(--marca-texto)', display: 'flex' }}>{icon}</span>
     <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, margin: 0, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>{title}</h2>
     <span style={{ flex: 1, height: 0, borderTop: '1px solid var(--border)' }} />
   </div>

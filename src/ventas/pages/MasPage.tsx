@@ -4,6 +4,7 @@
 // Si quien trabaja es un EMPLEADO (cajero no-admin), no ve nada de eso: solo
 // puede cerrar su turno. El dueño entra como admin (PIN) y ve todo.
 // ═══════════════════════════════════════════════════════════════════════════
+import BotonVolver from '../components/BotonVolver';
 import React from 'react';
 import { IonContent } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
@@ -44,6 +45,7 @@ const MasPage: React.FC = () => {
   return (
     <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
       <div style={{ padding: 'var(--space-4)', maxWidth: 520, margin: '0 auto', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))', paddingTop: 'calc(var(--space-4) + var(--ion-safe-area-top, 0px))' }}>
+        <BotonVolver a="/ventas" />
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>Caja y ventas</h1>
         <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 16 }}>
           {cajero && !cajero.admin ? `Estás en tu turno, ${cajero.nombre}` : 'Opciones del dueño (piden la clave)'}

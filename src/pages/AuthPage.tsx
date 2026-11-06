@@ -101,7 +101,7 @@ const AuthPage: React.FC = () => {
 
   return (
     <IonPage>
-      <style>{`.link-auth { background: none; border: none; color: var(--brand-600); font-weight: 600;
+      <style>{`.link-auth { background: none; border: none; color: var(--marca-texto); font-weight: 600;
         cursor: pointer; font-family: inherit; font-size: 14px; padding: 12px 8px; min-height: 44px; }`}</style>
       <IonContent style={{ '--background': 'var(--bg)' } as any}>
         <div style={{

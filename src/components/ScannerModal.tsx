@@ -108,7 +108,8 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
         if (e.name === 'NotAllowedError') {
           setError('Permiso de cámara denegado');
         } else {
-          setError('No se pudo abrir la cámara: ' + e.message);
+          console.warn('[camara]', e);
+          setError('No se pudo abrir la cámara. Escribí el código abajo.');
         }
       }
     };

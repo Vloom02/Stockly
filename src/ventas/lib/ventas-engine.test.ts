@@ -1,21 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { stockTotal, payloadVenta } from './ventas-engine';
-import { Lote, CartItem } from '../types';
-
-const lote = (id: string, cantidad: number, venc: string | null): Lote => ({
-  id, comercio_id: 'c', producto_id: 'p', sucursal_id: 's',
-  cantidad, fecha_vencimiento: venc, retirado: false,
-});
+import { payloadVenta } from './ventas-engine';
+import { CartItem } from '../types';
 
 const item = (productoId: string, qty: number, precio: number): CartItem => ({
   productoId, nombre: 'X', codigoBarras: '', precio, qty, stockDisponible: 0,
-});
-
-describe('stockTotal', () => {
-  it('suma las cantidades de los lotes', () => {
-    expect(stockTotal([lote('a', 2, '2027-01-01'), lote('b', 9, '2027-02-01')])).toBe(11);
-  });
-  it('lista vacía → 0', () => expect(stockTotal([])).toBe(0));
 });
 
 describe('payloadVenta', () => {

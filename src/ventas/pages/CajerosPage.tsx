@@ -11,10 +11,13 @@ import { useEmpleado } from '../context/EmpleadoContext';
 import { Card, Button, Input } from '../components/ui';
 import { PlusIcon, KeyIcon, UserIcon } from '../components/ui/icons';
 import PinPad from '../components/PinPad';
+import BotonVolver from '../components/BotonVolver';
+import { useConfirm } from '../../lib/useConfirm';
 
 const CLAVE_VALIDA = /^\d{4,6}$/; // 4 a 6 números: se ingresa en el teclado numérico del inicio de turno
 
 const CajerosPage: React.FC = () => {
+  const confirmar = useConfirm();
   const { comercio } = useAuth();
   const { empleados, recargar } = useEmpleado();
   const [legajo, setLegajo] = useState('');
@@ -53,6 +56,8 @@ const CajerosPage: React.FC = () => {
   const toggleActivo = async (e: { id: string; legajo: string; nombre: string; activo?: boolean }) => {
     if (!comercio) return;
     if (e.activo !== false) {
+      // Está pegado a "Clave": con un toque se le sacaba el acceso a un empleado sin querer.
+      if (!(await confirmar(`¿Dar de baja a ${e.nombre}? No va a poder entrar a vender hasta que lo vuelvas a activar.`, { peligro: true, okText: 'Dar de baja' }))) return;
       const { error } = await supabase.rpc('baja_empleado_venta', { p: { id: e.id, comercio_id: comercio.id } });
       if (error) { aviso('No se pudo desactivar', false); return; }
     } else {
@@ -77,6 +82,7 @@ const CajerosPage: React.FC = () => {
   return (
     <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
       <div style={{ padding: 'var(--space-4)', maxWidth: 520, margin: '0 auto', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))' }}>
+        <BotonVolver a="/config" />
         <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Empleados</h1>
         <p style={{ fontSize: 16, color: 'var(--text-2)', marginBottom: 14, lineHeight: 1.5 }}>
           Para usar la app, cada uno toca su nombre y pone su clave. Lo que vende queda a su nombre y no ve precios, reportes ni ajustes del dueño.

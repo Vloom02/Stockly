@@ -24,6 +24,7 @@ const PromosPage: React.FC = () => {
   const confirmar = useConfirm();
   const [promos, setPromos] = useState<PromoRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sinInternet, setSinInternet] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: '', color: 'success' as 'success' | 'danger' });
 
   // Alta
@@ -39,9 +40,12 @@ const PromosPage: React.FC = () => {
   const load = async () => {
     if (!comercio) { setLoading(false); return; }
     setLoading(true);
-    const { data } = await supabase.from('ventas_promos')
+    const { data, error } = await supabase.from('ventas_promos')
       .select('id, producto_id, tipo, min_cant, pct, activa, productos(nombre)')
       .eq('comercio_id', comercio.id).order('creado_en', { ascending: false });
+    // Sin señal se deja lo que se veía: decía "Sin ofertas · Creá la primera" y parecía que se habían borrado.
+    setSinInternet(!!error);
+    if (error) { setLoading(false); return; }
     setPromos((data ?? []).map((r) => ({ ...r, nombre: (r.productos as { nombre?: string } | null)?.nombre ?? '(producto)' })) as PromoRow[]);
     setLoading(false);
   };
@@ -86,6 +90,7 @@ const PromosPage: React.FC = () => {
       <div style={{ padding: 'var(--space-4)', maxWidth: 520, margin: '0 auto', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))' }}>
         <BotonVolver />
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Ofertas</h1>
+        {sinInternet && <p role="status" style={{ fontSize: 15, fontWeight: 600, margin: '0 0 10px' }}>Sin internet: las ofertas se ven cuando vuelva la señal. No se borró nada.</p>}
         <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 14 }}>
           2x1 o descuento por cantidad. Se aplican solas en el carrito.
         </p>
@@ -98,12 +103,12 @@ const PromosPage: React.FC = () => {
             </span>
             <input className="campo" value={prodElegido ? prodElegido.nombre : query} onChange={e => buscar(e.target.value)}
               placeholder="Buscar producto..."
-              style={{ width: '100%', padding: '10px 14px 10px 38px', fontSize: 15, color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none' }} />
+              style={{ width: '100%', minHeight: 48, padding: '10px 14px 10px 38px', fontSize: 17, color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none' }} />
             {results.length > 0 && !prodElegido && (
               <div style={{ position: 'absolute', top: '105%', left: 0, right: 0, zIndex: 10, background: 'var(--surface)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-lg, 0 8px 24px rgba(0,0,0,.18))', overflow: 'hidden' }}>
                 {results.map(r => (
                   <button key={r.id} type="button" onClick={() => { setProdElegido(r); setResults([]); }}
-                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', color: 'var(--text)', fontSize: 16, minHeight: 48, cursor: 'pointer', fontFamily: 'inherit' }}>
                     {r.nombre}
                   </button>
                 ))}
@@ -112,12 +117,12 @@ const PromosPage: React.FC = () => {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
-            <button type="button" onClick={() => setTipo('2x1')}
-              style={{ padding: 10, borderRadius: 'var(--radius)', fontFamily: 'inherit', fontWeight: 700, fontSize: 14, cursor: 'pointer', border: tipo === '2x1' ? '1.5px solid var(--color-primary)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: tipo === '2x1' ? 'var(--color-primary-bg)' : 'var(--surface)', color: tipo === '2x1' ? 'var(--color-primary-dark)' : 'var(--text-2)' }}>
+            <button type="button" onClick={() => setTipo('2x1')} aria-pressed={tipo === '2x1'}
+              style={{ padding: 10, minHeight: 52, borderRadius: 'var(--radius)', fontFamily: 'inherit', fontWeight: 700, fontSize: 17, cursor: 'pointer', border: tipo === '2x1' ? '3px solid var(--color-primary)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: tipo === '2x1' ? 'var(--color-primary-bg)' : 'var(--surface)', color: tipo === '2x1' ? 'var(--color-primary-dark)' : 'var(--text-2)' }}>
               2x1
             </button>
-            <button type="button" onClick={() => setTipo('pct_cantidad')}
-              style={{ padding: 10, borderRadius: 'var(--radius)', fontFamily: 'inherit', fontWeight: 700, fontSize: 14, cursor: 'pointer', border: tipo === 'pct_cantidad' ? '1.5px solid var(--color-primary)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: tipo === 'pct_cantidad' ? 'var(--color-primary-bg)' : 'var(--surface)', color: tipo === 'pct_cantidad' ? 'var(--color-primary-dark)' : 'var(--text-2)' }}>
+            <button type="button" onClick={() => setTipo('pct_cantidad')} aria-pressed={tipo === 'pct_cantidad'}
+              style={{ padding: 10, minHeight: 52, borderRadius: 'var(--radius)', fontFamily: 'inherit', fontWeight: 700, fontSize: 17, cursor: 'pointer', border: tipo === 'pct_cantidad' ? '3px solid var(--color-primary)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: tipo === 'pct_cantidad' ? 'var(--color-primary-bg)' : 'var(--surface)', color: tipo === 'pct_cantidad' ? 'var(--color-primary-dark)' : 'var(--text-2)' }}>
               % por cantidad
             </button>
           </div>
@@ -152,12 +157,12 @@ const PromosPage: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <IcoGiftIcon width={22} height={22} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre}</div>
+                  <div style={{ fontWeight: 600, fontSize: 16, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.nombre}</div>
                   <div style={{ fontSize: 14, color: 'var(--color-primary-dark)', fontWeight: 700 }}>{etiqueta(p)}</div>
                 </div>
                 <button onClick={() => borrar(p)} aria-label="Quitar promo" className="pressable"
-                  style={{ padding: 8, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--color-danger)', cursor: 'pointer' }}>
-                  <TrashIcon size={16} />
+                  style={{ minWidth: 48, minHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 8, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--color-danger)', cursor: 'pointer' }}>
+                  <TrashIcon size={22} />
                 </button>
               </div>
             </Card>

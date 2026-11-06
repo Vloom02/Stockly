@@ -34,7 +34,7 @@ const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avi
   // outbox (el RPC es idempotente por venta_id → reintentar es seguro).
   const anular = async () => {
     if (!comercio || anulada) return;
-    if (!(await confirmar('¿Anular esta venta y devolver el stock a los lotes? No se puede deshacer.', { peligro: true, okText: 'Anular' }))) return;
+    if (!(await confirmar('¿Anular esta venta y devolver la mercadería al stock? No se puede deshacer.', { peligro: true, okText: 'Anular' }))) return;
     setAnulando(true);
     const payload = { ventaId: venta.id, comercioId: comercio.id, usuario: miembro?.nombre ?? null, fecha: Date.now(), sucursalId: sucursalActiva?.id };
     if (navigator.onLine) {
@@ -51,7 +51,7 @@ const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avi
         return;
       }
       // Rechazada por el servidor: encolarla solo la mandaba a cuarentena y la pantalla decía "guardada".
-      if (esErrorPermanente(error.message)) { avisar(`No se pudo anular: ${error.message}`); return; }
+      if (esErrorPermanente(error.message)) { console.warn('[anular]', error.message); avisar('No se pudo anular esta venta. Probá de nuevo en un rato.'); return; }
       // Falló online (¿red inestable?): encolar para reintentar.
     }
     try {

@@ -232,7 +232,8 @@ const VentaPage: React.FC = () => {
     try {
       r = await confirmarVenta({ metodoPago, cliente: cliente.trim(), fiado, descuento: desc, usuario: cajero?.nombre ?? null });
     } catch (e) {
-      r = { ok: false, msg: `La venta no se guardó: ${e instanceof Error ? e.message : 'error'}` };
+      console.warn('[venta]', e);
+      r = { ok: false, msg: 'La venta no se guardó. Probá de nuevo; si sigue, avisale al dueño.' };
     } finally {
       setProc(false); // si algo fallaba, el botón quedaba girando para siempre
     }
@@ -281,7 +282,7 @@ const VentaPage: React.FC = () => {
       <SyncBanner queueLen={state.outboxLen} isOnline={state.isOnline} bloqueados={state.bloqueados} onReintentar={sincronizar} />
 
       {/* En tablet acostada: dos columnas (buscar | carrito), ver ventas.css. */}
-      <div ref={lectorRef} className="venta-layout" style={{ padding: 'var(--space-4)', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))', paddingTop: state.outboxLen > 0 || !state.isOnline ? 44 : 16 }}>
+      <div ref={lectorRef} className="venta-layout" style={{ padding: 'var(--space-4)', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))', paddingTop: 16 }}>
         {/* Header */}
         <div className="venta-cabecera" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
           <div>
@@ -353,18 +354,19 @@ const VentaPage: React.FC = () => {
               <MagnifyingGlass size={18} color="var(--text-3)" />
             </span>
             <input className="campo" value={query} onChange={e => handleSearch(e.target.value)} placeholder="Buscar por nombre..."
-              style={{ width: '100%', padding: '10px 14px 10px 38px', fontSize: 15, color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none' }} />
+              aria-label="Buscar producto por nombre"
+              style={{ width: '100%', minHeight: 56, padding: '14px 14px 14px 40px', fontSize: 18, color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none' }} />
           </div>
           {results.length > 0 && (
             <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 60, background: 'var(--surface)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', overflow: 'hidden', marginTop: 4 }}>
               {results.map(p => (
                 <button key={p.id} onClick={() => pickProduct(p)} className="pressable"
-                  style={{ width: '100%', padding: '10px 14px', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', textAlign: 'left', fontFamily: 'inherit' }}>
+                  style={{ width: '100%', padding: '14px', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', textAlign: 'left', fontFamily: 'inherit' }}>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{p.nombre}</div>
+                    <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{p.nombre}</div>
                     <div style={{ fontSize: 14, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{p.codigo_barras}</div>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-primary-dark)' }}>{formatMoney(p.precio)}</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-primary-dark)', whiteSpace: 'nowrap', marginLeft: 10 }}>{formatMoney(p.precio)}</div>
                 </button>
               ))}
             </div>
@@ -379,7 +381,8 @@ const VentaPage: React.FC = () => {
               {favoritos.map(p => (
                 <button key={p.id} onClick={() => pickProduct(p)} className="pressable"
                   style={{ padding: '10px 12px', border: 'none', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', gap: 3, boxShadow: 'var(--shadow-sm)' }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre}</span>
+                  {/* Dos renglones: cortado, "Leche La Serenísima Entera" y "Descremada" se veían iguales y se vendía la equivocada. */}
+                  <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.nombre}</span>
                   <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-primary-dark)', fontFamily: 'var(--font-mono)' }}>{formatMoney(p.precio)}</span>
                 </button>
               ))}

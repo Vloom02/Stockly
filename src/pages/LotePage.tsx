@@ -331,7 +331,7 @@ const LoteForm: React.FC = () => {
                     </Field>
                   ) : (
                     <button type="button" onClick={() => setConNumeroLote(true)}
-                      style={{ background: 'none', border: 'none', color: 'var(--brand-600)', fontWeight: 600, fontSize: 16, cursor: 'pointer', padding: '8px 0', marginBottom: 8, minHeight: 44, fontFamily: 'inherit' }}>
+                      style={{ background: 'none', border: 'none', color: 'var(--marca-texto)', fontWeight: 600, fontSize: 16, cursor: 'pointer', padding: '8px 0', marginBottom: 8, minHeight: 44, fontFamily: 'inherit' }}>
                       + Agregar número de lote del paquete
                     </button>
                   )}
@@ -376,7 +376,7 @@ const LoteForm: React.FC = () => {
               {!showRetirar ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                   {/* Vender va por la caja: así entra al arqueo, a la ganancia y al pedido sugerido. */}
-                  <RetiroBtn icon={<BanknotesIcon width={20} height={20} />} label="Vender" color="var(--brand-600)"
+                  <RetiroBtn icon={<BanknotesIcon width={20} height={20} />} label="Vender" color="var(--marca-texto)"
                     onClick={() => history.push(`/ventas?producto=${loteExistente.productoId}`)} />
                   <RetiroBtn icon={<TrashIcon width={20} height={20} />} label="Vencido" color="var(--danger)"
                     onClick={() => { setTipoRetiro('retiro_vencido'); setCantRetirar(loteExistente.cantidad.toString()); setShowRetirar(true); }} />
@@ -442,7 +442,7 @@ const LoteForm: React.FC = () => {
                   <IcoTagIcon width={22} height={22} />
                   <div style={{ fontSize: 14, lineHeight: 1.4 }}>
                     <strong>Para que no se venza:</strong> vendé a{' '}
-                    <strong style={{ color: 'var(--brand-600)' }}>{formatearMoneda(liq.precioFinal)}</strong>{' '}
+                    <strong style={{ color: 'var(--marca-texto)' }}>{formatearMoneda(liq.precioFinal)}</strong>{' '}
                     <span style={{ color: 'var(--text-2)' }}>
                       (−{liq.pct}%, en vez de {formatearMoneda(liq.precioOriginal)})
                     </span>
@@ -474,7 +474,7 @@ const LoteForm: React.FC = () => {
             {!loteExistente && esDueno && (
               <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '-6px 0 12px' }}>
                 ¿No está? <button type="button" onClick={() => history.push('/producto/nuevo')}
-                  style={{ background: 'none', border: 'none', color: 'var(--brand-600)', fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontSize: 14 }}>
+                  style={{ background: 'none', border: 'none', color: 'var(--marca-texto)', fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontSize: 14 }}>
                   Crear producto nuevo</button>
               </p>
             )}
@@ -504,11 +504,11 @@ const LoteForm: React.FC = () => {
                 default por producto y un umbral global; mostrarlo siempre confundía). */}
             {!mostrarAvanzado ? (
               <button type="button" onClick={() => setMostrarAvanzado(true)}
-                style={{ background: 'none', border: 'none', color: 'var(--brand-600)', fontWeight: 600, cursor: 'pointer', padding: '2px 0 6px', fontFamily: 'inherit', fontSize: 14 }}>
+                style={{ background: 'none', border: 'none', color: 'var(--marca-texto)', fontWeight: 600, cursor: 'pointer', padding: '2px 0 6px', fontFamily: 'inherit', fontSize: 14 }}>
                 + Avisar con otros días para esta compra
               </button>
             ) : (
-              <Field label="Días de aviso (solo este lote)" hint={`Si lo dejás vacío, avisa ${producto?.diasAvisoDefault ?? 7} días antes (lo que dice el producto)`}>
+              <Field label="Días de aviso (solo esta compra)" hint={`Si lo dejás vacío, avisa ${producto?.diasAvisoDefault ?? 7} días antes (lo que dice el producto)`}>
                 <Input value={diasAviso} onChange={e => setDiasAviso(e.target.value)} inputMode="numeric"
                   placeholder={producto?.diasAvisoDefault.toString()} />
               </Field>

@@ -112,7 +112,7 @@ const CalendarioVencimientos: React.FC<CalendarioProps> = ({ vencimientos, onDia
               <span style={{
                 fontSize: 14,
                 fontWeight: esHoy ? 700 : info ? 600 : 400,
-                color: info ? `var(--level-${info.nivelPeor}-fg)` : esHoy ? 'var(--brand-600)' : 'var(--text-2)',
+                color: info ? `var(--level-${info.nivelPeor}-fg)` : esHoy ? 'var(--marca-texto)' : 'var(--text-2)',
               }}>{dia}</span>
               {info && (
                 <span style={{

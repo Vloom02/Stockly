@@ -111,7 +111,7 @@ const SucursalesPage: React.FC = () => {
                       <div style={{
                         width: 40, height: 40, borderRadius: 'var(--radius)',
                         background: activa ? 'var(--brand-50)' : 'var(--surface-2)',
-                        color: activa ? 'var(--brand-600)' : 'var(--text-2)',
+                        color: activa ? 'var(--marca-texto)' : 'var(--text-2)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                       }}>
                         <BuildingStorefrontIcon width={20} height={20} />

@@ -1,12 +1,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Motor de ventas con FEFO (First Expired First Out).
-// La venta descuenta stock real de `lotes` (lote que vence antes primero),
-// marca retirado=true si llega a 0, y escribe en `movimientos` (tipo='retiro_venta')
-// para que Stockly refleje el descuento y recalcule vencimientos.
-// Regla acordada: si no hay stock suficiente, SE VENDE IGUAL (descuenta lo que haya).
+// Búsquedas del catálogo y venta con internet. El descuento de stock (lo que vence antes,
+// primero) lo hace la función registrar_venta del servidor.
+// Regla acordada: si no hay stock suficiente, SE VENDE IGUAL (queda en negativo).
 // ═══════════════════════════════════════════════════════════════════════════
 import { supabase } from './supabase';
-import { Producto, Lote, FefoDeduction, CartItem } from '../types';
+import { Producto, CartItem } from '../types';
 
 export function uuid(): string {
   return crypto.randomUUID
@@ -37,21 +35,6 @@ export async function buscarProductosPorNombre(comercioId: string, query: string
   return (data ?? []) as Producto[];
 }
 
-// ─── Lotes con stock de un producto, ORDENADOS por vencimiento (FEFO) ─────────
-export async function lotesDisponibles(comercioId: string, productoId: string, sucursalId: string): Promise<Lote[]> {
-  const { data, error } = await supabase
-    .from('lotes').select('*')
-    .eq('comercio_id', comercioId).eq('producto_id', productoId).eq('sucursal_id', sucursalId)
-    .eq('retirado', false).gt('cantidad', 0)
-    .order('fecha_vencimiento', { ascending: true, nullsFirst: false }); // FEFO
-  if (error) throw new Error(error.message);
-  return (data ?? []) as Lote[];
-}
-
-export function stockTotal(lotes: Lote[]): number {
-  return lotes.reduce((s, l) => s + l.cantidad, 0);
-}
-
 // ─── Aplicar venta online vía RPC atómica registrar_venta ─────────────────────
 // Toda la venta (cabecera + items + descuento FEFO de lotes + movimientos) ocurre
 // en UNA transacción del lado servidor, con lock de filas e idempotencia por id.
@@ -65,8 +48,6 @@ export interface AplicarVentaInput {
   fiado: boolean;
   descuento: number;
   cart: CartItem[];
-  /** @deprecated FEFO ahora se calcula en el servidor; ya no se usa. */
-  lotesPorProducto?: Record<string, Lote[]>;
   /** id de venta fijo (para reintentos idempotentes desde el outbox). */
   ventaId?: string;
 }

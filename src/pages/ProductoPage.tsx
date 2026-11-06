@@ -144,7 +144,8 @@ const ProductoForm: React.FC = () => {
         setToast({ show: true, msg: 'Foto actualizada' });
       }
     } catch (e) {
-      setToast({ show: true, msg: e instanceof Error ? e.message : 'No se pudo subir la foto' });
+      console.warn('[foto]', e);
+      setToast({ show: true, msg: 'No se pudo subir la foto. Probá de nuevo con internet.' });
     }
     setSubiendoFoto(false);
   };
@@ -286,7 +287,7 @@ const ProductoForm: React.FC = () => {
 
               {lotes.length === 0 ? (
                 <EmptyState icon={<CubeIcon width={28} height={28} />} title="No hay mercadería cargada"
-                  description="Agregá un lote con su fecha de vencimiento." />
+                  description="Cargá la mercadería con su fecha de vencimiento." />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
                   {lotes.map((l, i) => {

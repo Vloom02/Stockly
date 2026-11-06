@@ -101,7 +101,7 @@ const StockPage: React.FC = () => {
     <IonPage>
       <IonContent ref={lectorRef} style={{ '--background': 'var(--bg)' } as any}>
         <div className="animate-fade-in" style={{
-          padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px',
+          padding: `20px 16px calc(${esDueno ? 168 : 96}px + var(--sab,env(safe-area-inset-bottom))) 16px`, // lugar para "Producto nuevo"
           maxWidth: 760, margin: '0 auto',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -320,7 +320,7 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
             </span>
           ) : (
             <span style={{ fontSize: 14, color: 'var(--text-2)', fontWeight: 500 }}>
-              {p.cantidadTotal} unid · {p.lotes.length} lote{p.lotes.length !== 1 ? 's' : ''}
+              {p.cantidadTotal} unid · {p.lotes.length} compra{p.lotes.length !== 1 ? 's' : ''}
             </span>
           )}
           {reponer && (
@@ -371,7 +371,7 @@ const LoteRow: React.FC<{ lote: LoteConProducto; onClick: () => void }> = ({ lot
           {liq.aplicar && (
             <span title={`Sugerencia: liquidá a ${formatearMoneda(liq.precioFinal)} (precio normal ${formatearMoneda(liq.precioOriginal)}) para venderlo antes de que venza`}
               style={{
-                fontSize: 14, fontWeight: 700, color: 'var(--brand-600)',
+                fontSize: 14, fontWeight: 700, color: 'var(--marca-texto)',
                 background: 'var(--brand-50, var(--surface-2))',
                 border: '1px solid var(--brand-300)',
                 borderRadius: 'var(--radius-full)', padding: '2px 8px',

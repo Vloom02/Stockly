@@ -140,7 +140,7 @@ interface SelectProps {
 
 export const Select: React.FC<SelectProps> = ({ label, value, onChange, options, placeholder, style }) => (
   <div style={{ marginBottom: 12 }}>
-    {label && <label style={{ display:'block', fontSize:13, fontWeight:500, color:'var(--text-2)', marginBottom:4 }}>{label}</label>}
+    {label && <label style={{ display:'block', fontSize:15, fontWeight:500, color:'var(--text-2)', marginBottom:4 }}>{label}</label>}
     <select className="campo" value={value} onChange={e => onChange(e.target.value)}
       style={{ width:'100%', padding:'12px 14px', fontSize:17, fontWeight:600, minHeight:52, fontFamily:'var(--font-sans)', color: value ? 'var(--text)' : 'var(--text-3)', borderRadius:'var(--radius)', outline:'none', ...style }}>
       {placeholder && <option value="">{placeholder}</option>}
@@ -179,7 +179,7 @@ export const EmptyState: React.FC<{
   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'48px 24px', textAlign:'center' }}>
     {icon && <div style={{ marginBottom:16, color:'var(--text-3)' }}>{icon}</div>}
     <div style={{ fontSize:16, fontWeight:600, color:'var(--text)', marginBottom:6 }}>{title}</div>
-    {description && <div style={{ fontSize:13, color:'var(--text-2)', marginBottom:16, maxWidth:260, lineHeight:1.6 }}>{description}</div>}
+    {description && <div style={{ fontSize:16, color:'var(--text-2)', marginBottom:16, maxWidth:300, lineHeight:1.5 }}>{description}</div>}
     {action && <Button variant="secondary" size="sm" onClick={action.onClick}>{action.label}</Button>}
   </div>
 );
@@ -211,18 +211,19 @@ export const SyncBanner: React.FC<{ queueLen: number; isOnline: boolean; bloquea
   if (!isOffline && bloqueados > 0 && onReintentar) {
     return (
       <button type="button" onClick={onReintentar} style={{
-        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200, width: '100%', minHeight: 48,
+        position: 'sticky', top: 0, zIndex: 200, width: '100%', minHeight: 48,
         padding: '10px 16px', textAlign: 'center', fontSize: 15, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
         background: 'var(--color-danger-bg)', color: 'var(--color-danger-dark)', border: 'none',
         borderBottom: '1px solid var(--color-danger-border)',
       }}>
-        {bloqueados} venta{bloqueados > 1 ? 's' : ''} no se pudo guardar en internet · tocá acá para reintentar
+        {bloqueados} venta{bloqueados > 1 ? 's no se pudieron' : ' no se pudo'} guardar en internet · tocá acá para reintentar
       </button>
     );
   }
   return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200,
+    // Pegado arriba pero ocupando su lugar: fijo tapaba el nombre del negocio y la mitad del botón "Caja".
+    <div role="status" style={{
+      position: 'sticky', top: 0, zIndex: 200,
       padding: '10px 16px', textAlign: 'center', fontSize: 15, fontWeight: 600,
       background: isOffline ? 'var(--color-warning-bg)' : 'var(--color-info-bg)',
       color:      isOffline ? 'var(--color-warning-dark)' : 'var(--color-info-dark)',
