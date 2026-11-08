@@ -3,11 +3,18 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('./supabase', () => ({ supabase: {} }));
 vi.mock('./localDb', () => ({}));
 
-import { deltasPendientesPorLote, fusionarCambios, esperaAlta, cambiosSinSubir, marcaNueva, sinCambios } from './sync';
+import { deltasPendientesPorLote, fusionarCambios, esperaAlta, cambiosSinSubir, marcaNueva, sinCambios, ajustesPorLote } from './sync';
 import type { ItemOutbox } from './localDb';
 
 const item = (tabla: string, loteId: string | undefined, cantidad: number): ItemOutbox =>
   ({ id: crypto.randomUUID(), tabla, operacion: 'insert', registroId: 'x', payload: { loteId, cantidad }, intentos: 0, creadoEn: 0 }) as ItemOutbox;
+
+describe('ajustesPorLote', () => {
+  it('junta los de un mismo lote en el orden de llegada y separa los demás', () => {
+    const [a, b, c, d] = [item('ajuste_stock', 'L1', -3), item('ajuste_stock', 'L2', 1), item('ajuste_stock', 'L1', 5), item('ajuste_stock', undefined, 2)];
+    expect(ajustesPorLote([a, b, c, d])).toEqual([[a, c], [b], [d]]);
+  });
+});
 
 describe('deltasPendientesPorLote', () => {
   it('suma los ajustes pendientes por lote (con signo)', () => {

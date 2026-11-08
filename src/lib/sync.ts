@@ -153,6 +153,18 @@ export function esperaAlta(it: ItemOutbox, altas: Set<string>): boolean {
     || [p.productoId, p.sucursalId, p.loteId].some(id => id && altas.has(id));
 }
 
+/** Los ajustes por lote, en el orden en que llegan: los de un mismo lote van en orden (un retiro no baja de 0, así
+ *  que el orden cambia el resultado); los de lotes distintos pueden ir a la vez. */
+export function ajustesPorLote(items: ItemOutbox[]): ItemOutbox[][] {
+  const grupos = new Map<string, ItemOutbox[]>();
+  for (const it of items) {
+    const k = it.payload?.loteId ?? it.id;
+    const g = grupos.get(k);
+    if (g) g.push(it); else grupos.set(k, [it]);
+  }
+  return [...grupos.values()];
+}
+
 export async function subirPendientes(comercioId: string): Promise<number> {
   // Sin sesión (vencida o cerrada) el servidor ve "anónimo": un cambio no tocaba nada y salía de la cola como subido.
   const { data: { session } } = await conTimeout(supabase.auth.getSession(), 15000, 'sesión');
@@ -224,10 +236,9 @@ export async function subirPendientes(comercioId: string): Promise<number> {
     }
   }
 
-  // ── Ajustes de stock por DELTA atómico (RPC idempotente). De a uno. ──
+  // ── Ajustes de stock por DELTA atómico (RPC idempotente). ──
   const altas = await altasSinSubir();
-  for (const item of ajustes) {
-    if (esperaAlta(item, altas)) continue; // espera a que suba el alta del lote
+  const subirAjuste = async (item: ItemOutbox) => {
     const mov: any = item.payload;
     const pRpc = {
       mov_id: mov.id, comercio_id: comercioId, lote_id: mov.loteId,
@@ -246,7 +257,14 @@ export async function subirPendientes(comercioId: string): Promise<number> {
       ultimoError = e instanceof Error ? e.message : 'Error al ajustar stock';
       await manejarFallo(item, ultimoError ?? undefined);
     }
-  }
+  };
+  // De a 6 lotes a la vez: las 300 diferencias de un conteo eran 300 pedidos uno detrás de otro (más de un minuto con
+  // señal floja). Los de un mismo lote siguen en orden. Sin red, cada uno corta en su primer error (manejarFallo tira).
+  const grupos = ajustesPorLote(ajustes.filter(it => !esperaAlta(it, altas))); // los que esperan el alta del lote, después
+  let siguiente = 0;
+  await Promise.all(Array.from({ length: Math.min(6, grupos.length) }, async () => {
+    while (siguiente < grupos.length) for (const item of grupos[siguiente++]) await subirAjuste(item);
+  }));
 
   // ── Deletes (soft-delete) de a uno: son pocos ──
   for (const item of deletes) if (!esperaAlta(item, altas)) await subirUno(item);
