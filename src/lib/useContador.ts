@@ -30,3 +30,9 @@ export function useContador(valor: number, ms = 650): number {
   }, [valor, ms]);
   return mostrado;
 }
+
+/** El número que cuenta, solo: con el hook en la pantalla, se redibujaba la pantalla entera en cada cuadro de la
+ *  animación (unas 40 veces en Vender por cada producto agregado). */
+export function Contador({ valor, formato }: { valor: number; formato: (n: number) => string }) {
+  return formato(useContador(valor));
+}

@@ -25,7 +25,7 @@ import { useConfirm } from '../../lib/useConfirm';
 
 import { parseMonto } from '../../lib/numeros';
 import { avisoVentaOk, avisoToque } from '../lib/aviso';
-import { useContador } from '../../lib/useContador';
+import { Contador } from '../../lib/useContador';
 import { useAlVolver } from '../../lib/useAlVolver';
 import CheckDibujo from '../components/CheckDibujo';
 import AvisosDevolver from '../components/AvisosDevolver';
@@ -197,7 +197,6 @@ const VentaPage: React.FC = () => {
   // El descuento de la venta = promos automáticas + descuento manual, tope subtotal.
   const desc = Math.min(subtotal, Math.max(0, parseMonto(descuento) || 0) + promosCalc.monto); // nunca negativo: el server lo rechazaría
   const total = subtotal - desc;
-  const totalAnimado = useContador(total); // el total "cuenta" al agregar; ya con las ofertas
   // Carrito vacío = cliente nuevo: el nombre y el descuento del anterior no pasan al siguiente.
   useEffect(() => {
     if (state.cart.length > 0) return;
@@ -425,7 +424,7 @@ const VentaPage: React.FC = () => {
                 <div style={{ fontSize: 15, opacity: .75 }}>{totalItems} {totalItems !== 1 ? 'productos' : 'producto'}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 28, fontWeight: 800, fontFamily: 'var(--font-mono)', letterSpacing: '-0.02em' }}>{formatMoney(totalAnimado)}</div>
+                <div style={{ fontSize: 28, fontWeight: 800, fontFamily: 'var(--font-mono)', letterSpacing: '-0.02em' }}><Contador valor={total} formato={formatMoney} /></div>
                 {desc > 0 && <div style={{ fontSize: 15, opacity: .85 }}>con {formatMoney(desc)} de descuento</div>}
               </div>
             </div>

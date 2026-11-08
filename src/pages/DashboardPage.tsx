@@ -20,7 +20,7 @@ import Logo from '../components/ui/Logo';
 import { SkeletonDashboard } from '../components/ui/Skeleton';
 import SyncBanner from '../components/SyncBanner';
 
-import { useContador } from '../lib/useContador';
+import { Contador } from '../lib/useContador';
 import { useAuth } from '../context/AuthContext';
 import { ExclamationTriangleIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { buscarActualizacion, Actualizacion } from '../lib/actualizacion';
@@ -43,7 +43,6 @@ const DashboardPage: React.FC = () => {
     }
     return { vencidos, pronto };
   }, [productosConLotes]);
-  const valorAnimado = useContador(res.valorTotal); // el valor "cuenta" al abrir
   const lotes = useMemo(() => lotesEnriquecidos(), [lotesEnriquecidos]);
 
   // Productos por debajo de su stock mínimo (alerta de reposición).
@@ -178,7 +177,7 @@ const DashboardPage: React.FC = () => {
                 <span style={{ fontSize: 15, color: 'var(--text-2)', fontWeight: 700 }}>{esDueno ? 'Valor del inventario' : 'Mercadería'}</span>
                 {esDueno && (
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(20px, 6.5vw, 30px)', fontWeight: 800, margin: '6px 0 14px', letterSpacing: '-0.02em', lineHeight: 1.05, color: 'var(--text)', whiteSpace: 'nowrap' }}>
-                    {formatearMoneda(valorAnimado)}
+                    <Contador valor={res.valorTotal} formato={formatearMoneda} />
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
