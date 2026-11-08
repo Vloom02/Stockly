@@ -321,7 +321,8 @@ const PAGINA = 1000; // = max_rows de Supabase: pedir más no trae más
 /** Todo lo cambiado desde `desde` (por `col`), de a páginas. Sin paginar, con más de 1.000 cambios llegaban
  *  1.000 al azar y el watermark saltaba al resto para siempre. Cada página sigue desde la última fila vista
  *  (col, id) y no por posición: una fila que cambiaba mientras tanto corría a las demás y una se perdía. */
-async function traerCambiados(tabla: string, comercioId: string, desde: string, col = 'updated_at'): Promise<{ data: any[] | null; error: { message?: string } | null }> {
+async function traerCambiados(tabla: string, comercioId: string, desde: string, col = 'updated_at',
+  alPagina?: (filas: any[]) => Promise<void>): Promise<{ data: any[] | null; error: { message?: string } | null }> {
   const filas: any[] = [];
   for (let ultima: any = null; ;) {
     let q = supabase.from(tabla).select('*').eq('comercio_id', comercioId);
@@ -332,6 +333,7 @@ async function traerCambiados(tabla: string, comercioId: string, desde: string, 
       : q.gt(col, desde);
     const { data, error } = await conTimeout(Promise.resolve(q.order(col).order('id').limit(PAGINA)), 20000, `bajar ${tabla}`);
     if (error) return { data: null, error };
+    if (alPagina && data?.length) await alPagina(data);
     filas.push(...(data ?? []));
     if (!data || data.length < PAGINA) return { data: filas, error: null };
     ultima = data[data.length - 1];
@@ -374,8 +376,9 @@ export function marcaNueva(actual: string, horarios: (string | null | undefined)
   return max;
 }
 
-/** Trae lo cambiado en los otros equipos, lo guarda y lo devuelve (ya con lo propio sin subir encima). */
-export async function bajarCambios(comercioId: string): Promise<CambiosBajados> {
+/** Trae lo cambiado en los otros equipos, lo guarda y lo devuelve (ya con lo propio sin subir encima).
+ *  `alAvanzar` recibe los productos, compras y locales apenas se guardan, antes de los movimientos. */
+export async function bajarCambios(comercioId: string, alAvanzar?: (c: CambiosBajados) => void): Promise<CambiosBajados> {
   const [basePr, baseLo, baseSu, baseMo] = await Promise.all([marcaDe('productos'), marcaDe('lotes'), marcaDe('sucursales'), marcaDe('movimientos')]);
   // Overlap de 10 s: re-bajamos una ventana chica para no perder filas con el mismo timestamp que
   // el watermark ni las de una transacción que tardó en confirmarse (su hora es de antes del commit).
@@ -390,15 +393,8 @@ export async function bajarCambios(comercioId: string): Promise<CambiosBajados> 
     traerCambiados('sucursales', comercioId, conMargen(baseSu)),
   ]);
 
-  // Movimientos: por creado_en, con desempate por id. Antes, si más de 1.000 compartían la misma hora (una carga
-  // grande en una sola transacción), la página se cortaba ahí y el resto no bajaba nunca.
-  // Un equipo nuevo no baja años de historial: lo que muestran las pantallas alcanza con 7 meses (el resto queda en el servidor).
-  const desdeMo = baseMo === EPOCA ? new Date(Date.now() - 210 * 86400000).toISOString() : conMargen(baseMo);
-  const movs = await traerCambiados('movimientos', comercioId, desdeMo, 'creado_en');
-  const movsData = movs.data ?? [];
-
   // Si Supabase devolvió error en alguna tabla, lo reportamos (no fallar en silencio)
-  const errSupa = prods.error || lotes.error || sucs.error || movs.error;
+  const errSupa = prods.error || lotes.error || sucs.error;
   if (errSupa) {
     throw new Error('Supabase: ' + (errSupa.message || 'error al traer datos'));
   }
@@ -437,22 +433,41 @@ export async function bajarCambios(comercioId: string): Promise<CambiosBajados> 
     return local;
   }));
   const sucursales = sinNulos((sucs.data ?? []).map(r => conLoPropio('sucursales', mapSucursalLocal(r))));
-  const movimientos = movsData.map(mapMovimientoLocal);
   if (frenada) throw new Error('Sincronización frenada');
   await putVarios('productos', productos);
   await putVarios('lotes', lotesLocales);
   await putVarios('sucursales', sucursales);
-  await putVarios('movimientos', movimientos);
 
   const avanzar = async (tabla: TablaMarca, base: string, horarios: (string | null | undefined)[]) => {
     const nueva = marcaNueva(base, horarios);
     if (nueva !== base && !frenada) await setMeta(`ultima-sync:${tabla}`, nueva);
+    return nueva;
   };
   await avanzar('productos', basePr, (prods.data ?? []).map((r: any) => r.updated_at));
   await avanzar('lotes', baseLo, (lotes.data ?? []).map((r: any) => r.updated_at));
   await avanzar('sucursales', baseSu, (sucs.data ?? []).map((r: any) => r.updated_at));
-  await avanzar('movimientos', baseMo, movsData.map((r: any) => r.creado_en));
-  return { productos, lotes: lotesLocales, sucursales, movimientos };
+  // Antes todo se guardaba al final: un equipo nuevo con señal floja quedaba vacío minutos (ni Vender encontraba
+  // productos) esperando el historial, y si se cortaba volvía a bajar todo de cero.
+  alAvanzar?.({ productos, lotes: lotesLocales, sucursales, movimientos: [] });
+
+  // Movimientos: por creado_en, con desempate por id. Antes, si más de 1.000 compartían la misma hora (una carga
+  // grande en una sola transacción), la página se cortaba ahí y el resto no bajaba nunca.
+  // Un equipo nuevo no baja años de historial: lo que muestran las pantallas alcanza con 7 meses (el resto queda en el servidor).
+  // Cada página se guarda con su marca al llegar: si se corta, la próxima sigue desde ahí.
+  const desdeMo = baseMo === EPOCA ? new Date(Date.now() - 210 * 86400000).toISOString() : conMargen(baseMo);
+  const movimientos: ReturnType<typeof mapMovimientoLocal>[] = [];
+  let marcaMo = baseMo;
+  const movs = await traerCambiados('movimientos', comercioId, desdeMo, 'creado_en', async pagina => {
+    if (frenada) throw new Error('Sincronización frenada');
+    const m = pagina.map(mapMovimientoLocal);
+    await putVarios('movimientos', m);
+    movimientos.push(...m);
+    marcaMo = await avanzar('movimientos', marcaMo, pagina.map((r: any) => r.creado_en));
+  });
+  if (movs.error) throw new Error('Supabase: ' + (movs.error.message || 'error al traer datos'));
+  // Lo ya avisado no se devuelve otra vez: aplicarlo de nuevo al final pisaría en pantalla un cambio hecho mientras
+  // bajaban los movimientos.
+  return alAvanzar ? { productos: [], lotes: [], sucursales: [], movimientos } : { productos, lotes: lotesLocales, sucursales, movimientos };
 }
 
 /** Lo propio que todavía no subió, por "tabla:id": altas y cambios acumulados (el más nuevo encima), o null si
@@ -540,18 +555,18 @@ export async function esperarSincronizacion(ms = 5000): Promise<void> {
 let enCurso: Promise<ResultadoSync> | null = null;
 let otraMas: Promise<ResultadoSync> | null = null;
 
-export function sincronizar(comercioId: string): Promise<ResultadoSync> {
+export function sincronizar(comercioId: string, alAvanzar?: (c: CambiosBajados) => void): Promise<ResultadoSync> {
   if (frenada) return Promise.resolve({ subidos: 0, bajados: 0, error: null });
   if (!navigator.onLine) return Promise.resolve({ subidos: 0, bajados: 0, error: 'Sin conexión a internet' });
   if (!enCurso) {
-    enCurso = pasada(comercioId).finally(() => { enCurso = null; });
+    enCurso = pasada(comercioId, alAvanzar).finally(() => { enCurso = null; });
     return enCurso;
   }
-  if (!otraMas) otraMas = enCurso.then(() => { otraMas = null; return sincronizar(comercioId); });
+  if (!otraMas) otraMas = enCurso.then(() => { otraMas = null; return sincronizar(comercioId, alAvanzar); });
   return otraMas;
 }
 
-async function pasada(comercioId: string): Promise<ResultadoSync> {
+async function pasada(comercioId: string, alAvanzar?: (c: CambiosBajados) => void): Promise<ResultadoSync> {
   let subidos = 0;
   let error: string | null = null;
   try {
@@ -564,7 +579,7 @@ async function pasada(comercioId: string): Promise<ResultadoSync> {
     if (esErrorDeRed(error) && !/timeout/i.test(error)) return { subidos, bajados: 0, error };
   }
   try {
-    const cambios = await bajarCambios(comercioId);
+    const cambios = await bajarCambios(comercioId, alAvanzar);
     const bajados = cambios.productos.length + cambios.lotes.length + cambios.sucursales.length + cambios.movimientos.length;
     return { subidos, bajados, error, cambios };
   } catch (e) {

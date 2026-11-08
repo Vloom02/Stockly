@@ -284,16 +284,19 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // releía todo el almacenamiento local y redibujaba todas las pantallas.
   const sucursalActivaRef = useRef('');
   sucursalActivaRef.current = state.sucursalActivaId;
+  const aplicarCambios = useCallback(async (cambios: CambiosBajados) => {
+    if (sinCambios(cambios)) return;
+    // Se leen junto con los lotes: si una venta acaba de subir, sale de la cola y entra a los lotes a la vez.
+    setVendidoSinSubir(await leerUnidadesPendientes(sucursalActivaRef.current).catch(() => new Map<string, number>()));
+    dispatch({ type: 'APLICAR_CAMBIOS', cambios });
+  }, []);
   const sincronizarYRecargar = useCallback(async (id: string) => {
-    const res = await sincronizar(id);
-    if (!sinCambios(res.cambios)) {
-      // Se leen junto con los lotes: si una venta acaba de subir, sale de la cola y entra a los lotes a la vez.
-      setVendidoSinSubir(await leerUnidadesPendientes(sucursalActivaRef.current).catch(() => new Map<string, number>()));
-      dispatch({ type: 'APLICAR_CAMBIOS', cambios: res.cambios! });
-    }
+    // Productos y compras se aplican apenas bajan, sin esperar los movimientos (que llegan al final).
+    const res = await sincronizar(id, c => { void aplicarCambios(c); });
+    if (res.cambios) await aplicarCambios(res.cambios);
     await refrescarPendientes();
     return res;
-  }, [refrescarPendientes]);
+  }, [refrescarPendientes, aplicarCambios]);
 
   // ─── Init: abrir DB local, cargar, y sincronizar si hay internet ──────────
   useEffect(() => {
