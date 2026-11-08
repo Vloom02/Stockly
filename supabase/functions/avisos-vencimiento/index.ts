@@ -48,7 +48,7 @@ async function getAccessToken(): Promise<string> {
   const jwt = `${unsigned}.${b64url(sig)}`;
 
   const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
+    method: 'POST', signal: AbortSignal.timeout(10_000),
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
   });
@@ -129,8 +129,10 @@ Deno.serve(async (req) => {
       const body = `Tenés ${partes.join(' y ')}. Priorizá venderlos antes de perderlos.`;
 
       for (const t of tokens) {
+        // Con tope y sin cortar a los demás: un FCM colgado o caído hacía terminar la función con error y los
+        // comercios que seguían en la lista se quedaban sin aviso.
         const r = await fetch(fcmUrl, {
-          method: 'POST',
+          method: 'POST', signal: AbortSignal.timeout(10_000),
           headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             message: {
@@ -139,7 +141,8 @@ Deno.serve(async (req) => {
               android: { priority: 'high' },
             },
           }),
-        });
+        }).catch((e: unknown) => { console.warn('FCM sin respuesta', String(e)); return null; });
+        if (!r) continue;
         if (r.ok) {
           enviados++;
         } else {

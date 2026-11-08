@@ -5,6 +5,7 @@
 //    el release dice "apk-minimo: X.Y.Z" y el dueño ve el aviso para bajar el APK.
 // Lo arma scripts/publicar-version.sh.
 import { Capacitor } from '@capacitor/core';
+import { fetchConLimite } from './supabase';
 
 const REPO = 'Vloom02/Stockly';
 // Desde el APK 1.2.12 la app trae la llave pública (capacitor.config.ts) y Capgo solo instala versiones firmadas: un
@@ -58,7 +59,8 @@ let consulta: Promise<Actualizacion | null> | null = null;
 
 /** Mira el último release. Si hay parte web nueva, la deja bajada (se aplica con aplicarPendiente). */
 async function revisar(): Promise<Resultado> {
-  const r = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`);
+  // Con tope: con señal floja "Buscar actualización" quedaba girando sin fin.
+  const r = await fetchConLimite(15_000)(`https://api.github.com/repos/${REPO}/releases/latest`);
   if (!r.ok) throw new Error(`GitHub respondió ${r.status}`);
   const rel: Release = await r.json();
   const { CapacitorUpdater } = await import('@capgo/capacitor-updater');
