@@ -55,12 +55,8 @@ import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
 import '@ionic/react/css/structure.css';
 import '@ionic/react/css/typography.css';
-import '@ionic/react/css/padding.css';
-import '@ionic/react/css/float-elements.css';
-import '@ionic/react/css/text-alignment.css';
-import '@ionic/react/css/text-transformation.css';
-import '@ionic/react/css/flex-utils.css';
-import '@ionic/react/css/display.css';
+// Las utilidades de Ionic (ion-padding, ion-text-center, flex, display…) no se usan en ningún lado: eran 27 KB de CSS
+// que se leían en cada arranque.
 // Fuentes self-hosted (offline-first: no dependen de Google Fonts ni suman
 // round-trip de red al arranque). Variable = un archivo cubre todos los pesos.
 // Nunito: redondeada y clara en tamaños grandes (diseño "Tacto").
