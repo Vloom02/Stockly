@@ -25,7 +25,7 @@ export async function elegirYSubirFoto(comercioId: string, productoId: string): 
       resultType: CameraResultType.Base64,
       source: CameraSource.Prompt,   // el usuario elige cámara o galería
       quality: 65,
-      width: 320,                    // se muestra a 44-56px; 320 cubre 3x de sobra
+      width: 180,                    // se muestra a 44-56 px: 180 cubre una pantalla 3x (320 era casi el triple de peso)
       correctOrientation: true,      // ponytail: sin thumb aparte — bajar el tamaño de captura
     });
   } catch {
@@ -35,7 +35,8 @@ export async function elegirYSubirFoto(comercioId: string, productoId: string): 
 
   const path = `${comercioId}/${productoId}.jpg`;
   const { error } = await supabase.storage.from('productos')
-    .upload(path, base64ABlob(foto.base64String), { upsert: true, contentType: 'image/jpeg' });
+    // Caché de un año (antes 1 hora: cada hora se volvían a bajar todas las fotos); al cambiarla cambia el ?v=.
+    .upload(path, base64ABlob(foto.base64String), { upsert: true, contentType: 'image/jpeg', cacheControl: '31536000' });
   if (error) throw new Error('No se pudo subir la foto: ' + error.message);
 
   const { data } = supabase.storage.from('productos').getPublicUrl(path);
