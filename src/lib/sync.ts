@@ -384,6 +384,30 @@ export async function bajarCambios(comercioId: string, alAvanzar?: (c: CambiosBa
   // el watermark ni las de una transacción que tardó en confirmarse (su hora es de antes del commit).
   // Los put locales son idempotentes (upsert por id), así re-bajar no duplica.
   const conMargen = (iso: string) => new Date(new Date(iso).getTime() - 10_000).toISOString();
+  const avanzar = async (tabla: TablaMarca, base: string, horarios: (string | null | undefined)[]) => {
+    const nueva = marcaNueva(base, horarios);
+    if (nueva !== base && !frenada) await setMeta(`ultima-sync:${tabla}`, nueva);
+    return nueva;
+  };
+
+  // Movimientos: por creado_en, con desempate por id. Antes, si más de 1.000 compartían la misma hora (una carga
+  // grande en una sola transacción), la página se cortaba ahí y el resto no bajaba nunca.
+  // Un equipo nuevo no baja años de historial: lo que muestran las pantallas alcanza con 7 meses (el resto queda en el servidor).
+  // Cada página se guarda con su marca al llegar: si se corta, la próxima sigue desde ahí.
+  const desdeMo = baseMo === EPOCA ? new Date(Date.now() - 210 * 86400000).toISOString() : conMargen(baseMo);
+  const movimientos: ReturnType<typeof mapMovimientoLocal>[] = [];
+  let marcaMo = baseMo;
+  const traerMovimientos = () => traerCambiados('movimientos', comercioId, desdeMo, 'creado_en', async pagina => {
+    if (frenada) throw new Error('Sincronización frenada');
+    const m = pagina.map(mapMovimientoLocal);
+    await putVarios('movimientos', m);
+    movimientos.push(...m);
+    marcaMo = await avanzar('movimientos', marcaMo, pagina.map((r: any) => r.creado_en));
+  });
+  // En cada pasada son pocos y van a la vez que el resto (una vuelta menos al servidor). En un equipo nuevo van
+  // después: son decenas de páginas y le sacarían señal a lo que hace falta para vender.
+  const movsALaVez = baseMo === EPOCA ? null : traerMovimientos();
+  movsALaVez?.catch(() => { /* se ve abajo */ });
 
   // Pull INCREMENTAL: productos/lotes/sucursales por updated_at (trigger server);
   // movimientos por creado_en (timestamp del SERVIDOR, no el reloj del cliente).
@@ -438,11 +462,6 @@ export async function bajarCambios(comercioId: string, alAvanzar?: (c: CambiosBa
   await putVarios('lotes', lotesLocales);
   await putVarios('sucursales', sucursales);
 
-  const avanzar = async (tabla: TablaMarca, base: string, horarios: (string | null | undefined)[]) => {
-    const nueva = marcaNueva(base, horarios);
-    if (nueva !== base && !frenada) await setMeta(`ultima-sync:${tabla}`, nueva);
-    return nueva;
-  };
   await avanzar('productos', basePr, (prods.data ?? []).map((r: any) => r.updated_at));
   await avanzar('lotes', baseLo, (lotes.data ?? []).map((r: any) => r.updated_at));
   await avanzar('sucursales', baseSu, (sucs.data ?? []).map((r: any) => r.updated_at));
@@ -450,20 +469,7 @@ export async function bajarCambios(comercioId: string, alAvanzar?: (c: CambiosBa
   // productos) esperando el historial, y si se cortaba volvía a bajar todo de cero.
   alAvanzar?.({ productos, lotes: lotesLocales, sucursales, movimientos: [] });
 
-  // Movimientos: por creado_en, con desempate por id. Antes, si más de 1.000 compartían la misma hora (una carga
-  // grande en una sola transacción), la página se cortaba ahí y el resto no bajaba nunca.
-  // Un equipo nuevo no baja años de historial: lo que muestran las pantallas alcanza con 7 meses (el resto queda en el servidor).
-  // Cada página se guarda con su marca al llegar: si se corta, la próxima sigue desde ahí.
-  const desdeMo = baseMo === EPOCA ? new Date(Date.now() - 210 * 86400000).toISOString() : conMargen(baseMo);
-  const movimientos: ReturnType<typeof mapMovimientoLocal>[] = [];
-  let marcaMo = baseMo;
-  const movs = await traerCambiados('movimientos', comercioId, desdeMo, 'creado_en', async pagina => {
-    if (frenada) throw new Error('Sincronización frenada');
-    const m = pagina.map(mapMovimientoLocal);
-    await putVarios('movimientos', m);
-    movimientos.push(...m);
-    marcaMo = await avanzar('movimientos', marcaMo, pagina.map((r: any) => r.creado_en));
-  });
+  const movs = await (movsALaVez ?? traerMovimientos());
   if (movs.error) throw new Error('Supabase: ' + (movs.error.message || 'error al traer datos'));
   // Lo ya avisado no se devuelve otra vez: aplicarlo de nuevo al final pisaría en pantalla un cambio hecho mientras
   // bajaban los movimientos.
