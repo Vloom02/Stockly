@@ -46,7 +46,8 @@ const ResumenesPage: React.FC = () => {
       try {
         const desde = rango.anterior.desde.toISOString(), hasta = rango.hasta.toISOString();
         const [vs, items, cs] = await Promise.all([
-          todas<VentaRes>((a, b) => supabase.from('ventas_ventas').select('*')
+          // Solo lo que usa el resumen (VentaRes): con '*' venían también cliente, sucursal, comercio y fechas de sistema.
+          todas<VentaRes>((a, b) => supabase.from('ventas_ventas').select('id, fecha, total, descuento, metodo_pago, usuario, fiado, anulada')
             .eq('comercio_id', comercio.id).eq('sucursal_id', sucursalId)
             .gte('fecha', desde).lt('fecha', hasta).order('fecha').order('id').range(a, b)),
           todas<ItemRes>((a, b) => supabase.from('ventas_items')
