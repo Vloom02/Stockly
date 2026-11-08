@@ -5,7 +5,6 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { IonContent, IonModal, IonToast, useIonAlert } from '@ionic/react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { useStore } from '../../context/StoreContext';
-import { saldosPorCliente, claveCliente, SaldoCliente } from '../lib/fiado';
 import { useVentas, formatMoney } from '../context/VentasContext';
 import { useAuth } from '../context/AuthContext';
 import { useEmpleado } from '../context/EmpleadoContext';
@@ -87,23 +86,7 @@ const VentaPage: React.FC = () => {
   const [cliente, setCliente]     = useState('');
   const [descuento, setDescuento] = useState('');
   const [recibido, setRecibido]   = useState(''); // efectivo recibido → vuelto
-  const [fiado, setFiado]         = useState(false);
-  const [masOpciones, setMasOpciones] = useState(false); // descuento / cliente / fiado
-  // Fiado: los clientes que ya deben, para elegirlos de una lista y ver cuánto deben antes de fiarles más.
-  const [deben, setDeben] = useState<SaldoCliente[]>([]);
-  useEffect(() => {
-    if (!fiado || !comercio || !navigator.onLine) return;
-    (async () => {
-      const { data: ds } = await supabase.from('ventas_deudas').select('id, cliente, monto').eq('comercio_id', comercio.id).eq('pagada', false);
-      const ids = (ds ?? []).map(d => d.id);
-      const pagado: Record<string, number> = {};
-      if (ids.length) {
-        const { data: ps } = await supabase.from('ventas_pagos').select('deuda_id, monto').in('deuda_id', ids);
-        for (const p of ps ?? []) pagado[p.deuda_id] = (pagado[p.deuda_id] ?? 0) + Number(p.monto);
-      }
-      setDeben(saldosPorCliente(ds ?? [], pagado));
-    })().catch(() => { /* sin la lista: se escribe el nombre */ });
-  }, [fiado, comercio]);
+  const [masOpciones, setMasOpciones] = useState(false); // descuento / cliente
   const [processing, setProc]     = useState(false);
   const [ticket, setTicket]       = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
@@ -208,29 +191,23 @@ const VentaPage: React.FC = () => {
   const desc = Math.min(subtotal, Math.max(0, parseMonto(descuento) || 0) + promosCalc.monto); // nunca negativo: el server lo rechazaría
   const total = subtotal - desc;
   const totalAnimado = useContador(total); // el total "cuenta" al agregar; ya con las ofertas
-  // Carrito vacío = cliente nuevo: el fiado, el nombre y el descuento del anterior no pasan al siguiente.
+  // Carrito vacío = cliente nuevo: el nombre y el descuento del anterior no pasan al siguiente.
   useEffect(() => {
     if (state.cart.length > 0) return;
-    setFiado(false); setCliente(''); setDescuento(''); setRecibido(''); setMasOpciones(false);
+    setCliente(''); setDescuento(''); setRecibido(''); setMasOpciones(false);
   }, [state.cart.length]);
   const totalItems = state.cart.reduce((s, c) => s + c.qty, 0);
 
-  const fiadoSinCliente = fiado && !cliente.trim();
-
   const handleConfirm = async () => {
-    if (fiadoSinCliente) {
-      toast$('Ingresá el nombre del cliente para registrar el fiado', false);
-      return;
-    }
     // Snapshot del carrito ANTES de confirmar (confirmarVenta vacía el carrito).
     const snap = {
       items: state.cart.map(c => ({ nombre: c.nombre, qty: c.qty, precio: c.precio })),
-      subtotal, descuento: desc, total, metodoPago, cliente: cliente.trim(), fiado,
+      subtotal, descuento: desc, total, metodoPago, cliente: cliente.trim(),
     };
     setProc(true);
     let r: Awaited<ReturnType<typeof confirmarVenta>>;
     try {
-      r = await confirmarVenta({ metodoPago, cliente: cliente.trim(), fiado, descuento: desc, usuario: cajero?.nombre ?? null });
+      r = await confirmarVenta({ metodoPago, cliente: cliente.trim(), descuento: desc, usuario: cajero?.nombre ?? null });
     } catch (e) {
       console.warn('[venta]', e);
       r = { ok: false, msg: 'La venta no se guardó. Probá de nuevo; si sigue, avisale al dueño.' };
@@ -244,12 +221,12 @@ const VentaPage: React.FC = () => {
         fecha: new Date(),
         folio: (r.ventaId ?? '').replace(/-/g, '').slice(0, 6).toUpperCase() || '------',
         items: snap.items, subtotal: snap.subtotal, descuento: snap.descuento,
-        total: snap.total, metodoPago: snap.metodoPago, cliente: snap.cliente, fiado: snap.fiado,
+        total: snap.total, metodoPago: snap.metodoPago, cliente: snap.cliente,
         cajero: cajero?.nombre, legajo: cajero?.legajo,
       }, formatMoney);
       setTicket(txt);
       avisoVentaOk();
-      setConfirm(false); setCliente(''); setDescuento(''); setRecibido(''); setFiado(false); setMasOpciones(false); setMetodo('efectivo');
+      setConfirm(false); setCliente(''); setDescuento(''); setRecibido(''); setMasOpciones(false); setMetodo('efectivo');
       toast$(r.msg, true);
     } else {
       toast$(r.msg, false);
@@ -318,7 +295,7 @@ const VentaPage: React.FC = () => {
                 <LockClosedIcon size={22} color="var(--color-primary-dark)" />
               </button>
             )}
-            {/* Caja, fiado, ventas anteriores: antes era la pestaña "Más" de la app de ventas */}
+            {/* Caja y ventas anteriores: antes era la pestaña "Más" de la app de ventas */}
             <button type="button" onClick={() => history.push('/ventas/mas')} className="pressable"
               style={{ minHeight: 48, padding: '6px 14px', borderRadius: 'var(--radius)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
               <BanknotesIcon size={22} /> Caja
@@ -492,8 +469,8 @@ const VentaPage: React.FC = () => {
               ))}
             </div>
 
-            {/* Vuelto (solo efectivo, y si no es fiado) */}
-            {metodoPago === 'efectivo' && !fiado && (
+            {/* Vuelto (solo efectivo) */}
+            {metodoPago === 'efectivo' && (
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', display: 'block', marginBottom: 8 }}>¿Con cuánto paga?</label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 8 }}>
@@ -520,51 +497,18 @@ const VentaPage: React.FC = () => {
               </div>
             )}
 
-            {/* Lo menos común, plegado: descuento, fiado y nombre del cliente */}
-            {!(masOpciones || fiado || descuento !== '' || cliente !== '') ? (
+            {/* Lo menos común, plegado: descuento y nombre del cliente */}
+            {!(masOpciones || descuento !== '' || cliente !== '') ? (
               <button type="button" onClick={() => setMasOpciones(true)}
                 style={{ width: '100%', minHeight: 48, marginBottom: 16, border: '1.5px dashed var(--border)', borderRadius: 'var(--radius)', background: 'none', color: 'var(--text-2)', fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                + Descuento, fiado o nombre del cliente
+                + Descuento o nombre del cliente
               </button>
             ) : (
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', minHeight: 48, marginBottom: 8 }}>
-                  <input type="checkbox" checked={fiado} onChange={e => setFiado(e.target.checked)} style={{ width: 26, height: 26 }} />
-                  <span style={{ fontSize: 17, fontWeight: 600 }}>Lo paga después (fiado)</span>
-                </label>
-
-                <label style={{ fontSize: 15, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>{fiado ? 'Nombre del cliente (obligatorio)' : 'Nombre del cliente (opcional)'}</label>
+                <label style={{ fontSize: 15, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Nombre del cliente (opcional)</label>
                 <input className="campo" value={cliente} onChange={e => setCliente(e.target.value)} placeholder="Ej: Marta"
                   aria-label="Nombre del cliente"
-                  style={{ width: '100%', padding: 12, fontSize: 17, color: 'var(--text)', ...(fiadoSinCliente ? { borderColor: 'var(--color-danger)' } : {}), borderRadius: 'var(--radius)', outline: 'none', marginBottom: fiadoSinCliente ? 4 : 12 }} />
-                {fiadoSinCliente && (
-                  <div style={{ fontSize: 15, color: 'var(--color-danger)', marginBottom: 12 }}>
-                    Escribí el nombre para anotar la deuda.
-                  </div>
-                )}
-                {fiado && !state.isOnline && deben.length === 0 && (
-                  <div role="status" style={{ fontSize: 15, color: 'var(--text-2)', marginBottom: 12 }}>
-                    Sin internet no se ve cuánto debe cada cliente. La venta se anota igual.
-                  </div>
-                )}
-                {fiado && (() => {
-                  const k = claveCliente(cliente);
-                  const igual = deben.find(d => claveCliente(d.cliente) === k);
-                  const parecidos = deben.filter(d => !k || claveCliente(d.cliente).includes(k)).filter(d => d !== igual).slice(0, 6);
-                  return (<>
-                    {igual && <div role="status" style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-danger)', marginBottom: 10 }}>{igual.cliente} ya debe {formatMoney(igual.saldo)}</div>}
-                    {parecidos.length > 0 && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                        {parecidos.map(d => (
-                          <button key={d.cliente} type="button" onClick={() => setCliente(d.cliente)} className="pressable"
-                            style={{ minHeight: 44, padding: '0 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-full)', background: 'var(--surface)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                            {d.cliente} · debe {formatMoney(d.saldo)}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </>);
-                })()}
+                  style={{ width: '100%', padding: 12, fontSize: 17, color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none', marginBottom: 12 }} />
 
                 <label style={{ fontSize: 15, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Descuento ($)</label>
                 <input className="campo" type="text" inputMode="decimal" value={descuento} onChange={e => setDescuento(e.target.value)} placeholder="0"
@@ -575,13 +519,13 @@ const VentaPage: React.FC = () => {
 
             {/* Pie fijo: la acción principal siempre a la vista, sin tener que bajar */}
             <div style={{ position: 'sticky', bottom: 0, background: 'var(--bg)', paddingTop: 10, paddingBottom: 10, marginTop: 4, borderTop: '1px solid var(--border)' }}>
-              {metodoPago === 'efectivo' && !fiado && recibido !== '' && (parseMonto(recibido) || 0) >= total && (
+              {metodoPago === 'efectivo' && recibido !== '' && (parseMonto(recibido) || 0) >= total && (
                 <div role="status" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8, color: 'var(--color-primary-dark)' }}>
                   <span style={{ fontSize: 18, fontWeight: 700 }}>Vuelto</span>
                   <span style={{ fontSize: 28, fontWeight: 800, fontFamily: 'var(--font-mono)' }}>{formatMoney((parseMonto(recibido) || 0) - total)}</span>
                 </div>
               )}
-              <Button fullWidth size="lg" onClick={handleConfirm} loading={processing} disabled={fiadoSinCliente} style={{ fontSize: 20 }}><CheckIcon size={22} /> {fiado ? 'Anotar fiado' : 'Listo, cobrado'} · {formatMoney(total)}</Button>
+              <Button fullWidth size="lg" onClick={handleConfirm} loading={processing} style={{ fontSize: 20 }}><CheckIcon size={22} /> Listo, cobrado · {formatMoney(total)}</Button>
               {processing && (
                 <p role="status" style={{ fontSize: 16, fontWeight: 600, textAlign: 'center', margin: '8px 0 0' }}>
                   Guardando la venta… Si la señal está floja tarda unos segundos. No hace falta tocar de nuevo.

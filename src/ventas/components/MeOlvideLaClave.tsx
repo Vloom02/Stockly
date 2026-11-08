@@ -1,7 +1,7 @@
 import React from 'react';
 import { useIonAlert } from '@ionic/react';
 
-/** El dueño sin su clave no entra a Caja, Fiado ni Resúmenes, y cambiarla pide la actual: que sepa a quién recurrir. */
+/** El dueño sin su clave no entra a Caja ni a Resúmenes, y cambiarla pide la actual: que sepa a quién recurrir. */
 const MeOlvideLaClave: React.FC = () => {
   const [present] = useIonAlert();
   return (

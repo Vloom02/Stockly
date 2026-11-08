@@ -26,7 +26,7 @@ function celda(v: string | number): string {
 }
 
 export function ventasACSV(ventas: VentaExport[]): string {
-  const header = ['Fecha', 'Hora', 'Usuario', 'Cliente', 'Método', 'Descuento', 'Total', 'Fiado'];
+  const header = ['Fecha', 'Hora', 'Usuario', 'Cliente', 'Método', 'Descuento', 'Total'];
   const rows = ventas
     .slice()
     .sort((a, b) => b.fecha.localeCompare(a.fecha))
@@ -40,7 +40,6 @@ export function ventasACSV(ventas: VentaExport[]): string {
         v.fiado ? 'Fiado' : METODOS[v.metodo_pago] ?? v.metodo_pago,
         v.descuento ?? 0,
         v.total,
-        v.fiado ? 'Sí' : 'No',
       ];
     });
   // BOM + sep=; para Excel en español.

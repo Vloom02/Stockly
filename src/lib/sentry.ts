@@ -22,7 +22,7 @@ export function initSentry(): void {
     // Ruido esperable en una app offline-first: no lo reportamos.
     ignoreErrors: ['Failed to fetch', 'NetworkError', 'Load failed', 'AbortError', 'Timeout'],
     // Los toques guardan el nombre del botón ("Cobrar a Marta", un empleado) y la consola puede llevar
-    // datos de una fila: nada de eso viaja (datos personales de clientes de fiado y empleados).
+    // datos de una fila: nada de eso viaja (datos personales de clientes y empleados).
     // Las direcciones de los pedidos, sin lo que va después del "?": ahí viajan el token del celular y lo que se buscó.
     beforeBreadcrumb: (b) => {
       if (b.category === 'ui.click' || b.category === 'console') return null;

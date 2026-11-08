@@ -97,7 +97,7 @@ export interface OfflineAnulacionPayload {
   sucursalId?: string;  // el local donde se devolvió
 }
 
-// Pago de fiado encolado offline (idempotente por pagoId).
+// Fiado ya no existe en la app: esto queda para que suba lo que un equipo tenía en cola (idempotente por pagoId).
 export interface OfflinePagoPayload {
   pagoId: string;
   deudaId: string;

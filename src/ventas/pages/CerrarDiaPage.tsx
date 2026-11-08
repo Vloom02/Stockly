@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Cerrar el día (solo el dueño): todo el día en una pantalla. Lo vendido por forma de pago, el fiado
-// dado y cobrado, el cierre de cada empleado con su diferencia, lo que vence mañana y qué pedir.
+// Cerrar el día (solo el dueño): todo el día en una pantalla. Lo vendido por forma de pago,
+// el cierre de cada empleado con su diferencia, lo que vence mañana y qué pedir.
 // Solo lee: los cierres de caja los sigue haciendo cada empleado al terminar su turno.
 // ═══════════════════════════════════════════════════════════════════════════
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -15,7 +15,6 @@ import { Card } from '../components/ui';
 import Button from '../../components/ui/Button';
 import BotonVolver from '../components/BotonVolver';
 import { totalesPorMetodo, VentaCaja } from '../lib/caja';
-import { cobrosDeFiado } from '../lib/fiado';
 import { fechaLocalISO, sumarFecha } from '../../lib/vencimientos';
 import { compartirTexto } from '../../lib/compartir';
 
@@ -34,7 +33,6 @@ const CerrarDiaPage: React.FC = () => {
   const { state } = useStore();
   const history = useHistory();
   const [ventas, setVentas] = useState<VentaCaja[]>([]);
-  const [cobrado, setCobrado] = useState(0);
   const [cierres, setCierres] = useState<Cierre[]>([]);
   const [sinInternet, setSinInternet] = useState(false);
   const [cargando, setCargando] = useState(true); // antes mostraba "$0, nadie cerró caja" mientras buscaba
@@ -47,12 +45,9 @@ const CerrarDiaPage: React.FC = () => {
     let qv = supabase.from('ventas_ventas').select('total, metodo_pago, fiado').eq('comercio_id', comercio.id).eq('anulada', false).gte('fecha', desde);
     let qc = supabase.from('ventas_cierres').select('cajero_nombre, total, diferencia').eq('comercio_id', comercio.id).gte('hasta', desde);
     if (sucursalActiva) { qv = qv.eq('sucursal_id', sucursalActiva.id); qc = qc.eq('sucursal_id', sucursalActiva.id); }
-    const [rv, rp, rc] = await Promise.all([
-      qv, cobrosDeFiado(comercio.id, sucursalActiva?.id).gte('fecha', desde), qc,
-    ]);
-    setSinInternet(!!(rv.error || rp.error || rc.error));
+    const [rv, rc] = await Promise.all([qv, qc]);
+    setSinInternet(!!(rv.error || rc.error));
     if (!rv.error) setVentas((rv.data ?? []) as VentaCaja[]);
-    if (!rp.error) setCobrado(((rp.data ?? []) as { monto: number }[]).reduce((s: number, p) => s + Number(p.monto), 0));
     if (!rc.error) setCierres((rc.data ?? []) as Cierre[]);
     setCargando(false);
   }, [comercio, sucursalActiva]);
@@ -61,7 +56,6 @@ const CerrarDiaPage: React.FC = () => {
 
   const porMetodo = useMemo(() => totalesPorMetodo(ventas), [ventas]);
   const total = ventas.reduce((s, v) => s + Number(v.total), 0);
-  const fiadoHoy = ventas.filter(v => v.fiado).reduce((s, v) => s + Number(v.total), 0);
 
   // Lo que vence mañana (y lo ya vencido que sigue en góndola), del local activo.
   const hoy = fechaLocalISO(), manana = sumarFecha(1, 0);
@@ -75,7 +69,6 @@ const CerrarDiaPage: React.FC = () => {
       `Cierre del día ${new Date().toLocaleDateString('es-AR')} · ${comercio?.nombre ?? ''}`,
       `Vendido: ${formatMoney(total)} (${ventas.length} venta${ventas.length === 1 ? "" : "s"})`,
       ...Object.entries(porMetodo).map(([m, v]) => `• ${NOMBRE_METODO[m] ?? m}: ${formatMoney(v)}`),
-      `Fiado dado: ${formatMoney(fiadoHoy)} · Fiado cobrado: ${formatMoney(cobrado)}`,
       ...cierres.map(c => `Caja de ${c.cajero_nombre ?? 'sin nombre'}: diferencia ${formatMoney(Number(c.diferencia ?? 0))}`),
       vencenManana.length ? `Vence mañana: ${vencenManana.map(l => `${l.cantidad} ${nombre.get(l.productoId) ?? ''}`).join(', ')}` : 'Mañana no vence nada',
     ];
@@ -93,18 +86,13 @@ const CerrarDiaPage: React.FC = () => {
           {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}{sucursalActiva ? ` · ${sucursalActiva.nombre}` : ''}
         </p>
         {sinInternet && <p role="alert" style={{ fontSize: 16, color: 'var(--danger)', marginBottom: 12 }}>Sin internet: lo de la caja puede estar incompleto.</p>}
-        {!sinInternet && cola > 0 && <p role="alert" style={{ fontSize: 16, color: 'var(--danger)', marginBottom: 12 }}>Hay {cola} {cola === 1 ? 'venta o cobro' : 'ventas o cobros'} sin subir de este equipo: todavía no {cola === 1 ? 'cuenta' : 'cuentan'} acá.</p>}
+        {!sinInternet && cola > 0 && <p role="alert" style={{ fontSize: 16, color: 'var(--danger)', marginBottom: 12 }}>Hay {cola} {cola === 1 ? 'venta' : 'ventas'} sin subir de este equipo: todavía no {cola === 1 ? 'cuenta' : 'cuentan'} acá.</p>}
         {cargando && <p role="status" style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-2)', marginBottom: 12 }}>Buscando lo de hoy…</p>}
 
         {!cargando && <>
         <Card style={{ padding: 16, marginBottom: 12 }}>
           {fila(`Vendido (${ventas.length} venta${ventas.length === 1 ? "" : "s"})`, formatMoney(total), true)}
           {Object.entries(porMetodo).map(([m, v]) => <React.Fragment key={m}>{fila(NOMBRE_METODO[m] ?? m, formatMoney(v))}</React.Fragment>)}
-        </Card>
-
-        <Card style={{ padding: 16, marginBottom: 12 }}>
-          {fila('Fiado dado hoy', formatMoney(fiadoHoy))}
-          {fila('Fiado cobrado hoy', formatMoney(cobrado))}
         </Card>
 
         <Card style={{ padding: 16, marginBottom: 12 }}>

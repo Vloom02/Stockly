@@ -37,7 +37,7 @@ const PinPad: React.FC<Props> = ({ mode, titulo: tituloProp, subtitulo: subtitul
     stage === 'first' ? (tituloProp ?? 'Creá una clave de dueño') : 'Repetí la clave';
   const subtitulo =
     mode === 'unlock' ? (subtituloProp ?? 'Acceso a secciones del dueño') :
-    stage === 'first' ? (subtituloProp ?? `${minimo === 6 ? '6 números' : `Mínimo ${minimo} números`}. La vas a necesitar para ver caja, reportes y deudas.`) :
+    stage === 'first' ? (subtituloProp ?? `${minimo === 6 ? '6 números' : `Mínimo ${minimo} números`}. La vas a necesitar para ver la caja y los reportes.`) :
     'Confirmá la clave para guardarla';
 
   const press = async (d: string) => {

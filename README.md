@@ -22,7 +22,7 @@ Ionic React 8 · TypeScript · Capacitor 8 · Supabase (Postgres 17, RLS, RPC) �
 - **Vencimientos**: cada compra es un lote con su fecha; alertas escalonadas (aviso → urgente → crítico → vencido),
   sugerencia de descuento para liquidar y avisos push diarios.
 - **Punto de venta**: lector físico (USB o Bluetooth, en cualquier pantalla), cámara o búsqueda; cobro con vuelto,
-  fiado, ofertas. Descuenta el stock **FEFO** (primero lo que vence antes) en el servidor.
+  ofertas. Descuenta el stock **FEFO** (primero lo que vence antes) en el servidor.
 - **Stock negativo a propósito**: si se vende algo que no se cargó, queda en negativo para que el dueño lo vea,
   y el próximo ingreso lo descuenta solo (-2 + 6 = 4).
 - **Turnos con PIN**: el dueño usa su cuenta en el celular y en la tablet; cada empleado entra con su nombre y PIN
@@ -76,7 +76,7 @@ src/
 ├── context/        Auth (sesión, turno del cajero) y Store (datos locales + sync)
 ├── lib/            Lógica pura y probada: sync, resúmenes, pedido, vencimientos, Excel, impresión…
 ├── pages/          Inicio, Mercadería, Cargar, Resúmenes, Pedido, Ajustes…
-├── ventas/         Punto de venta: carrito, cobro, caja, fiado, cola de ventas offline
+├── ventas/         Punto de venta: carrito, cobro, caja, cola de ventas offline
 └── theme/          Diseño "Tacto": tokens, relieve y movimiento
 supabase/           Esquema, migraciones (RLS, RPC, triggers) y orden de aplicación
 tests/backend/      Pruebas de la base contra Supabase local

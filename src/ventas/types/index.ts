@@ -99,16 +99,6 @@ export interface Venta {
   items: VentaItem[];
 }
 
-export interface VentaDeuda {
-  id?: string;
-  comercio_id: string;
-  venta_id?: string | null;
-  cliente: string;
-  monto: number;
-  pagada: boolean;
-  fecha: number;
-}
-
 // ─── Carrito (en memoria) ──────────────────────────────────────────────────────
 export interface CartItem {
   productoId: string;

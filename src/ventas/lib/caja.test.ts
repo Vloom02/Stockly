@@ -17,23 +17,22 @@ describe('caja', () => {
     ])).toBe(7000);
   });
 
-  it('esperado = fondo + ventas en efectivo + entradas − salidas + cobros de fiado', () => {
+  it('esperado = fondo + ventas en efectivo + entradas − salidas', () => {
     const r = arqueo(
       [v(1000), v(5000, 'efectivo', true)],
       [{ tipo: 'apertura', monto: 3000 }, { tipo: 'ingreso', monto: 500 }, { tipo: 'egreso', monto: 800 }],
-      1200,
     );
-    expect(r.esperado).toBe(3000 + 1000 + 500 - 800 + 1200);
+    expect(r.esperado).toBe(3000 + 1000 + 500 - 800);
   });
 
   it('una venta en efectivo anulada: en el mismo turno da cero; de otro día, solo la salida', () => {
     const devolucion = { tipo: 'egreso' as const, monto: 2000 };
-    expect(arqueo([v(2000, 'efectivo', false, true)], [devolucion], 0).esperado).toBe(0);
-    expect(arqueo([], [devolucion], 0, 5000).esperado).toBe(3000);
-    expect(arqueo([v(2000, 'qr', false, true)], [], 0).esperado).toBe(0);
+    expect(arqueo([v(2000, 'efectivo', false, true)], [devolucion]).esperado).toBe(0);
+    expect(arqueo([], [devolucion], 5000).esperado).toBe(3000);
+    expect(arqueo([v(2000, 'qr', false, true)], []).esperado).toBe(0);
   });
 
   it('sin apertura registrada usa el fondo declarado a mano', () => {
-    expect(arqueo([v(100)], [], 0, 2000).esperado).toBe(2100);
+    expect(arqueo([v(100)], [], 2000).esperado).toBe(2100);
   });
 });

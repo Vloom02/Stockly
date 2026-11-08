@@ -25,7 +25,6 @@ const VentasMasPage       = lazy(() => import('./ventas/pages/MasPage'));
 const ResumenesPage       = lazy(() => import('./pages/ResumenesPage'));
 const CierrePage          = lazy(() => import('./ventas/pages/CierrePage'));
 const HistorialVentasPage = lazy(() => import('./ventas/pages/HistorialPage'));
-const DeudasPage          = lazy(() => import('./ventas/pages/DeudasPage'));
 const CajerosPage         = lazy(() => import('./ventas/pages/CajerosPage'));
 const EstadisticasPage    = lazy(() => import('./ventas/pages/EstadisticasPage'));
 const PromosPage          = lazy(() => import('./ventas/pages/PromosPage'));
@@ -173,7 +172,6 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
           <Route path="/resumenes" exact>{enVentas(<ResumenesPage />, 'Resúmenes')}</Route>
           <Route path="/ventas/caja" exact>{enVentas(<CierrePage />, 'Caja')}</Route>
           <Route path="/ventas/historial" exact>{enVentas(<HistorialVentasPage />, 'Ventas anteriores')}</Route>
-          <Route path="/ventas/fiado" exact>{enVentas(<DeudasPage />, 'Fiado')}</Route>
           <Route path="/ventas/cajeros" exact>{enVentas(<CajerosPage />, 'Empleados')}</Route>
           <Route path="/ventas/estadisticas" exact>{enVentas(<EstadisticasPage />, 'Lo más vendido')}</Route>
           <Route path="/ventas/ofertas" exact>{enVentas(<PromosPage />, 'Ofertas')}</Route>

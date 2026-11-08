@@ -24,7 +24,6 @@ export interface TicketData {
   total: number;
   metodoPago: string;
   cliente?: string;
-  fiado?: boolean;
   cajero?: string;
   legajo?: string;
 }
@@ -65,8 +64,7 @@ export function armarTicket(d: TicketData, fmt: (n: number) => string): string {
   out.push(linea('TOTAL', fmt(d.total)));
   out.push(sep);
   out.push(linea('Pago', METODOS[d.metodoPago] ?? d.metodoPago));
-  if (d.fiado) out.push(linea('FIADO', d.cliente || 'Cliente'));
-  else if (d.cliente) out.push(linea('Cliente', d.cliente));
+  if (d.cliente) out.push(linea('Cliente', d.cliente));
   out.push('');
   out.push(centrar('¡Gracias por su compra!'));
 

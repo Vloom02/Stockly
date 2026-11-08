@@ -18,7 +18,6 @@ function data(p: Partial<TicketData> = {}): TicketData {
     total: 6050,
     metodoPago: 'efectivo',
     cliente: '',
-    fiado: false,
     ...p,
   };
 }
@@ -49,12 +48,6 @@ describe('armarTicket', () => {
     const con = armarTicket(data({ descuento: 50, total: 6000 }), fmt);
     expect(con).toContain('Descuento');
     expect(con).toContain('-$50');
-  });
-
-  it('marca FIADO con el nombre del cliente', () => {
-    const t = armarTicket(data({ fiado: true, cliente: 'Juan' }), fmt);
-    expect(t).toContain('FIADO');
-    expect(t).toContain('Juan');
   });
 
   it('mapea otros métodos de pago', () => {

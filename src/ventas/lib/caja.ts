@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Cuentas de la caja (puras, testeables). Las usan el cierre del cajero y el del dueño.
-// Antes: las anuladas sumaban, el fiado contaba como efectivo y el efectivo esperado no
-// incluía el fondo, las entradas/salidas ni los cobros de fiado → "faltan $7.000" sin faltar nada.
+// Antes: las anuladas sumaban y el efectivo esperado no incluía el fondo ni las entradas/salidas
+// → "faltan $7.000" sin faltar nada. Una venta vieja marcada fiado no cuenta como plata.
 // ═══════════════════════════════════════════════════════════════════════════
 
 export interface VentaCaja { total: number; metodo_pago: string; fiado: boolean; anulada?: boolean | null; descuento?: number | null }
@@ -33,16 +33,16 @@ export function fondoDeApertura(movs: MovCaja[]): number {
 
 const hora = (f?: string) => { const t = f ? new Date(f).getTime() : 0; return Number.isFinite(t) ? t : 0; };
 
-export interface Arqueo { fondo: number; ventasEfectivo: number; ingresos: number; egresos: number; cobrosFiado: number; esperado: number }
+export interface Arqueo { fondo: number; ventasEfectivo: number; ingresos: number; egresos: number; esperado: number }
 
 /** Efectivo que tendría que haber en la caja. Una venta en efectivo anulada sigue contando en su turno, porque la plata
  *  entró, y la devolución es una salida de caja (migración 19) en el turno en que se devuelve: así anular una venta de
  *  ayer no descuadra el cierre de ayer, y en el mismo turno da cero. */
-export function arqueo(ventas: VentaCaja[], movs: MovCaja[], cobrosFiado: number, fondoManual = 0): Arqueo {
+export function arqueo(ventas: VentaCaja[], movs: MovCaja[], fondoManual = 0): Arqueo {
   const hayApertura = movs.some(m => m.tipo === 'apertura');
   const fondo = hayApertura ? fondoDeApertura(movs) : fondoManual;
   const ventasEfectivo = ventas.filter(v => !v.fiado && v.metodo_pago === 'efectivo').reduce((s, v) => s + Number(v.total), 0);
   const ingresos = movs.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + Number(m.monto), 0);
   const egresos = movs.filter(m => m.tipo === 'egreso').reduce((s, m) => s + Number(m.monto), 0);
-  return { fondo, ventasEfectivo, ingresos, egresos, cobrosFiado, esperado: fondo + ventasEfectivo + ingresos - egresos + cobrosFiado };
+  return { fondo, ventasEfectivo, ingresos, egresos, esperado: fondo + ventasEfectivo + ingresos - egresos };
 }

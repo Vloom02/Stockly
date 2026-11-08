@@ -108,7 +108,7 @@ interface VentasCtx {
   setQty:    (productoId: string, qty: number) => void;
   quitar:    (productoId: string) => void;
   vaciar:    () => void;
-  confirmarVenta: (opts: { metodoPago: string; cliente: string; fiado: boolean; descuento: number; usuario?: string | null }) =>
+  confirmarVenta: (opts: { metodoPago: string; cliente: string; descuento: number; usuario?: string | null }) =>
     Promise<{ ok: boolean; msg: string; ventaId?: string }>;
   sincronizar: () => Promise<void>;
   marcarDevuelto: (id: string) => Promise<void>;
@@ -265,7 +265,7 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const vaciar = useCallback(() => { dispatch({ type: 'SET_CART', payload: [] }); }, []);
 
   // ── Confirmar venta (FEFO) ───────────────────────────────────────────────────
-  const confirmarVenta = useCallback(async (opts: { metodoPago: string; cliente: string; fiado: boolean; descuento: number; usuario?: string | null }) => {
+  const confirmarVenta = useCallback(async (opts: { metodoPago: string; cliente: string; descuento: number; usuario?: string | null }) => {
     if (!comercio || !sucursalActiva) return { ok: false, msg: 'Elegí el local en Ajustes para poder vender' };
     const cart = cartRef.current;
     if (cart.length === 0) return { ok: false, msg: 'El carrito está vacío' };
@@ -282,7 +282,7 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const saveOffline = async () => {
       const payload: OfflineVentaPayload = {
         ventaId, comercioId: comercio.id, sucursalId: sucursalActiva.id, usuario,
-        metodoPago: opts.metodoPago, cliente: opts.cliente, fiado: opts.fiado,
+        metodoPago: opts.metodoPago, cliente: opts.cliente, fiado: false,
         descuento: opts.descuento, total, fecha: Date.now(), cart,
       };
       await enqueueOutbox('venta', payload);
@@ -302,7 +302,7 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const res = await Promise.race([
         aplicarVentaOnline({
           comercioId: comercio.id, sucursalId: sucursalActiva.id, usuario,
-          metodoPago: opts.metodoPago, cliente: opts.cliente, fiado: opts.fiado,
+          metodoPago: opts.metodoPago, cliente: opts.cliente, fiado: false,
           descuento: opts.descuento, cart, ventaId,
         }),
         new Promise<never>((_, rej) => setTimeout(() => rej(new Error('sin respuesta del servidor')), 8000)),

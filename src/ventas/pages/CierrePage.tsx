@@ -10,7 +10,6 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { IonContent, IonToast } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { cobrosDeFiado } from '../lib/fiado';
 import { useAuth } from '../context/AuthContext';
 import { useVentas } from '../context/VentasContext';
 import { useOwner } from '../context/OwnerContext';
@@ -117,7 +116,6 @@ const CierrePage: React.FC = () => {
   const { inicio, fin } = useMemo(() => rangoTurno(turno, new Date()), [turno]);
 
   const [movs, setMovs] = useState<MovCaja[]>([]);
-  const [cobros, setCobros] = useState(0);
   const [sinInternet, setSinInternet] = useState(false);
 
   const load = useCallback(async () => {
@@ -130,18 +128,15 @@ const CierrePage: React.FC = () => {
       .gte('fecha', desdeIso).lt('fecha', hastaIso);
     let qm = supabase.from('ventas_caja_mov').select('tipo, monto, fecha, turno_desde')
       .eq('comercio_id', comercio.id).gte('fecha', desdeIso).lt('fecha', hastaIso);
-    const qp = cobrosDeFiado(comercio.id, sucursalActiva?.id).gte('fecha', desdeIso).lt('fecha', hastaIso);
     if (sucursalActiva) { q = q.eq('sucursal_id', sucursalActiva.id); qm = qm.eq('sucursal_id', sucursalActiva.id); }
-    const [rv, rm, rp] = await Promise.all([
+    const [rv, rm] = await Promise.all([
       q.order('fecha', { ascending: false }),
       qm,
-      qp,
     ]);
     // Sin internet se deja lo que ya se veía y se avisa (antes decía "Sin ventas").
-    setSinInternet(!!(rv.error || rm.error || rp.error));
+    setSinInternet(!!(rv.error || rm.error));
     if (!rv.error) setVentas((rv.data ?? []) as VentaRow[]);
     if (!rm.error) setMovs((rm.data ?? []) as MovCaja[]);
-    if (!rp.error) setCobros((rp.data ?? []).reduce((s: number, p: { monto: number }) => s + Number(p.monto), 0));
     setLoading(false);
   }, [comercio, sucursalActiva, inicio, fin]);
 
@@ -167,9 +162,9 @@ const CierrePage: React.FC = () => {
   const cantidad   = validas.length;
   const ticketProm = cantidad > 0 ? total / cantidad : 0;
 
-  // Fiado aparte (no entró plata); el esperado suma fondo, entradas/salidas y cobros de fiado.
+  // El esperado suma fondo y entradas/salidas.
   const porMetodo = useMemo(() => totalesPorMetodo(validas), [validas]);
-  const caja = useMemo(() => arqueo(ventas, movs, cobros), [ventas, movs, cobros]);
+  const caja = useMemo(() => arqueo(ventas, movs), [ventas, movs]);
   const totalEfectivo = caja.esperado;
 
   const contado = parseMonto(efectivoContado) || 0;
@@ -253,7 +248,7 @@ const CierrePage: React.FC = () => {
         {!loading && (sinInternet || cola > 0) && (
           <p role="alert" style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-danger-dark)', background: 'var(--color-danger-bg)', borderRadius: 'var(--radius)', padding: 12, margin: '0 0 12px' }}>
             {cola > 0
-              ? `Hay ${cola} ${cola === 1 ? 'venta o cobro' : 'ventas o cobros'} sin subir de este equipo: no ${cola === 1 ? 'está contado' : 'están contados'} acá. Esperá que suban antes de contar la caja.`
+              ? `Hay ${cola} ${cola === 1 ? 'venta' : 'ventas'} sin subir de este equipo: no ${cola === 1 ? 'está contado' : 'están contados'} acá. Esperá que suban antes de contar la caja.`
               : 'Sin internet: estos números pueden estar incompletos.'}
           </p>
         )}
@@ -292,7 +287,7 @@ const CierrePage: React.FC = () => {
               </p>
               {([
                 ['Fondo de apertura', caja.fondo], ['Entró por ventas en efectivo', caja.ventasEfectivo],
-                ['Entradas de plata', caja.ingresos], ['Salidas de plata', -caja.egresos], ['Cobros de fiado', caja.cobrosFiado],
+                ['Entradas de plata', caja.ingresos], ['Salidas de plata', -caja.egresos],
               ] as [string, number][]).filter(([, n]) => n !== 0).map(([k, n]) => (
                 <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>
                   <span style={{ color: 'var(--text-2)' }}>{k}</span>
@@ -365,7 +360,7 @@ const CierrePage: React.FC = () => {
             Gestionar cajeros
           </button>
           <p style={{ fontSize: 14, color: 'var(--text-3)', marginTop: 8, textAlign: 'center' }}>
-            La clave de dueño cuida la caja, las ventas anteriores y el fiado. Cada empleado entra tocando su nombre y poniendo su clave.
+            La clave de dueño cuida la caja y las ventas anteriores. Cada empleado entra tocando su nombre y poniendo su clave.
           </p>
         </Card>
       </div>

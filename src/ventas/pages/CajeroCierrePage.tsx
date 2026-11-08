@@ -14,7 +14,7 @@ import { Card, Button, Skeleton } from '../components/ui';
 
 import { parseMonto } from '../../lib/numeros';
 import { totalesPorMetodo, arqueo, VentaCaja, MovCaja } from '../lib/caja';
-import { openDB, idbGetAll, guardarFilaCaja, OfflineVentaPayload, OfflinePagoPayload } from '../lib/outbox';
+import { openDB, idbGetAll, guardarFilaCaja, OfflineVentaPayload } from '../lib/outbox';
 import { OutboxItem } from '../types';
 type VentaRow = VentaCaja;
 type CajaMov = MovCaja;
@@ -36,7 +36,6 @@ const CajeroCierrePage: React.FC = () => {
 
   const [ventas, setVentas] = useState<VentaRow[]>([]);
   const [movs, setMovs] = useState<CajaMov[]>([]);
-  const [cobros, setCobros] = useState(0); // cobros de fiado del turno (entra efectivo)
   const [sinInternet, setSinInternet] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fondo, setFondo] = useState('');
@@ -54,19 +53,17 @@ const CajeroCierrePage: React.FC = () => {
       let qDevol = supabase.from('ventas_caja_mov').select('id, tipo, monto, fecha, turno_desde')
         .eq('comercio_id', comercio.id).eq('tipo', 'egreso').is('turno_desde', null).gte('fecha', desde.toISOString());
       if (sucursalActiva) qDevol = qDevol.eq('sucursal_id', sucursalActiva.id);
-      const [rv, rm, rp, rd] = await Promise.all([
+      const [rv, rm, rd] = await Promise.all([
         supabase.from('ventas_ventas').select('id, total, metodo_pago, fiado, anulada, descuento')
           .eq('comercio_id', comercio.id).eq('usuario', cajero.nombre).gte('fecha', desde.toISOString()),
         supabase.from('ventas_caja_mov').select('id, tipo, monto, fecha, turno_desde')
           .eq('comercio_id', comercio.id).eq('turno_desde', turnoDesde),
-        supabase.from('ventas_pagos').select('id, monto')
-          .eq('comercio_id', comercio.id).eq('usuario', cajero.nombre).gte('fecha', desde.toISOString()),
         qDevol,
       ]);
       // Lo guardado sin internet en este celular también es del turno.
       await openDB();
       const cola = await idbGetAll<OutboxItem>('outbox');
-      // Una venta o un cobro que llegó al servidor pero sigue en la cola (se cortó la respuesta) se contaba dos
+      // Una venta que llegó al servidor pero sigue en la cola (se cortó la respuesta) se contaba dos
       // veces; y una anulación todavía sin subir no restaba.
       const ventasServer = (rv.data ?? []) as (VentaRow & { id: string })[];
       const idsVenta = new Set(ventasServer.map(v => v.id));
@@ -74,9 +71,6 @@ const CajeroCierrePage: React.FC = () => {
       const ventasCola = cola.filter(i => i.kind === 'venta').map(i => i.payload as OfflineVentaPayload)
         .filter(p => p.usuario === cajero.nombre && p.fecha >= desde.getTime() && !idsVenta.has(p.ventaId))
         .map(p => ({ id: p.ventaId, total: p.total, metodo_pago: p.metodoPago, fiado: p.fiado, anulada: anuladasCola.has(p.ventaId), descuento: p.descuento }));
-      const idsPago = new Set(((rp.data ?? []) as { id: string }[]).map(p => p.id));
-      const cobrosCola = cola.filter(i => i.kind === 'pago_fiado').map(i => i.payload as OfflinePagoPayload)
-        .filter(p => p.usuario === cajero.nombre && p.fecha >= desde.getTime() && !idsPago.has(p.pagoId)).reduce((s, p) => s + p.monto, 0);
       const movsCola = cola.filter(i => i.kind === 'caja_mov').map(i => i.payload as unknown as CajaMov & { id: string; turno_desde: string })
         .filter(m => m.turno_desde === turnoDesde);
       const movsServer = [...(rm.data ?? []), ...(rd.data ?? [])] as (CajaMov & { id: string })[];
@@ -86,10 +80,9 @@ const CajeroCierrePage: React.FC = () => {
         .map(v => ({ id: `cola-${v.id}`, tipo: 'egreso' as const, monto: Number(v.total) }));
       const idsMov = new Set(movsServer.map(m => m.id));
 
-      setSinInternet(!!(rv.error || rm.error || rp.error));
+      setSinInternet(!!(rv.error || rm.error));
       setVentas([...ventasServer.map(v => (anuladasCola.has(v.id) ? { ...v, anulada: true } : v)), ...ventasCola]);
       setMovs([...movsServer, ...movsCola.filter(m => !idsMov.has(m.id)), ...devolucionesCola]);
-      setCobros((rp.data ?? []).reduce((s: number, p: { monto: number }) => s + Number(p.monto), 0) + cobrosCola);
       setLoading(false);
     })();
   }, [comercio, cajero, desde]);
@@ -99,7 +92,7 @@ const CajeroCierrePage: React.FC = () => {
   const porMetodo = useMemo(() => totalesPorMetodo(validas), [validas]);
   // La apertura registrada manda; si no hay, se puede declarar el fondo a mano.
   const aperturaMov = movs.some(m => m.tipo === 'apertura');
-  const a = arqueo(ventas, movs, cobros, parseMonto(fondo) || 0); // con las anuladas: ver lib/caja.ts
+  const a = arqueo(ventas, movs, parseMonto(fondo) || 0); // con las anuladas: ver lib/caja.ts
   const descuentos = validas.reduce((s, v) => s + Number(v.descuento ?? 0), 0);
   const { fondo: fondoNum, ventasEfectivo: efectivoVentas, ingresos, egresos, esperado } = a;
   const contadoNum = parseMonto(contado);
@@ -211,12 +204,6 @@ const CajeroCierrePage: React.FC = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>
                   <span style={{ color: 'var(--text-2)' }}>Egresos de caja</span>
                   <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-danger)' }}>−{formatMoney(egresos)}</span>
-                </div>
-              )}
-              {cobros > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>
-                  <span style={{ color: 'var(--text-2)' }}>Cobros de fiado</span>
-                  <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-primary-dark)' }}>+{formatMoney(cobros)}</span>
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '8px 0 10px', paddingTop: 8, borderTop: '1px solid var(--border)', fontSize: 14 }}>

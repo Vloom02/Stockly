@@ -43,7 +43,7 @@ const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avi
       // Sin recargar la lista: volvía al principio y se perdía el "Ver más".
       if (!error) {
         onAnulada(venta.id);
-        // Efectivo, o fiado con pagos: el servidor anota esa plata como salida de caja (migraciones 18 y 19).
+        // Efectivo: el servidor anota esa plata como salida de caja (migraciones 18 y 19).
         const devuelto = Number((data as { devuelto?: number } | null)?.devuelto ?? 0);
         avisar(devuelto > 0
           ? `Venta anulada. Devolvele ${formatMoney(devuelto)}: quedó anotado como salida de caja.`
@@ -211,7 +211,7 @@ const HistorialPage: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 8 }}>
               <div style={{ gridColumn: '1 / -1' }}><label style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: 6 }}>Cómo pagó</label>
                 <Opciones etiqueta="Cómo pagó" columnas={3} valor={filters.metodoPago} onChange={v => setFilters(f => ({ ...f, metodoPago: v }))}
-                  opciones={[{ valor: '', etiqueta: 'Todos' }, { valor: 'efectivo', etiqueta: 'Efectivo' }, { valor: 'transferencia', etiqueta: 'Transferencia' }, { valor: 'tarjeta', etiqueta: 'Tarjeta' }, { valor: 'qr', etiqueta: 'QR' }, { valor: 'fiado', etiqueta: 'Fiado' }]} /></div>
+                  opciones={[{ valor: '', etiqueta: 'Todos' }, { valor: 'efectivo', etiqueta: 'Efectivo' }, { valor: 'transferencia', etiqueta: 'Transferencia' }, { valor: 'tarjeta', etiqueta: 'Tarjeta' }, { valor: 'qr', etiqueta: 'QR' }]} /></div>
               <div><label style={{ fontSize: 14, color: 'var(--text-2)' }}>Cliente</label>
                 <input className="campo" value={filters.cliente} onChange={e => setFilters(f => ({ ...f, cliente: e.target.value }))} style={inputStyle} placeholder="Buscar..." /></div>
               <div><label style={{ fontSize: 14, color: 'var(--text-2)' }}>Desde</label>

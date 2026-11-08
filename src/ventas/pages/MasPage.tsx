@@ -13,7 +13,7 @@ import { useOwner, OPCIONES_LOCK } from '../context/OwnerContext';
 import { useConfirm } from '../../lib/useConfirm';
 import { Opciones } from '../components/ui';
 import { sonidoActivo, setSonidoActivo } from '../lib/aviso';
-import { ChartBarIcon, BanknotesIcon, BookOpenIcon, ClipboardIcon, SparklesIcon, TagIcon, UserGroupIcon, LockClosedIcon, CheckIcon } from '../components/ui/icons';
+import { ChartBarIcon, BanknotesIcon, ClipboardIcon, SparklesIcon, TagIcon, UserGroupIcon, LockClosedIcon, CheckIcon } from '../components/ui/icons';
 
 interface Tile { Icon: React.FC<{ size?: number; color?: string }>; label: string; desc: string; path: string; }
 
@@ -22,7 +22,6 @@ const PRINCIPALES: Tile[] = [
   { Icon: ChartBarIcon,  label: 'Resúmenes',         desc: 'Ventas y mercadería, Excel', path: '/resumenes' },
   { Icon: CheckIcon,     label: 'Cerrar el día',     desc: 'Todo el día en una pantalla', path: '/ventas/cerrar-dia' },
   { Icon: BanknotesIcon, label: 'Caja',              desc: 'Contar la plata y cerrar', path: '/ventas/caja' },
-  { Icon: BookOpenIcon,  label: 'Fiado',             desc: 'Quién debe y cuánto',      path: '/ventas/fiado' },
   { Icon: ClipboardIcon, label: 'Ventas anteriores', desc: 'Ver o anular una venta',   path: '/ventas/historial' },
 ];
 // Lo que se usa de vez en cuando: lista chica aparte.

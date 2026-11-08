@@ -26,7 +26,7 @@ const TABS: TabConfig[] = [
   { path: '/ventas',      Icon: ShoppingCartIcon, IconActive: CartSolid, label: 'Vender', ancho: 0.96, empleado: true },
   { path: '/lote/nuevo',  Icon: PlusIcon,    IconActive: PlusIcon,   label: 'Cargar', fab: true, ancho: 0.92 },
   { path: '/stock',       Icon: CubeIcon,    IconActive: CubeSolid,  label: 'Mercadería', ancho: 1.48 },
-  // Historial se abre desde Ajustes; caja y fiado, desde Vender.
+  // Historial se abre desde Ajustes; la caja, desde Vender.
   { path: '/config',      Icon: Cog6ToothIcon, IconActive: CogSolid, label: 'Ajustes', ancho: 1.04, empleado: true },
 ];
 

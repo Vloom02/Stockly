@@ -9,14 +9,13 @@ import { IonModal } from '@ionic/react';
 import { openDB, getLocalSetting, setLocalSetting } from '../lib/outbox';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { BanknotesIcon as IcoBanknotesIcon, BookOpenIcon as IcoBookOpenIcon, CubeIcon as IcoCubeIcon, ShoppingCartIcon as IcoShoppingCartIcon } from '@heroicons/react/24/outline';
+import { BanknotesIcon as IcoBanknotesIcon, CubeIcon as IcoCubeIcon, ShoppingCartIcon as IcoShoppingCartIcon } from '@heroicons/react/24/outline';
 
 const KEY = 'onboarding-ventas';
 
 const PASOS = [
   { Icono: IcoShoppingCartIcon, titulo: 'Vendé en segundos', texto: 'Escaneá el código o buscá por nombre. Se arma el carrito y descontás stock con un toque.' },
   { Icono: IcoCubeIcon, titulo: 'Stock siempre al día', texto: 'Cada venta descuenta la mercadería, empezando por lo que vence antes. La cargás una vez en Mercadería y ya queda para vender.' },
-  { Icono: IcoBookOpenIcon, titulo: 'Fiado bajo control', texto: 'Registrá ventas fiadas, cobrá de a poco y mandá recordatorios por WhatsApp desde Fiado.' },
   { Icono: IcoBanknotesIcon, titulo: 'Caja y reportes', texto: 'Cerrá la caja en cada turno contando la plata, y mirá cuánto vendiste en el Resumen del día.' },
 ];
 
