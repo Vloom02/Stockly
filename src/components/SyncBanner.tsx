@@ -1,7 +1,7 @@
 import React from 'react';
 import { CloudIcon, ArrowPathIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { useOnline } from '../utils/useOnline';
-import { useStore } from '../context/StoreContext';
+import { useStore, useSincronizando } from '../context/StoreContext';
 import { useVentas } from '../ventas/context/VentasContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -13,7 +13,8 @@ import { useAuth } from '../context/AuthContext';
  */
 const SyncBanner: React.FC = () => {
   const online = useOnline();
-  const { sincronizando, state: stock, sincronizarAhora, reintentarFallidos } = useStore();
+  const { state: stock, sincronizarAhora, reintentarFallidos } = useStore();
+  const sincronizando = useSincronizando();
   const { state: ventas, sincronizar: mandarVentas } = useVentas();
   const { esDueno } = useAuth();
   // Las dos colas juntas: antes Inicio decía "todo bien" con ventas sin subir.

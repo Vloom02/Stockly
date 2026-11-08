@@ -13,7 +13,7 @@ import {
   DocumentChartBarIcon,
 } from '@heroicons/react/24/outline';
 import {
-  useStore, setSetting,
+  useStore, useSincronizando, setSetting,
   DIAS_AVISO_DEFAULT, UMBRAL_AVISO, UMBRAL_URGENTE, UMBRAL_CRITICO, CATEGORIAS, EVENTO_UMBRALES,
   DESC_CRITICO, DESC_URGENTE, DESC_AVISO,
 } from '../context/StoreContext';
@@ -34,7 +34,8 @@ import { movimientoActivo, guardarMovimiento } from '../lib/movimiento';
 interface Props { onThemeToggle: () => void; isDark: boolean; }
 
 const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
-  const { state, exportarBackup, importarBackup, estadoNube, sincronizarAhora, sincronizando, reintentarFallidos, lotesEnriquecidos } = useStore();
+  const { state, exportarBackup, importarBackup, estadoNube, sincronizarAhora, reintentarFallidos, lotesEnriquecidos } = useStore();
+  const sincronizando = useSincronizando();
   const { comercio, miembro, esDueno, esAdminPlataforma } = useAuth();
   const cerrarSesion = useCerrarSesion();
   const confirmar = useConfirm();

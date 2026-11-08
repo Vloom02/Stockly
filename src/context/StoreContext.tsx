@@ -169,7 +169,6 @@ function reducer(state: State, a: Action): State {
 
 interface StoreContextValue {
   state: State;
-  sincronizando: boolean;
   sincronizarAhora: () => Promise<void>;
   reintentarFallidos: () => Promise<void>;
   estadoNube: { configurado: boolean; ultimoError: string | null; ultimaSyncOk: string | null };
@@ -804,21 +803,30 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Memo: si el proveedor se redibuja sin cambios (p. ej. por la sesión), las pantallas no.
   const valor = useMemo(() => ({
-    state, sincronizando, sincronizarAhora, reintentarFallidos, estadoNube,
+    state, sincronizarAhora, reintentarFallidos, estadoNube,
     addProducto, updateProducto, deleteProducto, buscarProductoPorCodigo,
     addLote, updateLote, ajustarLotes, retirarLote, addSucursal, updateSucursal, setSucursalActiva,
     productosConLotes, lotesEnriquecidos, resumen, fefoSugeridos,
     perdidasPorMes, distribucionPorCategoria, vencimientosDelMes,
     exportarBackup, importarBackup,
-  }), [state, sincronizando, sincronizarAhora, reintentarFallidos, estadoNube,
+  }), [state, sincronizarAhora, reintentarFallidos, estadoNube,
     addProducto, updateProducto, deleteProducto, buscarProductoPorCodigo,
     addLote, updateLote, ajustarLotes, retirarLote, addSucursal, updateSucursal, setSucursalActiva,
     productosConLotes, lotesEnriquecidos, resumen, fefoSugeridos,
     perdidasPorMes, distribucionPorCategoria, vencimientosDelMes,
     exportarBackup, importarBackup]);
 
-  return <StoreContext.Provider value={valor}>{children}</StoreContext.Provider>;
+  return (
+    <StoreContext.Provider value={valor}>
+      <SincronizandoContext.Provider value={sincronizando}>{children}</SincronizandoContext.Provider>
+    </StoreContext.Provider>
+  );
 };
+
+// Aparte del resto: cambia al empezar y al terminar cada sincronización (después de cada venta), y dentro del
+// contexto principal redibujaba dos veces todas las pantallas abiertas.
+const SincronizandoContext = createContext(false);
+export const useSincronizando = () => useContext(SincronizandoContext);
 
 export function useStore(): StoreContextValue {
   const ctx = useContext(StoreContext);
