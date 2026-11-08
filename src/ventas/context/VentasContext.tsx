@@ -182,23 +182,38 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   // Realtime: si otro equipo cambia el stock, Stockly baja solo lo nuevo (y eso actualiza el catálogo).
   // No bloquea nada; si Realtime no está activado, simplemente no llega nada.
+  const lotesRef = useRef(stock.lotes);
+  lotesRef.current = stock.lotes;
   useEffect(() => {
     if (!comercio || !sucursalActiva) return;
     let t: ReturnType<typeof setTimeout> | undefined;
+    // null = cambió un producto: siempre se baja.
+    let avisos: ({ id?: string; cantidad?: number; fecha_vencimiento?: string; retirado?: boolean } | null)[] = [];
+    // La venta propia vuelve como aviso cuando ya se sincronizó: si los lotes avisados ya están así en memoria, no hace
+    // falta otra pasada (eran 4 pedidos más por cada venta). Lo demás de un lote lo trae el ciclo de 30 s.
+    const yaEnMemoria = (r: NonNullable<(typeof avisos)[number]>) => {
+      const l = lotesRef.current.find(x => x.id === r.id);
+      return l ? l.cantidad === r.cantidad && l.fechaVencimiento === r.fecha_vencimiento : !!r.retirado;
+    };
+    const programar = () => {
+      // Una venta toca varios lotes y llega un aviso por cada uno: se refresca una sola vez.
+      clearTimeout(t);
+      t = setTimeout(() => {
+        const sobra = avisos.every(r => r !== null && yaEnMemoria(r));
+        avisos = [];
+        if (!sobra) sincronizarAhora();
+      }, 1500);
+    };
     const canal = supabase
       .channel(`lotes-${sucursalActiva.id}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'lotes', filter: `sucursal_id=eq.${sucursalActiva.id}` },
-        () => {
-          // Una venta toca varios lotes y llega un aviso por cada uno: se refresca una sola vez.
-          clearTimeout(t);
-          t = setTimeout(() => { sincronizarAhora(); }, 1500);
-        }
+        p => { avisos.push((p.new ?? null) as (typeof avisos)[number]); programar(); }
       )
       // Precios y productos nuevos de otro equipo también: antes se veían recién en el ciclo de 30 s.
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'productos', filter: `comercio_id=eq.${comercio.id}` },
-        () => { clearTimeout(t); t = setTimeout(() => { sincronizarAhora(); }, 1500); }
+        () => { avisos.push(null); programar(); }
       )
       .subscribe();
     return () => { clearTimeout(t); supabase.removeChannel(canal); };
