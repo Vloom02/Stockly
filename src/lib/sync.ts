@@ -318,17 +318,19 @@ async function manejarFallo(item: ItemOutbox, error?: string) {
  */
 const PAGINA = 1000; // = max_rows de Supabase: pedir más no trae más
 
-/** Todo lo cambiado desde `desde`, de a páginas. Sin paginar, con más de 1.000 cambios llegaban
+/** Todo lo cambiado desde `desde` (por `col`), de a páginas. Sin paginar, con más de 1.000 cambios llegaban
  *  1.000 al azar y el watermark saltaba al resto para siempre. Cada página sigue desde la última fila vista
- *  (updated_at, id) y no por posición: una fila que cambiaba mientras tanto corría a las demás y una se perdía. */
-async function traerCambiados(tabla: string, comercioId: string, desde: string): Promise<{ data: any[] | null; error: { message?: string } | null }> {
+ *  (col, id) y no por posición: una fila que cambiaba mientras tanto corría a las demás y una se perdía. */
+async function traerCambiados(tabla: string, comercioId: string, desde: string, col = 'updated_at'): Promise<{ data: any[] | null; error: { message?: string } | null }> {
   const filas: any[] = [];
   for (let ultima: any = null; ;) {
     let q = supabase.from(tabla).select('*').eq('comercio_id', comercioId);
+    // El gte sobra para el resultado, pero sin él la consulta recorría todo el comercio desde el principio en cada
+    // página (300 ms con 250.000 movimientos; con él, de 2 a 10 ms).
     q = ultima
-      ? q.or(`updated_at.gt."${ultima.updated_at}",and(updated_at.eq."${ultima.updated_at}",id.gt.${ultima.id})`)
-      : q.gt('updated_at', desde);
-    const { data, error } = await conTimeout(Promise.resolve(q.order('updated_at').order('id').limit(PAGINA)), 20000, `bajar ${tabla}`);
+      ? q.gte(col, ultima[col]).or(`${col}.gt."${ultima[col]}",and(${col}.eq."${ultima[col]}",id.gt.${ultima.id})`)
+      : q.gt(col, desde);
+    const { data, error } = await conTimeout(Promise.resolve(q.order(col).order('id').limit(PAGINA)), 20000, `bajar ${tabla}`);
     if (error) return { data: null, error };
     filas.push(...(data ?? []));
     if (!data || data.length < PAGINA) return { data: filas, error: null };
@@ -388,29 +390,15 @@ export async function bajarCambios(comercioId: string): Promise<CambiosBajados> 
     traerCambiados('sucursales', comercioId, conMargen(baseSu)),
   ]);
 
-  // Movimientos: PAGINADO ascendente por creado_en (antes el tope de 500 perdía los
-  // más viejos). gte + dedupe por id tolera que varios movimientos compartan creado_en
-  // (p.ej. los que inserta una misma venta en una sola transacción).
-  const movsData: any[] = [];
-  const vistos = new Set<string>();
-  let movsError: { message?: string } | null = null;
+  // Movimientos: por creado_en, con desempate por id. Antes, si más de 1.000 compartían la misma hora (una carga
+  // grande en una sola transacción), la página se cortaba ahí y el resto no bajaba nunca.
   // Un equipo nuevo no baja años de historial: lo que muestran las pantallas alcanza con 7 meses (el resto queda en el servidor).
-  let cursor = baseMo === EPOCA ? new Date(Date.now() - 210 * 86400000).toISOString() : conMargen(baseMo);
-  for (let guard = 0; guard < 200; guard++) {
-    const { data, error } = await conTimeout(Promise.resolve(supabase.from('movimientos').select('*')
-      .eq('comercio_id', comercioId).gte('creado_en', cursor)
-      .order('creado_en', { ascending: true }).limit(PAGINA)), 20000, 'bajar movimientos');
-    if (error) { movsError = error; break; }
-    if (!data || data.length === 0) break;
-    let nuevos = 0;
-    for (const r of data) { if (!vistos.has(r.id)) { vistos.add(r.id); movsData.push(r); nuevos++; } }
-    cursor = data[data.length - 1].creado_en;
-    if (data.length < PAGINA) break;
-    if (nuevos === 0) break; // toda la página comparte timestamp → cortar (evita loop)
-  }
+  const desdeMo = baseMo === EPOCA ? new Date(Date.now() - 210 * 86400000).toISOString() : conMargen(baseMo);
+  const movs = await traerCambiados('movimientos', comercioId, desdeMo, 'creado_en');
+  const movsData = movs.data ?? [];
 
   // Si Supabase devolvió error en alguna tabla, lo reportamos (no fallar en silencio)
-  const errSupa = prods.error || lotes.error || sucs.error || movsError;
+  const errSupa = prods.error || lotes.error || sucs.error || movs.error;
   if (errSupa) {
     throw new Error('Supabase: ' + (errSupa.message || 'error al traer datos'));
   }
