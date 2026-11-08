@@ -4,6 +4,7 @@
 // En la app usa el diálogo de impresión del sistema (también "Guardar como PDF"): ver lib/imprimir.
 // ═══════════════════════════════════════════════════════════════════════════
 import React, { useMemo, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { IonContent, IonPage } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import { PrinterIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
@@ -18,6 +19,12 @@ const EtiquetasPage: React.FC = () => {
   const history = useHistory();
   const [q, setQ] = useState('');
   const lectorRef = useLectorFisico<HTMLIonContentElement>(setQ); // lector físico: busca el producto
+  // De a 60 en pantalla (1.000 etiquetas tardaban 4 s en aparecer); para imprimir se dibujan todas antes.
+  const [mostrar, setMostrar] = useState(60);
+  const imprimir = () => {
+    flushSync(() => setMostrar(Infinity));
+    imprimirPantalla('Etiquetas de precio');
+  };
 
   const productos = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -55,7 +62,7 @@ const EtiquetasPage: React.FC = () => {
                 />
               </div>
               <button
-                type="button" onClick={() => imprimirPantalla('Etiquetas de precio')} disabled={productos.length === 0}
+                type="button" onClick={imprimir} disabled={productos.length === 0}
                 className="pressable boton-marca"
                 style={{ display: 'flex', alignItems: 'center', gap: 7, border: 'none', borderRadius: 'var(--radius)', padding: '0 16px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: productos.length === 0 ? 0.5 : 1 }}>
                 <PrinterIcon width={17} height={17} /> Imprimir
@@ -70,7 +77,7 @@ const EtiquetasPage: React.FC = () => {
             <EmptyState icon={<PrinterIcon width={32} height={32} />} title="Sin productos" description="No hay productos activos para etiquetar." />
           ) : (
             <div id="etiquetas-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
-              {productos.map(p => (
+              {productos.slice(0, mostrar).map(p => (
                 <div key={p.id} className="etiqueta" style={{ background: '#fff', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', padding: '12px 12px 14px', textAlign: 'center' }}>
                   <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.25, minHeight: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#111' }}>
                     {p.nombre}
@@ -86,6 +93,12 @@ const EtiquetasPage: React.FC = () => {
                 </div>
               ))}
             </div>
+          )}
+          {productos.length > mostrar && (
+            <button type="button" onClick={() => setMostrar(m => m + 60)} className="pressable no-print"
+              style={{ width: '100%', marginTop: 12, minHeight: 56, border: 'none', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', color: 'var(--text)', fontSize: 17, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Ver más ({productos.length - mostrar} más)
+            </button>
           )}
         </div>
       </IonContent>
