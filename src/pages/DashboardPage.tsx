@@ -7,7 +7,7 @@ import {
   CheckCircleIcon, ChartBarSquareIcon,
 } from '@heroicons/react/24/outline';
 import {
-  useStore, formatearMoneda, formatearFecha, textoEstado,
+  useStore, useSincronizando, formatearMoneda, formatearFecha, textoEstado,
   colorNivel, etiquetaNivel, ordenNivel, descuentoConfig,
 } from '../context/StoreContext';
 import { sugerirLiquidacion } from '../lib/liquidacion';
@@ -27,6 +27,7 @@ import { buscarActualizacion, Actualizacion } from '../lib/actualizacion';
 import { CubeIcon as IcoCubeIcon } from '@heroicons/react/24/outline';
 const DashboardPage: React.FC = () => {
   const { state, resumen, lotesEnriquecidos, productosConLotes } = useStore();
+  const sincronizando = useSincronizando();
   const history = useHistory();
   const { esDueno } = useAuth();
   const [nueva, setNueva] = useState<Actualizacion | null>(null);
@@ -240,7 +241,11 @@ const DashboardPage: React.FC = () => {
                 ))}
               </div>
             </>
-          ) : state.productos.length > 0 ? null /* el "Todo en orden" ya está arriba */ : (
+          ) : state.productos.length > 0 ? null /* el "Todo en orden" ya está arriba */ : sincronizando ? (
+            // En un equipo nuevo, mientras baja lo del servidor: antes decía "Crear primer producto" y se cargaba repetido.
+            <EmptyState icon={<ArchiveBoxIcon width={32} height={32} />} title="Trayendo tu mercadería…"
+              description="La primera vez en este equipo tarda un poco. No hace falta cargar nada." />
+          ) : (
             <EmptyState
               icon={<ArchiveBoxIcon width={32} height={32} />}
               title="Tu stock está vacío"

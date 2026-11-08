@@ -6,7 +6,7 @@ import {
   XMarkIcon, ArchiveBoxIcon, QrCodeIcon,
 } from '@heroicons/react/24/outline';
 import {
-  useStore, formatearMoneda, formatearFecha,
+  useStore, useSincronizando, formatearMoneda, formatearFecha,
   colorNivel, etiquetaNivel, ordenNivel, textoEstado, descuentoConfig,
 } from '../context/StoreContext';
 import { ProductoConLotes, NivelAlerta, LoteConProducto } from '../types';
@@ -33,6 +33,7 @@ function coincideNivel(filtro: Filtro, nivel: NivelAlerta): boolean {
 const POR_PAGINA = 60;
 const StockPage: React.FC = () => {
   const { productosConLotes, lotesEnriquecidos, buscarProductoPorCodigo } = useStore();
+  const sincronizando = useSincronizando();
   const history = useHistory();
   const { esDueno } = useAuth();
 
@@ -90,6 +91,16 @@ const StockPage: React.FC = () => {
       return d !== 0 ? d : a.fechaVencimiento < b.fechaVencimiento ? -1 : a.fechaVencimiento > b.fechaVencimiento ? 1 : 0;
     });
   }, [vista, lotes, buscado, filtro, filtroProveedor]);
+
+  // Sin nada cargado no es "Sin resultados": o está bajando lo del servidor (equipo nuevo) o todavía no hay mercadería.
+  const sinNada = productos.length === 0;
+  const vacio = (icono: React.ReactNode) => (
+    <EmptyState icon={icono}
+      title={!sinNada ? 'Sin resultados' : sincronizando ? 'Trayendo tu mercadería…' : 'Todavía no hay mercadería'}
+      description={!sinNada ? 'Probá cambiar la búsqueda o los filtros.'
+        : sincronizando ? 'La primera vez en este equipo tarda un poco. No hace falta cargar nada.'
+        : esDueno ? 'Tocá "Producto nuevo" para empezar.' : undefined} />
+  );
 
   const filtros: (NivelAlerta | 'todos')[] = ['todos', 'vencido', 'critico', 'urgente', 'aviso', 'ok'];
   const enNegativo = useMemo(() => productos.filter(p => p.cantidadTotal < 0).length, [productos]);
@@ -195,10 +206,7 @@ const StockPage: React.FC = () => {
 
           {/* Lista */}
           {vista === 'productos' ? (
-            productosFiltrados.length === 0 ? (
-              <EmptyState icon={<ArchiveBoxIcon width={32} height={32} />} title="Sin resultados"
-                description="Probá cambiar la búsqueda o los filtros." />
-            ) : (
+            productosFiltrados.length === 0 ? vacio(<ArchiveBoxIcon width={32} height={32} />) : (
               <div className="lista-animada" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {productosFiltrados.slice(0, mostrar).map(p => (
                   <ProductoCard key={p.producto.id} p={p}
@@ -212,10 +220,7 @@ const StockPage: React.FC = () => {
               </div>
             )
           ) : (
-            lotesFiltrados.length === 0 ? (
-              <EmptyState icon={<TagIcon width={32} height={32} />} title="Sin resultados"
-                description="Probá cambiar la búsqueda o los filtros." />
-            ) : (
+            lotesFiltrados.length === 0 ? vacio(<TagIcon width={32} height={32} />) : (
               <div className="lista-animada" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {lotesFiltrados.slice(0, mostrar).map(l => (
                   <LoteRow key={l.id} lote={l} onClick={() => history.push(`/lote/${l.id}`)} />

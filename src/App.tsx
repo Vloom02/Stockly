@@ -79,7 +79,7 @@ setupIonicReact({
 // Pantalla de ventas: turno de cajero + (opcional) PIN del dueño.
 const enVentas = (pagina: React.ReactNode, tituloDueno?: string) => (
   <IonPage>
-    <Suspense fallback={<Cargando />}>
+    <Suspense fallback={<CargandoPagina />}>
       <TurnoGate>{tituloDueno ? <OwnerGuard titulo={tituloDueno}>{pagina}</OwnerGuard> : pagina}</TurnoGate>
     </Suspense>
   </IonPage>
@@ -104,7 +104,7 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
   const [showOnboarding, setShowOnboarding] = useState(false);
   const { comercio, esDueno } = useAuth();
   // El empleado en turno solo cobra (Vender) y cambia la vista (Ajustes): lo demás es del dueño.
-  const soloDueno = (pagina: React.ReactNode) => esDueno ? <Suspense fallback={<Cargando />}>{pagina}</Suspense> : <Redirect to="/ventas" />;
+  const soloDueno = (pagina: React.ReactNode) => esDueno ? <Suspense fallback={<CargandoPagina />}>{pagina}</Suspense> : <Redirect to="/ventas" />;
 
   // Tutorial solo para comercios VACÍOS: si la cuenta ya tiene productos
   // (usuario existente en un dispositivo nuevo), va directo al stock.
@@ -166,7 +166,7 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
           <Route path="/precios" exact>{soloDueno(<PreciosPage />)}</Route>
           <Route path="/soporte" exact>{soloDueno(<SoportePage />)}</Route>
           <Route path="/pedido" exact>{soloDueno(<PedidoPage />)}</Route>
-          <Route path="/config" exact><Suspense fallback={<Cargando />}><ConfigPage onThemeToggle={onThemeToggle} isDark={isDark} /></Suspense></Route>
+          <Route path="/config" exact><Suspense fallback={<CargandoPagina />}><ConfigPage onThemeToggle={onThemeToggle} isDark={isDark} /></Suspense></Route>
           <Route path="/ventas" exact>{enVentas(<><VentaPage /><OnboardingVentas /></>)}</Route>
           <Route path="/ventas/mas" exact>{enVentas(<VentasMasPage />)}</Route>
           <Route path="/resumenes" exact>{enVentas(<ResumenesPage />, 'Resúmenes')}</Route>
@@ -192,6 +192,14 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
 };
 
 // ─── Pantalla de carga ──────────────────────────────────────────────────────
+// Al pasar a una pantalla que todavía no se abrió: casi siempre llega antes de 300 ms, y el logo a pantalla completa
+// aparecía un instante y parecía que la app se reiniciaba. Si tarda más, recién ahí se muestra.
+const CargandoPagina: React.FC = () => {
+  const [ver, setVer] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setVer(true), 300); return () => clearTimeout(t); }, []);
+  return ver ? <Cargando /> : null;
+};
+
 const Cargando: React.FC = () => (
   <div style={{
     position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column',
