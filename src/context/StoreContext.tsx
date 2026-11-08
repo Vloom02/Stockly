@@ -248,7 +248,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
 
   // Vendido en Vender que todavía no subió (sin internet): se descuenta del total de cada producto.
-  const [vendidoSinSubir, setVendidoSinSubir] = useState<Map<string, number>>(() => new Map());
+  const [vendidoSinSubir, setVendido] = useState<Map<string, number>>(() => new Map());
+  // Se relee en cada sincronización y casi siempre da lo mismo: un Map nuevo igual recalculaba la mercadería entera y
+  // redibujaba todas las pantallas en cada pasada.
+  const setVendidoSinSubir = useCallback((m: Map<string, number>) => setVendido(prev =>
+    prev.size === m.size && [...m].every(([k, v]) => prev.get(k) === v) ? prev : m), []);
 
   useEffect(() => {
     const leer = () => { leerUnidadesPendientes(state.sucursalActivaId).then(setVendidoSinSubir, () => { /* */ }); };
