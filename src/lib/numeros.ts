@@ -22,8 +22,10 @@ export function parseMonto(texto: string): number {
 
 /** La plata, igual en toda la app: "$1.000", "$999,50", "-$200". Antes Mercadería redondeaba y Vender no,
  *  y el mismo precio se veía distinto en cada pantalla. */
+// Formateadores fijos: toLocaleString con opciones arma uno nuevo en cada llamada, y la plata se dibuja en cada fila.
+const PLATA_ENTERA = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
+const PLATA_CON_CENTAVOS = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 export function formatearPlata(n: number): string {
   const v = Math.round(Number(n) * 100) / 100;
-  const d = Number.isInteger(v) ? 0 : 2;
-  return (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: 2 });
+  return (v < 0 ? '-$' : '$') + (Number.isInteger(v) ? PLATA_ENTERA : PLATA_CON_CENTAVOS).format(Math.abs(v));
 }
