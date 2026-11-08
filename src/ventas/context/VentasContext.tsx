@@ -297,15 +297,15 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if (!navigator.onLine || cart.some(c => sinSubir.has(c.productoId))) return saveOffline();
     try {
       // FEFO + descuento de stock se resuelven atómicamente en el servidor (RPC).
-      // Con señal floja no se espera 45 s con el cliente adelante: a los 8 s se guarda en el
-      // celular con el MISMO id (si el servidor la había recibido, el reintento sale duplicado).
+      // Con señal floja no se espera con el cliente adelante: a los 4 s (con 4G lento tarda 1,3 s) se guarda en el
+      // celular con el MISMO id (si el servidor la había recibido, el reintento sale duplicado y no descuenta dos veces).
       const res = await Promise.race([
         aplicarVentaOnline({
           comercioId: comercio.id, sucursalId: sucursalActiva.id, usuario,
           metodoPago: opts.metodoPago, cliente: opts.cliente, fiado: false,
           descuento: opts.descuento, cart, ventaId,
         }),
-        new Promise<never>((_, rej) => setTimeout(() => rej(new Error('sin respuesta del servidor')), 8000)),
+        new Promise<never>((_, rej) => setTimeout(() => rej(new Error('sin respuesta del servidor')), 4000)),
       ]);
       dispatch({ type: 'RESTAR_VENDIDO', vendido: cart }); hapticOk(); sincronizarAhora();
       const aviso = res.faltantes.length > 0

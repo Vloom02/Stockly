@@ -43,7 +43,13 @@ const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avi
     setAnulando(true);
     const payload = { ventaId: venta.id, comercioId: comercio.id, usuario: miembro?.nombre ?? null, fecha: Date.now(), sucursalId: sucursalActiva?.id };
     if (navigator.onLine) {
-      const { data, error } = await supabase.rpc('anular_venta', { p: { venta_id: venta.id, comercio_id: comercio.id, usuario: miembro?.nombre ?? null, sucursal_id: sucursalActiva?.id } });
+      // Con señal floja no se espera 45 s mirando "Anulando…": a los 8 s va a la cola (es idempotente por venta).
+      const sinRespuesta = new Promise<{ data: null; error: { message: string } }>(r =>
+        setTimeout(() => r({ data: null, error: { message: 'sin respuesta del servidor' } }), 8000));
+      const { data, error } = await Promise.race([
+        supabase.rpc('anular_venta', { p: { venta_id: venta.id, comercio_id: comercio.id, usuario: miembro?.nombre ?? null, sucursal_id: sucursalActiva?.id } }),
+        sinRespuesta,
+      ]);
       setAnulando(false);
       // Sin recargar la lista: volvía al principio y se perdía el "Ver más".
       if (!error) {
@@ -63,7 +69,7 @@ const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avi
       await openDB();
       await enqueueOutbox('anulacion', payload);
       setAnuladaLocal(true);
-      avisar('Sin internet: la anulación quedó guardada y se aplica sola cuando vuelva la señal.');
+      avisar('Sin señal: la anulación quedó guardada y se aplica sola cuando vuelva.');
     } catch {
       avisar('No se pudo anular la venta.');
     }
