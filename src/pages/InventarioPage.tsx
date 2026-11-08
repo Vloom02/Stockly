@@ -2,7 +2,7 @@
 // Inventario físico / conteo guiado. Reconcilia el stock real vs el del sistema
 // lote por lote. Al aplicar, usa updateLote (registra movimiento 'ajuste').
 // ═══════════════════════════════════════════════════════════════════════════
-import React, { useMemo, useState } from 'react';
+import React, { useDeferredValue, useMemo, useState } from 'react';
 import { IonContent, IonPage, IonToast, useIonViewWillEnter } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import { ClipboardDocumentCheckIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
@@ -33,11 +33,12 @@ const InventarioPage: React.FC = () => {
   [lotesEnriquecidos]);
   const codigoDe = useMemo(() => new Map(state.productos.map(p => [p.id, p.codigoBarras ?? ''])), [state.productos]);
 
-  // Por nombre o por código (el lector físico escribe el código).
+  // Por nombre o por código (el lector físico escribe el código). Diferido: lo que se escribe se ve enseguida.
+  const buscado = useDeferredValue(q);
   const lotes = useMemo(() => {
-    const t = q.trim().toLowerCase();
-    return todos.filter(l => !t || l.productoNombre.toLowerCase().includes(t) || codigoDe.get(l.productoId) === q.trim());
-  }, [todos, q, codigoDe]);
+    const t = buscado.trim().toLowerCase();
+    return todos.filter(l => !t || l.productoNombre.toLowerCase().includes(t) || codigoDe.get(l.productoId) === buscado.trim());
+  }, [todos, buscado, codigoDe]);
 
   // Diferencias de TODOS los lotes contados, aunque la búsqueda los oculte (antes se perdían).
   const diferencias = useMemo(() => todos.filter(l => {

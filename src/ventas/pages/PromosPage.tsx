@@ -2,11 +2,11 @@
 // Promos (dueño): alta/baja de promociones por producto (2x1 o % por cantidad).
 // Se gestionan ONLINE (tabla ventas_promos); el POS las cachea para offline.
 // ═══════════════════════════════════════════════════════════════════════════
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { IonContent, IonToast } from '@ionic/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { buscarProductosPorNombre } from '../lib/ventas-engine';
+import { useVentas } from '../context/VentasContext';
 import { Card, Button, EmptyState, Skeleton } from '../components/ui';
 import { useConfirm } from '../../lib/useConfirm';
 import { TagIcon, TrashIcon, MagnifyingGlass } from '../components/ui/icons';
@@ -51,10 +51,16 @@ const PromosPage: React.FC = () => {
   };
   useEffect(() => { load(); }, [comercio]);
 
+  // Igual que en Vender: busca en la mercadería que ya está en el equipo (antes cada tecla iba al servidor) y solo
+  // vale la respuesta de lo último que se escribió.
+  const { buscarPorNombre } = useVentas();
+  const busquedaN = useRef(0);
   const buscar = async (q: string) => {
     setQuery(q);
     setProdElegido(null);
-    setResults(q.length >= 2 && comercio ? await buscarProductosPorNombre(comercio.id, q).catch(() => []) : []);
+    const n = ++busquedaN.current;
+    const r = q.length >= 2 ? await buscarPorNombre(q) : [];
+    if (n === busquedaN.current) setResults(r);
   };
 
   const guardar = async () => {

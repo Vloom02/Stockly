@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useDeferredValue } from 'react';
 import { IonContent, IonPage } from '@ionic/react';
 import { useHistory, useLocation } from 'react-router-dom';
 import {
@@ -63,18 +63,23 @@ const StockPage: React.FC = () => {
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'es'));
   }, [productos]);
 
+  // La lista se filtra después de cada tecla, sin frenar lo que se escribe (cada letra tardaba hasta 240 ms en
+  // verse); y solo la de la vista abierta.
+  const buscado = useDeferredValue(busqueda);
   const productosFiltrados = useMemo(() => {
-    const q = busqueda.trim().toLowerCase();
+    if (vista !== 'productos') return [];
+    const q = buscado.trim().toLowerCase();
     return productos.filter(p => {
-      const mb = !q || p.producto.nombre.toLowerCase().includes(q) || (p.producto.codigoBarras?.includes(busqueda.trim()));
+      const mb = !q || p.producto.nombre.toLowerCase().includes(q) || (p.producto.codigoBarras?.includes(buscado.trim()));
       const mf = filtro === 'negativo' ? p.cantidadTotal < 0 : coincideNivel(filtro, p.nivelPeor);
       const mp = filtroProveedor === 'todos' || (p.producto.proveedor?.trim() ?? '') === filtroProveedor;
       return mb && mf && mp;
     }).sort((a, b) => ordenNivel(a.nivelPeor) - ordenNivel(b.nivelPeor));
-  }, [productos, busqueda, filtro, filtroProveedor]);
+  }, [vista, productos, buscado, filtro, filtroProveedor]);
 
   const lotesFiltrados = useMemo(() => {
-    const q = busqueda.trim().toLowerCase();
+    if (vista !== 'lotes') return [];
+    const q = buscado.trim().toLowerCase();
     return lotes.filter(l => {
       const mb = !q || l.productoNombre.toLowerCase().includes(q) || (l.numeroLote?.toLowerCase().includes(q));
       const mf = filtro === 'negativo' ? l.cantidad < 0 : l.cantidad > 0 && coincideNivel(filtro, l.nivelAlerta);
@@ -82,9 +87,9 @@ const StockPage: React.FC = () => {
       return mb && mf && mp;
     }).sort((a, b) => {
       const d = ordenNivel(a.nivelAlerta) - ordenNivel(b.nivelAlerta);
-      return d !== 0 ? d : a.fechaVencimiento.localeCompare(b.fechaVencimiento);
+      return d !== 0 ? d : a.fechaVencimiento < b.fechaVencimiento ? -1 : a.fechaVencimiento > b.fechaVencimiento ? 1 : 0;
     });
-  }, [lotes, busqueda, filtro, filtroProveedor]);
+  }, [vista, lotes, buscado, filtro, filtroProveedor]);
 
   const filtros: (NivelAlerta | 'todos')[] = ['todos', 'vencido', 'critico', 'urgente', 'aviso', 'ok'];
   const enNegativo = useMemo(() => productos.filter(p => p.cantidadTotal < 0).length, [productos]);
