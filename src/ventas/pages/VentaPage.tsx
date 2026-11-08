@@ -97,7 +97,7 @@ const VentaPage: React.FC = () => {
 
   // Favoritos: productos más vendidos (30 días), para tocar sin buscar. Se
   // cachea local para que anden offline. Se muestran solo con el carrito vacío.
-  const [favoritos, setFavoritos] = useState<Producto[]>([]);
+  const [topIds, setTopIds] = useState<string[]>([]);
   useEffect(() => {
     if (!comercio) return;
     (async () => {
@@ -106,20 +106,26 @@ const VentaPage: React.FC = () => {
         // del servidor dejaba "más vendidos" sacados de una parte cualquiera de las ventas.
         const { data, error } = await supabase.rpc('vendido_por_producto', { p_comercio: comercio.id, p_dias: 30, p_limite: 8 });
         if (error) throw error; // sin internet: los guardados (abajo)
-        const topIds = ((data ?? []) as { producto_id: string }[]).map(r => r.producto_id);
-        if (topIds.length === 0) { setFavoritos([]); return; }
-        const { data: prods, error: e2 } = await supabase.from('productos').select('*').in('id', topIds).eq('activo', true);
-        if (e2) throw e2;
-        // respetar el orden por popularidad
-        const orden = new Map(topIds.map((id, i) => [id, i]));
-        const lista = ((prods ?? []) as Producto[]).sort((a, b) => (orden.get(a.id) ?? 99) - (orden.get(b.id) ?? 99));
-        setFavoritos(lista);
-        openDB().then(() => setLocalSetting('favoritos-cache', JSON.stringify(lista))).catch(() => {});
+        const ids = ((data ?? []) as { producto_id: string }[]).map(r => r.producto_id);
+        setTopIds(ids);
+        openDB().then(() => setLocalSetting('favoritos-cache', JSON.stringify(ids))).catch(() => {});
       } catch {
-        try { await openDB(); const raw = await getLocalSetting('favoritos-cache'); if (raw) setFavoritos(JSON.parse(raw)); } catch { /* */ }
+        try {
+          await openDB();
+          const raw = await getLocalSetting('favoritos-cache'); // las versiones viejas guardaban los productos enteros
+          if (raw) setTopIds((JSON.parse(raw) as (string | { id: string })[]).map(x => (typeof x === 'string' ? x : x.id)));
+        } catch { /* */ }
       }
     })();
   }, [comercio]);
+  // Los productos salen de la mercadería en memoria (en el orden de lo más vendido): antes se volvían a pedir al servidor.
+  const favoritos = useMemo(() => {
+    const porId = new Map(stock.productos.map(p => [p.id, p]));
+    return topIds.flatMap((id): Producto[] => {
+      const p = porId.get(id);
+      return p ? [{ id, comercio_id: comercio?.id ?? '', nombre: p.nombre, codigo_barras: p.codigoBarras ?? '', categoria: p.categoria, precio: p.precio, activo: true } as Producto] : [];
+    });
+  }, [topIds, stock.productos, comercio]);
 
   // Promos activas del comercio (con cache local para vender offline). Se releen al volver a Vender:
   // una oferta recién puesta desde Cargar no se veía hasta reabrir la app.
@@ -130,15 +136,16 @@ const VentaPage: React.FC = () => {
     if (!comercio) return;
     (async () => {
       try {
-        const { data, error } = await supabase.from('ventas_promos')
-          .select('producto_id, tipo, min_cant, pct')
-          .eq('comercio_id', comercio.id).eq('activa', true);
+        // Las dos a la vez (antes una detrás de la otra).
+        // Ofertas de lo que está por vencer (migración 15). Si la tabla todavía no existe, siguen las otras.
+        const [{ data, error }, { data: liq }] = await Promise.all([
+          supabase.from('ventas_promos').select('producto_id, tipo, min_cant, pct').eq('comercio_id', comercio.id).eq('activa', true),
+          supabase.from('ventas_liquidaciones').select('producto_id, pct, hasta')
+            .eq('comercio_id', comercio.id).gte('hasta', new Date().toLocaleDateString('sv-SE')),
+        ]);
         if (error) throw error;
         const ps: Promo[] = (data ?? []).map((r: { producto_id: string; tipo: Promo['tipo']; min_cant: number; pct: number }) =>
           ({ productoId: r.producto_id, tipo: r.tipo, minCant: r.min_cant, pct: Number(r.pct) }));
-        // Ofertas de lo que está por vencer (migración 15). Si la tabla todavía no existe, siguen las otras.
-        const { data: liq } = await supabase.from('ventas_liquidaciones').select('producto_id, pct, hasta')
-          .eq('comercio_id', comercio.id).gte('hasta', new Date().toLocaleDateString('sv-SE'));
         for (const r of (liq ?? []) as { producto_id: string; pct: number; hasta: string }[])
           ps.push({ productoId: r.producto_id, tipo: 'liquidacion', minCant: 1, pct: Number(r.pct), hasta: r.hasta });
         setPromos(ps);

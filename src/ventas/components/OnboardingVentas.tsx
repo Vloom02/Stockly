@@ -9,6 +9,7 @@ import { IonModal } from '@ionic/react';
 import { openDB, getLocalSetting, setLocalSetting } from '../lib/outbox';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useStore } from '../../context/StoreContext';
 import { BanknotesIcon as IcoBanknotesIcon, CubeIcon as IcoCubeIcon, ShoppingCartIcon as IcoShoppingCartIcon } from '@heroicons/react/24/outline';
 
 const KEY = 'onboarding-ventas';
@@ -21,6 +22,7 @@ const PASOS = [
 
 const OnboardingVentas: React.FC = () => {
   const { comercio } = useAuth();
+  const { state: stock } = useStore();
   const [open, setOpen] = useState(false);
   const [i, setI] = useState(0);
 
@@ -32,12 +34,14 @@ const OnboardingVentas: React.FC = () => {
         if ((await getLocalSetting(KEY)) === 'visto') return;
 
         // ¿El comercio ya tiene movimiento? (productos cargados o ventas hechas)
-        // → usuario existente en un dispositivo nuevo: directo a vender.
+        // → usuario existente en un dispositivo nuevo: directo a vender. Si la mercadería ya está en el equipo, sin
+        // preguntarle al servidor; si no, las dos preguntas a la vez.
+        if (stock.productos.length > 0) { await setLocalSetting(KEY, 'visto'); return; }
         if (navigator.onLine) {
-          const { data: prods } = await supabase.from('productos')
-            .select('id').eq('comercio_id', comercio.id).limit(1);
-          const { data: vtas } = await supabase.from('ventas_ventas')
-            .select('id').eq('comercio_id', comercio.id).limit(1);
+          const [{ data: prods }, { data: vtas }] = await Promise.all([
+            supabase.from('productos').select('id').eq('comercio_id', comercio.id).limit(1),
+            supabase.from('ventas_ventas').select('id').eq('comercio_id', comercio.id).limit(1),
+          ]);
           if ((prods?.length ?? 0) > 0 || (vtas?.length ?? 0) > 0) {
             await setLocalSetting(KEY, 'visto');
             return;

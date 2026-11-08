@@ -146,8 +146,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (!montado || evento === 'INITIAL_SESSION') return;
       setSession(session);
       if (session?.user) {
-        // Misma cuenta ya cargada: no hay nada que recargar. Si arrancó sin internet, ahora sí.
-        if (evento === 'TOKEN_REFRESHED' && cargadoPara.current === session.user.id) return;
+        // Misma cuenta ya cargada: no hay nada que recargar. Si arrancó sin internet, ahora sí. SIGNED_IN también llega
+        // cada vez que la app vuelve a primer plano (supabase-js relee la sesión): eran 6 pedidos en cada vuelta.
+        if ((evento === 'TOKEN_REFRESHED' || evento === 'SIGNED_IN') && cargadoPara.current === session.user.id) return;
         // Fuera del aviso: consultar Supabase adentro del callback traba el candado de la sesión.
         const uid = session.user.id;
         setTimeout(() => { cargarDatosUsuario(uid).catch(e => console.warn('No se pudieron cargar datos del usuario', e)); }, 0);

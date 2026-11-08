@@ -116,6 +116,7 @@ const CierrePage: React.FC = () => {
   const { inicio, fin } = useMemo(() => rangoTurno(turno, new Date()), [turno]);
 
   const [movs, setMovs] = useState<MovCaja[]>([]);
+  const [cierres, setCierres] = useState<CierreRow[]>([]);
   const [sinInternet, setSinInternet] = useState(false);
 
   const load = useCallback(async () => {
@@ -129,32 +130,24 @@ const CierrePage: React.FC = () => {
     let qm = supabase.from('ventas_caja_mov').select('tipo, monto, fecha, turno_desde')
       .eq('comercio_id', comercio.id).gte('fecha', desdeIso).lt('fecha', hastaIso);
     if (sucursalActiva) { q = q.eq('sucursal_id', sucursalActiva.id); qm = qm.eq('sucursal_id', sucursalActiva.id); }
-    const [rv, rm] = await Promise.all([
+    // Los cierres de los cajeros (cada uno lo registra al cerrar su turno) van en la misma tanda: antes se pedían
+    // aparte, dos veces al entrar (una al abrir y otra cuando llegaban las ventas).
+    const [rv, rm, rc] = await Promise.all([
       q.order('fecha', { ascending: false }),
       qm,
+      supabase.from('ventas_cierres').select('id, cajero_nombre, hasta, total, diferencia, efectivo_contado')
+        .eq('comercio_id', comercio.id).order('hasta', { ascending: false }).limit(10),
     ]);
     // Sin internet se deja lo que ya se veía y se avisa (antes decía "Sin ventas").
     setSinInternet(!!(rv.error || rm.error));
     if (!rv.error) setVentas((rv.data ?? []) as VentaRow[]);
     if (!rm.error) setMovs((rm.data ?? []) as MovCaja[]);
+    if (!rc.error) setCierres((rc.data ?? []) as CierreRow[]);
     setLoading(false);
   }, [comercio, sucursalActiva, inicio, fin]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setEfectivoContado(''); }, [selTurno]);
-
-  // Cierres de caja de los cajeros (los registra cada uno al cerrar su turno).
-  const [cierres, setCierres] = useState<CierreRow[]>([]);
-  useEffect(() => {
-    if (!comercio) return;
-    (async () => {
-      const { data } = await supabase
-        .from('ventas_cierres').select('id, cajero_nombre, hasta, total, diferencia, efectivo_contado')
-        .eq('comercio_id', comercio.id)
-        .order('hasta', { ascending: false }).limit(10);
-      setCierres((data ?? []) as CierreRow[]);
-    })();
-  }, [comercio, ventas]);
 
   // Las anuladas no son ventas, pero la plata entró: el arqueo las cuenta (ver lib/caja.ts).
   const validas    = useMemo(() => ventas.filter(v => !v.anulada), [ventas]);
