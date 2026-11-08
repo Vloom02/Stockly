@@ -16,12 +16,13 @@ const MovimientosPage: React.FC = () => {
   const { state } = useStore();
   const history = useHistory();
   const [filtro, setFiltro] = useState<TipoMovimiento | 'todos'>('todos');
+  // De a 60, como las otras listas (200 de una eran 4.500 elementos en pantalla).
+  const [mostrar, setMostrar] = useState(60);
+  const nombreDe = useMemo(() => new Map(state.productos.map(p => [p.id, p.nombre])), [state.productos]);
 
-  const filtrados = useMemo(() => {
-    let r = state.movimientos;
-    if (filtro !== 'todos') r = r.filter(m => m.tipo === filtro);
-    return r.slice(0, 200);
-  }, [state.movimientos, filtro]);
+  const delTipo = useMemo(() => filtro === 'todos' ? state.movimientos : state.movimientos.filter(m => m.tipo === filtro),
+    [state.movimientos, filtro]);
+  const filtrados = useMemo(() => delTipo.slice(0, mostrar), [delTipo, mostrar]);
 
   const porDia = useMemo(() => {
     const grupos: { fecha: string; items: Movimiento[] }[] = [];
@@ -54,7 +55,7 @@ const MovimientosPage: React.FC = () => {
 
           <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto', paddingBottom: 4 }}>
             {chips.map(c => (
-              <button key={c.val} type="button" onClick={() => setFiltro(c.val)}
+              <button key={c.val} type="button" onClick={() => { setFiltro(c.val); setMostrar(60); }}
                 style={{
                   padding: '6px 16px', minHeight: 44, fontSize: 15, borderRadius: 'var(--radius-full)',
                   border: '1px solid ' + (filtro === c.val ? 'var(--brand-500)' : 'var(--border)'),
@@ -76,13 +77,16 @@ const MovimientosPage: React.FC = () => {
                   fontSize: 14, fontWeight: 700, color: 'var(--text-3)', marginBottom: 8, paddingLeft: 4,
                 }}>{tituloFecha(grupo.fecha)}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {grupo.items.map(m => {
-                    const prod = state.productos.find(p => p.id === m.productoId);
-                    return <MovItem key={m.id} m={m} nombre={prod?.nombre || '(eliminado)'} />;
-                  })}
+                  {grupo.items.map(m => <MovItem key={m.id} m={m} nombre={nombreDe.get(m.productoId) || '(eliminado)'} />)}
                 </div>
               </div>
             ))
+          )}
+          {delTipo.length > mostrar && (
+            <button type="button" onClick={() => setMostrar(n => n + 60)} className="pressable"
+              style={{ width: '100%', minHeight: 56, border: 'none', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', color: 'var(--text)', fontSize: 17, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Ver más ({delTipo.length - mostrar} más)
+            </button>
           )}
         </div>
       </IonContent>
@@ -90,10 +94,13 @@ const MovimientosPage: React.FC = () => {
   );
 };
 
+// Un solo formateador: toLocaleTimeString con opciones arma uno nuevo por cada fila.
+const FMT_HORA = new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit' });
+
 const MovItem: React.FC<{ m: Movimiento; nombre: string }> = ({ m, nombre }) => {
   const info = tipoInfo(m.tipo);
   // En hora del celular: la fecha guardada es de Greenwich y a las 10 de la mañana decía 13:00.
-  const hora = new Date(m.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  const hora = FMT_HORA.format(new Date(m.fecha));
   return (
     <Card padding="sm">
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
