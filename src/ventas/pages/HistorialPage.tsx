@@ -18,6 +18,11 @@ import { ClipboardIcon, FunnelIcon, DocumentIcon } from '../components/ui/icons'
 import { HistoryFilters } from '../types';
 
 import BotonVolver from '../components/BotonVolver';
+
+// Un solo formateador: toLocaleDateString con opciones arma uno nuevo en cada llamada (3.000 ventas trababan 2,6 s).
+const FMT_DIA = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+const FMT_HORA = new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit' });
+
 interface VentaRow { id: string; total: number; descuento: number; metodo_pago: string; cliente: string; fiado: boolean; usuario: string; fecha: string; anulada?: boolean; }
 
 const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avisar: (msg: string) => void }> = ({ venta, onAnulada, avisar }) => {
@@ -82,7 +87,7 @@ const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avi
     }
   };
 
-  const time = new Date(venta.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  const time = FMT_HORA.format(new Date(venta.fecha));
   const metodoLabel = ({ efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta', qr: 'QR' } as Record<string, string>)[venta.metodo_pago] ?? venta.metodo_pago;
 
   return (
@@ -162,16 +167,15 @@ const HistorialPage: React.FC = () => {
   // De a 60: 30 días de un almacén con movimiento son miles de tarjetas dibujadas de una.
   const [cuantas, setCuantas] = useState(60);
   useEffect(() => { setCuantas(60); }, [filters]); // solo al cambiar filtros: anular una venta no vuelve al principio
-  const diaDe = (v: VentaRow) => new Date(v.fecha).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
   const totalDia = useMemo(() => {
     const t: Record<string, number> = {};
-    for (const v of filtered) if (!v.anulada) t[diaDe(v)] = (t[diaDe(v)] ?? 0) + Number(v.total);
+    for (const v of filtered) if (!v.anulada) { const d = FMT_DIA.format(new Date(v.fecha)); t[d] = (t[d] ?? 0) + Number(v.total); }
     return t;
   }, [filtered]);
   const grouped = useMemo(() => {
     const g: Record<string, VentaRow[]> = {};
     for (const v of filtered.slice(0, cuantas)) {
-      const k = new Date(v.fecha).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+      const k = FMT_DIA.format(new Date(v.fecha));
       (g[k] ??= []).push(v);
     }
     return g;
