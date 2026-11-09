@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('./supabase', () => ({ supabase: {} }));
 vi.mock('./localDb', () => ({}));
 
-import { deltasPendientesPorLote, fusionarCambios, esperaAlta, cambiosSinSubir, marcaNueva, sinCambios, ajustesPorLote } from './sync';
+import { deltasPendientesPorLote, fusionarCambios, esperaAlta, cambiosSinSubir, marcaNueva, sinCambios, ajustesPorLote, seguimientoDe, quedaCompleta } from './sync';
 import type { ItemOutbox } from './localDb';
 
 const item = (tabla: string, loteId: string | undefined, cantidad: number): ItemOutbox =>
@@ -88,6 +88,28 @@ describe('marcaNueva', () => {
     expect(marcaNueva('2026-11-01T10:00:00Z', ['2026-11-01T09:00:00Z', null])).toBe('2026-11-01T10:00:00Z');
     expect(marcaNueva('2026-11-01T10:00:00Z', ['2026-11-01T08:00:00-03:00'])).toBe('2026-11-01T08:00:00-03:00');
     expect(marcaNueva('2026-11-01T10:00:00Z', [])).toBe('2026-11-01T10:00:00Z');
+  });
+  it('distingue microsegundos dentro del mismo milésimo', () => {
+    expect(marcaNueva('2026-11-01T10:00:00Z', ['2026-11-01T10:00:00.123401+00:00', '2026-11-01T10:00:00.123987+00:00', '2026-11-01T10:00:00.1234+00:00']))
+      .toBe('2026-11-01T10:00:00.123987+00:00');
+    expect(marcaNueva('2026-11-01T10:00:00.5+00:00', ['2026-11-01T07:00:00.499999-03:00'])).toBe('2026-11-01T10:00:00.5+00:00');
+  });
+});
+
+describe('seguimientoDe / quedaCompleta', () => {
+  const marca = '2026-11-01T10:00:00.000Z';
+  const visto = Date.parse('2026-11-08T12:00:00Z');
+  it('pide con 10 s de margen hasta que la marca queda completa; después, desde la marca', () => {
+    expect(seguimientoDe(marca, null, visto, visto).desde).toBe('2026-11-01T09:59:50.000Z');
+    expect(seguimientoDe(marca, '2026-10-01T00:00:00.000Z', visto, visto).conMargen).toBe(true); // completa era otra marca
+    const s = seguimientoDe(marca, marca, visto, visto);
+    expect([s.desde, s.conMargen]).toEqual([marca, false]);
+  });
+  it('completa solo si se pidió 10 s después de verla y no trajo nada más nuevo', () => {
+    expect(quedaCompleta(seguimientoDe(marca, null, visto, visto + 10_000), marca)).toBe(true);
+    expect(quedaCompleta(seguimientoDe(marca, null, visto, visto + 9_999), marca)).toBe(false); // demasiado pronto
+    expect(quedaCompleta(seguimientoDe(marca, null, visto, visto + 60_000), '2026-11-01T10:00:05.000Z')).toBe(false); // llegó algo
+    expect(quedaCompleta(seguimientoDe(marca, null, null, visto), marca)).toBe(false); // sin hora de cuando se vio
   });
 });
 

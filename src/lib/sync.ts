@@ -381,40 +381,81 @@ export async function marcaDe(tabla: TablaMarca): Promise<string> {
   return tabla === 'movimientos' ? ((await getMeta('ultima-sync')) ?? EPOCA) : EPOCA;
 }
 
+/** Hora en microsegundos: la base las guarda así (clock_timestamp da una distinta a cada fila de una misma carga) y Date
+ *  llega al milésimo. Comparando al milésimo, la marca quedaba en la primera fila de ese milésimo y las demás bajaban
+ *  en cada pasada. */
+function microsDe(h: string): number {
+  const t = new Date(h).getTime();
+  const frac = /\d{2}:\d{2}:\d{2}\.(\d+)/.exec(h)?.[1] ?? '';
+  return Math.floor(t / 1000) * 1e6 + Number(frac.padEnd(6, '0').slice(0, 6));
+}
+
 /** Hasta dónde se leyó de esa tabla: el mayor horario de SUS filas, comparado por hora (texto con distinto huso no
  *  ordena bien). Nunca retrocede. */
 export function marcaNueva(actual: string, horarios: (string | null | undefined)[]): string {
   let max = actual;
-  let maxT = new Date(actual).getTime();
+  let maxT = microsDe(actual);
   for (const h of horarios) {
     if (!h) continue;
-    const t = new Date(h).getTime();
+    const t = microsDe(h);
     if (Number.isFinite(t) && t > maxT) { maxT = t; max = h; }
   }
   return max;
 }
 
+// Margen de 10 s: se vuelve a pedir una ventana chica antes de la marca para no perder las filas de una transacción
+// que tardó en confirmarse (su hora es de antes del commit). Los put locales son por id, así re-bajar no duplica.
+const MARGEN = 10_000;
+
+/** Cómo sigue la lectura de una tabla: desde dónde pedir y lo necesario para saber, después, si la marca quedó completa. */
+export interface Seguimiento { base: string; desde: string; conMargen: boolean; pedidaEn: number; vistaEn: number | null }
+
+/** `completa` = la marca que una lectura anterior ya dejó sin nada pendiente: desde ahí no hace falta el margen. */
+export function seguimientoDe(base: string, completa: string | null, vistaEn: number | null, ahora: number): Seguimiento {
+  const conMargen = completa !== base;
+  const desde = conMargen ? new Date(new Date(base).getTime() - MARGEN).toISOString() : base;
+  return { base, desde, conMargen, pedidaEn: ahora, vistaEn };
+}
+
+/** Una lectura con margen, pedida 10 s o más después de ver la marca y sin nada más nuevo, ya vio todo lo de esa hora
+ *  (cualquier transacción de entonces ya estaba confirmada). Sin esto, 300 lotes de un conteo volvían a bajar en cada
+ *  pasada, cada 30 s, hasta que llegaba otro cambio, y cada vez se redibujaba la mercadería entera.
+ *  shortcut: cuenta con el reloj del equipo; si lo adelantan justo en esos 10 s, la ventana se da por vista antes. */
+export function quedaCompleta(s: Seguimiento, final: string): boolean {
+  return s.conMargen && final === s.base && s.vistaEn !== null && s.pedidaEn - s.vistaEn >= MARGEN;
+}
+
+async function seguimiento(tabla: TablaMarca): Promise<Seguimiento> {
+  const [base, completa, vista] = await Promise.all([marcaDe(tabla), getMeta(`marca-completa:${tabla}`), getMeta(`marca-vista:${tabla}`)]);
+  return seguimientoDe(base, completa, vista ? Number(vista) : null, Date.now());
+}
+
 /** Trae lo cambiado en los otros equipos, lo guarda y lo devuelve (ya con lo propio sin subir encima).
  *  `alAvanzar` recibe los productos, compras y locales apenas se guardan, antes de los movimientos. */
 export async function bajarCambios(comercioId: string, alAvanzar?: (c: CambiosBajados) => void): Promise<CambiosBajados> {
-  const [basePr, baseLo, baseSu, baseMo] = await Promise.all([marcaDe('productos'), marcaDe('lotes'), marcaDe('sucursales'), marcaDe('movimientos')]);
-  // Overlap de 10 s: re-bajamos una ventana chica para no perder filas con el mismo timestamp que
-  // el watermark ni las de una transacción que tardó en confirmarse (su hora es de antes del commit).
-  // Los put locales son idempotentes (upsert por id), así re-bajar no duplica.
-  const conMargen = (iso: string) => new Date(new Date(iso).getTime() - 10_000).toISOString();
+  const [sPr, sLo, sSu, sMo] = await Promise.all((['productos', 'lotes', 'sucursales', 'movimientos'] as const).map(seguimiento));
+  // Cada vez que la marca se mueve se anota cuándo se vio: recién 10 s después una lectura puede darla por completa.
   const avanzar = async (tabla: TablaMarca, base: string, horarios: (string | null | undefined)[]) => {
     const nueva = marcaNueva(base, horarios);
-    if (nueva !== base && !frenada) await setMeta(`ultima-sync:${tabla}`, nueva);
+    if (nueva !== base && !frenada) {
+      await setMeta(`ultima-sync:${tabla}`, nueva);
+      await setMeta(`marca-vista:${tabla}`, String(Date.now()));
+    }
     return nueva;
+  };
+  const cerrar = async (tabla: TablaMarca, s: Seguimiento, final: string) => {
+    if (frenada || final !== s.base) return;
+    if (s.vistaEn === null) await setMeta(`marca-vista:${tabla}`, String(Date.now())); // equipos que vienen de antes
+    else if (quedaCompleta(s, final)) await setMeta(`marca-completa:${tabla}`, final);
   };
 
   // Movimientos: por creado_en, con desempate por id. Antes, si más de 1.000 compartían la misma hora (una carga
   // grande en una sola transacción), la página se cortaba ahí y el resto no bajaba nunca.
   // Un equipo nuevo no baja años de historial: lo que muestran las pantallas alcanza con 7 meses (el resto queda en el servidor).
   // Cada página se guarda con su marca al llegar: si se corta, la próxima sigue desde ahí.
-  const desdeMo = baseMo === EPOCA ? new Date(Date.now() - 210 * 86400000).toISOString() : conMargen(baseMo);
+  const desdeMo = sMo.base === EPOCA ? new Date(Date.now() - 210 * 86400000).toISOString() : sMo.desde;
   const movimientos: ReturnType<typeof mapMovimientoLocal>[] = [];
-  let marcaMo = baseMo;
+  let marcaMo = sMo.base;
   const traerMovimientos = () => traerCambiados('movimientos', comercioId, desdeMo, 'creado_en', async pagina => {
     if (frenada) throw new Error('Sincronización frenada');
     const m = pagina.map(mapMovimientoLocal);
@@ -424,15 +465,15 @@ export async function bajarCambios(comercioId: string, alAvanzar?: (c: CambiosBa
   });
   // En cada pasada son pocos y van a la vez que el resto (una vuelta menos al servidor). En un equipo nuevo van
   // después: son decenas de páginas y le sacarían señal a lo que hace falta para vender.
-  const movsALaVez = baseMo === EPOCA ? null : traerMovimientos();
+  const movsALaVez = sMo.base === EPOCA ? null : traerMovimientos();
   movsALaVez?.catch(() => { /* se ve abajo */ });
 
   // Pull INCREMENTAL: productos/lotes/sucursales por updated_at (trigger server);
   // movimientos por creado_en (timestamp del SERVIDOR, no el reloj del cliente).
   const [prods, lotes, sucs] = await Promise.all([
-    traerCambiados('productos', comercioId, conMargen(basePr)),
-    traerCambiados('lotes', comercioId, conMargen(baseLo)),
-    traerCambiados('sucursales', comercioId, conMargen(baseSu)),
+    traerCambiados('productos', comercioId, sPr.desde),
+    traerCambiados('lotes', comercioId, sLo.desde),
+    traerCambiados('sucursales', comercioId, sSu.desde),
   ]);
 
   // Si Supabase devolvió error en alguna tabla, lo reportamos (no fallar en silencio)
@@ -480,15 +521,16 @@ export async function bajarCambios(comercioId: string, alAvanzar?: (c: CambiosBa
   await putVarios('lotes', lotesLocales);
   await putVarios('sucursales', sucursales);
 
-  await avanzar('productos', basePr, (prods.data ?? []).map((r: any) => r.updated_at));
-  await avanzar('lotes', baseLo, (lotes.data ?? []).map((r: any) => r.updated_at));
-  await avanzar('sucursales', baseSu, (sucs.data ?? []).map((r: any) => r.updated_at));
+  await cerrar('productos', sPr, await avanzar('productos', sPr.base, (prods.data ?? []).map((r: any) => r.updated_at)));
+  await cerrar('lotes', sLo, await avanzar('lotes', sLo.base, (lotes.data ?? []).map((r: any) => r.updated_at)));
+  await cerrar('sucursales', sSu, await avanzar('sucursales', sSu.base, (sucs.data ?? []).map((r: any) => r.updated_at)));
   // Antes todo se guardaba al final: un equipo nuevo con señal floja quedaba vacío minutos (ni Vender encontraba
   // productos) esperando el historial, y si se cortaba volvía a bajar todo de cero.
   alAvanzar?.({ productos, lotes: lotesLocales, sucursales, movimientos: [] });
 
   const movs = await (movsALaVez ?? traerMovimientos());
   if (movs.error) throw new Error('Supabase: ' + (movs.error.message || 'error al traer datos'));
+  await cerrar('movimientos', sMo, marcaMo);
   // Lo ya avisado no se devuelve otra vez: aplicarlo de nuevo al final pisaría en pantalla un cambio hecho mientras
   // bajaban los movimientos.
   return alAvanzar ? { productos: [], lotes: [], sucursales: [], movimientos } : { productos, lotes: lotesLocales, sucursales, movimientos };
