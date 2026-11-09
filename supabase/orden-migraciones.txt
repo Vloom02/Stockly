@@ -28,3 +28,4 @@ supabase/migracion-16-seguridad-2026-11.sql
 supabase/migracion-17-ventas-y-stock-2026-11.sql
 supabase/migracion-18-anular-fiado-pagado.sql
 supabase/migracion-19-tercera-auditoria.sql
+supabase/migracion-20-realtime-productos.sql
