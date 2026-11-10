@@ -23,7 +23,7 @@ import { openDB, getLocalSetting, setLocalSetting } from '../lib/outbox';
 import { supabase } from '../lib/supabase';
 import { useConfirm } from '../../lib/useConfirm';
 
-import { parseMonto } from '../../lib/numeros';
+import { parseMonto, billetesSugeridos } from '../../lib/numeros';
 import { avisoVentaOk, avisoToque } from '../lib/aviso';
 import { Contador } from '../../lib/useContador';
 import { useAlVolver } from '../../lib/useAlVolver';
@@ -480,16 +480,13 @@ const VentaPage: React.FC = () => {
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', display: 'block', marginBottom: 8 }}>¿Con cuánto paga?</label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 8 }}>
-                  {[1000, 2000, 5000, 10000].map(v => (
+                  {/* "Justo" primero (lo más común) y después los redondeos que le siguen a ESTE total. */}
+                  {[total, ...billetesSugeridos(total)].map(v => (
                     <button key={v} onClick={() => setRecibido(String(v))} aria-pressed={recibido === String(v)}
                       style={{ minHeight: 52, padding: '8px 6px', border: recibido === String(v) ? '3px solid var(--color-primary)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: recibido === String(v) ? 'var(--color-primary-bg)' : 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontSize: 17, fontWeight: 700, fontFamily: 'inherit' }}>
-                      {formatMoney(v)}
+                      {v === total ? 'Justo' : formatMoney(v)}
                     </button>
                   ))}
-                  <button onClick={() => setRecibido(String(total))}
-                    style={{ minHeight: 52, padding: '8px 6px', border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontSize: 17, fontWeight: 700, fontFamily: 'inherit' }}>
-                    Justo
-                  </button>
                 </div>
                 <input className="campo" type="text" inputMode="decimal" value={recibido} onChange={e => setRecibido(e.target.value)} placeholder="Otro monto ($)"
                   aria-label="Monto con el que paga"

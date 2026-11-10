@@ -1,5 +1,22 @@
 import { describe, it, expect } from 'vitest';
-import { parseMonto, formatearPlata } from './numeros';
+import { parseMonto, formatearPlata, billetesSugeridos } from './numeros';
+
+describe('billetesSugeridos', () => {
+  it('propone los redondeos que siguen al total, de menor a mayor', () => {
+    expect(billetesSugeridos(9233)).toEqual([9300, 9500, 10000, 20000]);
+    expect(billetesSugeridos(18466)).toEqual([18500, 19000, 20000]);
+    expect(billetesSugeridos(350)).toEqual([400, 500, 1000, 2000]);
+  });
+  it('nunca propone el total justo ni menos (para eso está "Justo")', () => {
+    expect(billetesSugeridos(1000)).toEqual([2000, 5000, 10000, 20000]);
+    expect(billetesSugeridos(999.5)).toEqual([1000, 2000, 5000, 10000]);
+    for (const v of billetesSugeridos(45000)) expect(v).toBeGreaterThan(45000);
+  });
+  it('sin total no propone nada', () => {
+    expect(billetesSugeridos(0)).toEqual([]);
+    expect(billetesSugeridos(NaN)).toEqual([]);
+  });
+});
 
 describe('parseMonto', () => {
   it('entiende el formato argentino (punto de miles, coma decimal)', () => {

@@ -29,3 +29,11 @@ export function formatearPlata(n: number): string {
   const v = Math.round(Number(n) * 100) / 100;
   return (v < 0 ? '-$' : '$') + (Number.isInteger(v) ? PLATA_ENTERA : PLATA_CON_CENTAVOS).format(Math.abs(v));
 }
+
+/** Con cuánto es probable que paguen un total en efectivo: los redondeos que le siguen, de menor a mayor
+ *  (para $9.233: $9.300, $9.500, $10.000 y $20.000). Antes eran cuatro montos fijos y con un total más alto no servía ninguno. */
+export function billetesSugeridos(total: number, cuantos = 4): number[] {
+  if (!(total > 0)) return [];
+  const arriba = [100, 500, 1000, 2000, 5000, 10000, 20000].map(paso => Math.ceil(total / paso) * paso).filter(v => v > total);
+  return [...new Set(arriba)].sort((a, b) => a - b).slice(0, cuantos);
+}
