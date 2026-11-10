@@ -79,7 +79,7 @@ const PedidoPage: React.FC = () => {
           padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px',
           maxWidth: 640, margin: '0 auto',
         }}>
-          <Header title="Pedido a proveedores" onBack={() => history.goBack()} />
+          <Header title="Qué tengo que comprar" onBack={() => history.goBack()} />
           <p style={{ fontSize: 16, color: 'var(--text-2)', margin: '-8px 0 12px' }}>
             Cuánto pedir según lo que se vendió las últimas 4 semanas, para que te alcance:
           </p>

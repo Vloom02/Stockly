@@ -80,7 +80,7 @@ const InventarioPage: React.FC = () => {
     <IonPage>
       <IonContent ref={lectorRef} style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
         <div style={{ padding: '20px 16px calc(190px + var(--sab,env(safe-area-inset-bottom))) 16px', maxWidth: 760, margin: '0 auto' }}>
-          <Header title="Inventario físico" onBack={() => history.goBack()} />
+          <Header title="Contar la mercadería" onBack={() => history.goBack()} />
           <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '0 0 14px', lineHeight: 1.5 }}>
             Contá lo que hay en góndola y anotá la cantidad real. Te marcamos las diferencias y las ajustás de una.
           </p>

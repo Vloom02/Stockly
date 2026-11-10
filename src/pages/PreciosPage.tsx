@@ -55,9 +55,9 @@ const PreciosPage: React.FC = () => {
     <IonPage>
       <IonContent ref={lectorRef} style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
         <div style={{ padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px', maxWidth: 760, margin: '0 auto' }}>
-          <Header title="Suba de precios" onBack={() => history.goBack()} />
+          <Header title="Cambiar precios" onBack={() => history.goBack()} />
           <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '0 0 14px', lineHeight: 1.5 }}>
-            Buscá el producto, tocalo y poné el precio nuevo. Los chips te calculan el aumento.
+            Buscá el producto, tocalo y poné el precio nuevo. Los botones de porcentaje te calculan el aumento.
           </p>
 
           <div style={{ marginBottom: 14 }}>

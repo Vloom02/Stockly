@@ -59,7 +59,7 @@ const ReportesPage: React.FC = () => {
           padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px',
           maxWidth: 760, margin: '0 auto',
         }}>
-          <Header title="Reportes" onBack={() => history.goBack()} />
+          <Header title="Reportes y pérdidas" onBack={() => history.goBack()} />
 
           {!hayDatos ? (
             <EmptyState
