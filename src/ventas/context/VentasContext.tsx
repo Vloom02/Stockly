@@ -108,6 +108,8 @@ interface VentasCtx {
   setQty:    (productoId: string, qty: number) => void;
   quitar:    (productoId: string) => void;
   vaciar:    () => void;
+  /** Deja el carrito como se le pasa (para "Deshacer" lo que se quitó). */
+  reponer:   (items: CartItem[]) => void;
   confirmarVenta: (opts: { metodoPago: string; cliente: string; descuento: number; usuario?: string | null }) =>
     Promise<{ ok: boolean; msg: string; ventaId?: string }>;
   sincronizar: () => Promise<void>;
@@ -286,6 +288,7 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, []);
 
   const vaciar = useCallback(() => { dispatch({ type: 'SET_CART', payload: [] }); }, []);
+  const reponer = useCallback((items: CartItem[]) => { dispatch({ type: 'SET_CART', payload: items }); }, []);
 
   // ── Confirmar venta (FEFO) ───────────────────────────────────────────────────
   const confirmarVenta = useCallback(async (opts: { metodoPago: string; cliente: string; descuento: number; usuario?: string | null }) => {
@@ -356,8 +359,8 @@ export const VentasProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, []);
 
   const valor = useMemo(() => ({
-    state, escanear, buscarPorNombre, agregarProducto, agregarMontoLibre, setQty, quitar, vaciar, confirmarVenta, sincronizar, marcarDevuelto,
-  }), [state, escanear, buscarPorNombre, agregarProducto, agregarMontoLibre, setQty, quitar, vaciar, confirmarVenta, sincronizar, marcarDevuelto]);
+    state, escanear, buscarPorNombre, agregarProducto, agregarMontoLibre, setQty, quitar, vaciar, reponer, confirmarVenta, sincronizar, marcarDevuelto,
+  }), [state, escanear, buscarPorNombre, agregarProducto, agregarMontoLibre, setQty, quitar, vaciar, reponer, confirmarVenta, sincronizar, marcarDevuelto]);
 
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
 };

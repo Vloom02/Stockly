@@ -39,7 +39,7 @@ const payOptions = [
 ];
 
 const VentaPage: React.FC = () => {
-  const { state, escanear, buscarPorNombre, agregarProducto, agregarMontoLibre, setQty, quitar, vaciar, confirmarVenta, sincronizar } = useVentas();
+  const { state, escanear, buscarPorNombre, agregarProducto, agregarMontoLibre, setQty, quitar, vaciar, reponer, confirmarVenta, sincronizar } = useVentas();
   const { sucursalActiva, sucursales, setSucursalActiva, comercio } = useAuth();
   const { cajero, cerrarTurno } = useEmpleado();
   const { isUnlocked, lock } = useOwner();
@@ -184,6 +184,22 @@ const VentaPage: React.FC = () => {
     requestAnimationFrame(() => document.getElementById(`linea-${subio.productoId}`)?.scrollIntoView({ block: 'nearest' }));
   }, [state.cart]);
 
+  // Quitar y vaciar no preguntan: se hacen y "Deshacer" queda a mano unos segundos. Preguntar cada vez
+  // enseña a tocar "sí" sin leer; lo que se puede deshacer no necesita pregunta.
+  const [quitado, setQuitado] = useState<{ items: typeof state.cart; texto: string } | null>(null);
+  useEffect(() => {
+    if (!quitado) return;
+    const t = setTimeout(() => setQuitado(null), 8000);
+    return () => clearTimeout(t);
+  }, [quitado]);
+  const quitarLinea = (item: typeof state.cart[number]) => { quitar(item.productoId); setQuitado({ items: [item], texto: `Quitaste ${item.nombre}` }); };
+  const deshacer = () => {
+    if (!quitado) return;
+    // Lo que se agregó después se queda: solo vuelve lo que se había sacado.
+    reponer([...state.cart.filter(c => !quitado.items.some(q => q.productoId === c.productoId)), ...quitado.items]);
+    setQuitado(null);
+  };
+
   const handleScan = async (codigo: string) => {
     setTicket(null); // el cliente siguiente ya está pasando sus cosas
     const r = await escanear(codigo);
@@ -247,6 +263,7 @@ const VentaPage: React.FC = () => {
         cajero: cajero?.nombre, legajo: cajero?.legajo,
       }, formatMoney);
       setTicket(txt);
+      setQuitado(null); // lo que se sacó era de la venta que ya se cobró
       avisoVentaOk();
       setConfirm(false); setCliente(''); setDescuento(''); setRecibido(''); setMasOpciones(false); setMetodo('efectivo');
       toast$(r.msg, true);
@@ -393,6 +410,12 @@ const VentaPage: React.FC = () => {
         </div>
 
         <div className="venta-col-carrito">
+        {quitado && (
+          <div role="status" className="anim-entrar" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px 8px 14px', marginBottom: 10, borderRadius: 'var(--radius)', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>{quitado.texto}</span>
+            <Button variant="secondary" onClick={deshacer} style={{ minHeight: 48, flexShrink: 0 }}>Deshacer</Button>
+          </div>
+        )}
         {/* Cart */}
         {state.cart.length === 0 ? (
           <EmptyState icon={<ShoppingCartIcon size={44} color="var(--text-3)" />} title="El carrito está vacío" description="Escaneá o buscá productos para comenzar la venta" />
@@ -425,14 +448,14 @@ const VentaPage: React.FC = () => {
                     )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <button aria-label={`Restar uno a ${item.nombre}`} onClick={() => setQty(item.productoId, item.qty - 1)} className="pressable" style={{ width: 48, height: 48, flexShrink: 0, border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)' }}><MinusIcon size={24} /></button>
+                    <button aria-label={`Restar uno a ${item.nombre}`} onClick={() => item.qty > 1 ? setQty(item.productoId, item.qty - 1) : quitarLinea(item)} className="pressable" style={{ width: 48, height: 48, flexShrink: 0, border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)' }}><MinusIcon size={24} /></button>
                     <input className="campo" type="number" inputMode="numeric" value={item.qty} aria-label={`Cantidad de ${item.nombre}`}
                       onChange={e => { const v = parseInt(e.target.value); if (v > 0) setQty(item.productoId, v); /* vacío mientras escribe: no lo saca */ }}
                       onFocus={e => e.target.select()}
                       style={{ width: 60, height: 48, fontSize: 20, fontWeight: 700, textAlign: 'center', borderRadius: 'var(--radius-sm)', padding: '4px 2px', color: 'var(--text)', outline: 'none' }} />
                     <button aria-label={`Sumar uno a ${item.nombre}`} onClick={() => setQty(item.productoId, item.qty + 1)} className="pressable" style={{ width: 48, height: 48, flexShrink: 0, border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary-dark)' }}><PlusIcon size={24} /></button>
                     <span style={{ flex: 1 }} />
-                    <button aria-label={`Quitar ${item.nombre} del carrito`} onClick={() => quitar(item.productoId)} className="pressable" style={{ height: 48, padding: '0 14px', flexShrink: 0, border: '1px solid var(--color-danger-border)', borderRadius: 'var(--radius-sm)', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-danger)', fontSize: 16, fontWeight: 600, fontFamily: 'inherit' }}><XMarkIcon size={20} /> Quitar</button>
+                    <button aria-label={`Quitar ${item.nombre} del carrito`} onClick={() => quitarLinea(item)} className="pressable" style={{ height: 48, padding: '0 14px', flexShrink: 0, border: '1px solid var(--color-danger-border)', borderRadius: 'var(--radius-sm)', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-danger)', fontSize: 16, fontWeight: 600, fontFamily: 'inherit' }}><XMarkIcon size={20} /> Quitar</button>
                   </div>
                 </div>
               ))}
@@ -451,7 +474,7 @@ const VentaPage: React.FC = () => {
             </div>
 
             <div className="venta-acciones">
-              <Button variant="secondary" size="lg" aria-label="Vaciar carrito" onClick={async () => { if (await confirmar('¿Vaciar el carrito?', { peligro: true, okText: 'Vaciar' })) vaciar(); }} style={{ flex: 'none', width: 60 }}><TrashIcon size={22} /></Button>
+              <Button variant="secondary" size="lg" aria-label="Vaciar carrito" onClick={() => { setQuitado({ items: state.cart, texto: 'Vaciaste el carrito' }); vaciar(); }} style={{ flex: 'none', width: 60 }}><TrashIcon size={22} /></Button>
               <Button size="lg" className="brillo-una-vez anim-pop" onClick={() => setConfirm(true)} style={{ flex: 1, fontSize: 20 }}><CheckIcon size={22} /> Cobrar {formatMoney(total)}</Button>
             </div>
           </>
