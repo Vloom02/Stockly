@@ -53,6 +53,7 @@ const StockPage: React.FC = () => {
     if (q.get('vista') === 'lotes') setVista('lotes');
   }, [location.search]);
   const [filtroProveedor, setFiltroProveedor] = useState<string>('todos');
+  const [verProveedores, setVerProveedores] = useState(false);
 
   const productos = useMemo(() => productosConLotes(), [productosConLotes]);
   const lotes = useMemo(() => lotesEnriquecidos(), [lotesEnriquecidos]);
@@ -183,9 +184,25 @@ const StockPage: React.FC = () => {
           {/* Filtro por proveedor (solo si hay alguno cargado) */}
           {proveedores.length > 0 && (
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>Proveedor</div>
-              <Opciones etiqueta="Proveedor" columnas={3} valor={filtroProveedor} onChange={setFiltroProveedor}
-                opciones={[{ valor: 'todos', etiqueta: 'Todos' }, ...proveedores.map(pr => ({ valor: pr, etiqueta: pr }))]} />
+              {/* Con muchos proveedores la grilla ocupaba media pantalla y empujaba la lista fuera de la vista: va plegada
+                  en un botón que dice cuál está elegido. Con uno o dos entra en un renglón y queda a la vista. */}
+              {proveedores.length > 2 ? (
+                <button type="button" onClick={() => setVerProveedores(v => !v)} aria-expanded={verProveedores} className="pressable"
+                  style={{ width: '100%', minHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 14px', border: 'none', borderRadius: 'var(--radius)', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)', color: 'var(--text)', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                  <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}><span style={{ color: 'var(--text-2)', fontWeight: 600 }}>Proveedor: </span>{filtroProveedor === 'todos' ? 'Todos' : filtroProveedor}</span>
+                  <span style={{ color: 'var(--marca-texto)', flexShrink: 0 }}>{verProveedores ? 'Cerrar' : 'Cambiar'}</span>
+                </button>
+              ) : (
+                <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>Proveedor</div>
+              )}
+              {(proveedores.length <= 2 || verProveedores) && (
+                <div style={{ marginTop: proveedores.length > 2 ? 8 : 0 }}>
+                  {/* De a dos por renglón: de a tres, en un celular los nombres se cortaban al medio. */}
+                  <Opciones etiqueta="Proveedor" columnas={proveedores.length > 2 ? 2 : 3} valor={filtroProveedor}
+                    onChange={v => { setFiltroProveedor(v); setVerProveedores(false); }}
+                    opciones={[{ valor: 'todos', etiqueta: 'Todos' }, ...proveedores.map(pr => ({ valor: pr, etiqueta: pr }))]} />
+                </div>
+              )}
             </div>
           )}
 
