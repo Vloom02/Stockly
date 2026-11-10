@@ -63,7 +63,7 @@ const VentaPage: React.FC = () => {
     history.replace('/ventas');
     const p = stock.productos.find(x => x.id === id);
     if (p) agregarProducto({ id, comercio_id: comercio?.id ?? '', nombre: p.nombre, codigo_barras: p.codigoBarras ?? '', precio: p.precio, activo: true })
-      .then(r => toast$(r.msg, r.ok));
+      .then(r => avisar(r));
   }, [location.search, stock.loaded]);
   // Lector físico: suma al carrito aunque el cursor no esté en "Escaneá el código".
   const lectorRef = useLectorFisico(codigo => handleScan(codigo));
@@ -74,7 +74,7 @@ const VentaPage: React.FC = () => {
     inputs: [{ name: 'monto', type: 'number', placeholder: 'Monto $', min: 1 }],
     buttons: [
       { text: 'Cancelar', role: 'cancel' },
-      { text: 'Agregar', handler: (d) => { const m = parseMonto(d.monto); if (m > 0) { const r = agregarMontoLibre(m); toast$(r.msg, r.ok); } } },
+      { text: 'Agregar', handler: (d) => { const m = parseMonto(d.monto); if (m > 0) avisar(agregarMontoLibre(m)); } },
     ],
   });
 
@@ -168,10 +168,26 @@ const VentaPage: React.FC = () => {
 
   const toast$ = (msg: string, ok = true) => setToast({ show: true, msg, color: ok ? 'success' : 'danger' });
 
+  // Lo que se agrega se ve en el carrito (el renglón se enciende), no en un cartel: tapaba el nombre del
+  // comercio, el carrito y el botón Caja. El texto queda para el lector de pantalla; los errores sí van en cartel.
+  const [dicho, setDicho] = useState('');
+  const avisar = (r: { ok: boolean; msg: string }) => { if (r.ok) setDicho(r.msg); else toast$(r.msg, false); };
+  const cantidades = useRef<Map<string, number> | null>(null);
+  const [nuevo, setNuevo] = useState<{ id: string; n: number } | null>(null);
+  useEffect(() => {
+    const antes = cantidades.current;
+    cantidades.current = new Map(state.cart.map(c => [c.productoId, c.qty]));
+    if (!antes) return; // al abrir Vender, el carrito que ya estaba no es "recién agregado"
+    const subio = state.cart.find(c => c.qty > (antes.get(c.productoId) ?? 0));
+    if (!subio) return;
+    setNuevo(v => ({ id: subio.productoId, n: (v?.n ?? 0) + 1 }));
+    requestAnimationFrame(() => document.getElementById(`linea-${subio.productoId}`)?.scrollIntoView({ block: 'nearest' }));
+  }, [state.cart]);
+
   const handleScan = async (codigo: string) => {
     setTicket(null); // el cliente siguiente ya está pasando sus cosas
     const r = await escanear(codigo);
-    toast$(r.msg, r.ok);
+    avisar(r);
     setScan('');
     scanRef.current?.focus();
   };
@@ -188,7 +204,7 @@ const VentaPage: React.FC = () => {
   const pickProduct = async (p: Producto) => {
     const r = await agregarProducto(p);
     avisoToque();
-    toast$(r.msg, r.ok);
+    avisar(r);
     setQuery(''); setResults([]);
   };
 
@@ -263,6 +279,7 @@ const VentaPage: React.FC = () => {
   return (
     <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
       <SyncBanner queueLen={state.outboxLen} isOnline={state.isOnline} bloqueados={state.bloqueados} onReintentar={sincronizar} />
+      <div role="status" aria-live="polite" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)' }}>{dicho}</div>
 
       {/* En tablet acostada: dos columnas (buscar | carrito), ver ventas.css. */}
       <div ref={lectorRef} className="venta-layout" style={{ padding: 'var(--space-4)', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))', paddingTop: 16 }}>
@@ -388,7 +405,11 @@ const VentaPage: React.FC = () => {
               </div>
               {state.cart.map((item, i) => (
                 // Dos renglones: con letra grande y botones de 44 px no entra todo en una fila.
-                <div key={item.productoId} style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8, borderBottom: i < state.cart.length - 1 ? '1px solid var(--border)' : 'none', background: item.qty > item.stockDisponible ? 'var(--color-danger-bg)' : undefined }}>
+                <div key={item.productoId} id={`linea-${item.productoId}`} style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8, borderBottom: i < state.cart.length - 1 ? '1px solid var(--border)' : 'none', background: item.qty > item.stockDisponible ? 'var(--color-danger-bg)' : undefined,
+                  // El último que se tocó: raya de marca (queda) y un destello (ver ventas.css). El margen deja lugar a Cobrar y a la barra.
+                  scrollMarginTop: 12, scrollMarginBottom: 170,
+                  boxShadow: nuevo?.id === item.productoId ? 'inset 5px 0 0 var(--brand-500)' : undefined,
+                  animation: nuevo?.id === item.productoId ? `venta-nuevo-${nuevo.n % 2 ? 'a' : 'b'} 1.4s ease-out` : undefined }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
                     <div style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 17, lineHeight: 1.3 }}>{item.nombre}</div>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap' }}>{formatMoney(item.precio * item.qty)}</span>

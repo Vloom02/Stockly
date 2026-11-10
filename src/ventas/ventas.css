@@ -47,6 +47,10 @@
    se queda pegado justo arriba de ella. */
 .venta-acciones { position: sticky; bottom: calc(86px + var(--sab, env(safe-area-inset-bottom))); z-index: 5;
   display: flex; gap: 8px; padding: 8px 0; background: var(--bg); }
+/* Lo recién agregado al carrito se enciende un momento. Dos nombres iguales: al sumar otra vez el mismo
+   producto se alterna de uno a otro y el destello vuelve a empezar. */
+@keyframes venta-nuevo-a { from { background: var(--marca-suave); } }
+@keyframes venta-nuevo-b { from { background: var(--marca-suave); } }
 @media (min-width: 900px) {
   .venta-acciones { position: static; padding: 0; background: none; }
   .venta-layout { max-width: 1120px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 460px); column-gap: 24px; align-items: start; }
