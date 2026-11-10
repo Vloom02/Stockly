@@ -429,8 +429,8 @@ const VentaPage: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Button variant="secondary" size="lg" aria-label="Vaciar carrito" onClick={async () => { if (await confirmar('¿Vaciar el carrito?', { peligro: true, okText: 'Vaciar' })) vaciar(); }} style={{ flex: .35 }}><TrashIcon size={22} /></Button>
+            <div className="venta-acciones">
+              <Button variant="secondary" size="lg" aria-label="Vaciar carrito" onClick={async () => { if (await confirmar('¿Vaciar el carrito?', { peligro: true, okText: 'Vaciar' })) vaciar(); }} style={{ flex: 'none', width: 60 }}><TrashIcon size={22} /></Button>
               <Button size="lg" className="brillo-una-vez anim-pop" onClick={() => setConfirm(true)} style={{ flex: 1, fontSize: 20 }}><CheckIcon size={22} /> Cobrar {formatMoney(total)}</Button>
             </div>
           </>
