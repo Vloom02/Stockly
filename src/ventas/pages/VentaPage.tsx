@@ -236,7 +236,19 @@ const VentaPage: React.FC = () => {
   }, [state.cart.length]);
   const totalItems = state.cart.reduce((s, c) => s + c.qty, 0);
 
+  // Cobro de práctica: se aprende mejor haciendo que mirando. Usa la pantalla de verdad, pero al final no guarda
+  // la venta ni toca la mercadería. Se ofrece hasta que en este equipo se hizo una práctica o una venta real.
+  const [practica, setPractica] = useState(false);
+  const [ofrecerPractica, setOfrecerPractica] = useState(false);
+  useEffect(() => { openDB().then(() => getLocalSetting('practica-hecha')).then(v => setOfrecerPractica(v !== '1')).catch(() => {}); }, []);
+  const practicaHecha = () => { setOfrecerPractica(false); openDB().then(() => setLocalSetting('practica-hecha', '1')).catch(() => {}); };
+
   const handleConfirm = async () => {
+    if (practica) {
+      setConfirm(false); setPractica(false); setQuitado(null); vaciar(); practicaHecha();
+      presentAlert({ header: '¡Así se cobra!', message: 'Era un cobro de práctica: no se guardó ninguna venta ni se descontó mercadería.', buttons: ['Entendido'] });
+      return;
+    }
     // Snapshot del carrito ANTES de confirmar (confirmarVenta vacía el carrito).
     const snap = {
       items: state.cart.map(c => ({ nombre: c.nombre, qty: c.qty, precio: c.precio })),
@@ -264,6 +276,7 @@ const VentaPage: React.FC = () => {
       }, formatMoney);
       setTicket(txt);
       setQuitado(null); // lo que se sacó era de la venta que ya se cobró
+      if (ofrecerPractica) practicaHecha(); // ya cobró de verdad: no hace falta ofrecerle practicar
       avisoVentaOk();
       setConfirm(false); setCliente(''); setDescuento(''); setRecibido(''); setMasOpciones(false); setMetodo('efectivo');
       toast$(r.msg, true);
@@ -300,6 +313,15 @@ const VentaPage: React.FC = () => {
 
       {/* En tablet acostada: dos columnas (buscar | carrito), ver ventas.css. */}
       <div ref={lectorRef} className="venta-layout" style={{ padding: 'var(--space-4)', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))', paddingTop: 16 }}>
+        {practica && (
+          <div role="status" className="venta-cabecera" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12, padding: 14, borderRadius: 'var(--radius-lg)', background: 'var(--marca-suave)', color: 'var(--marca-texto)' }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontSize: 18, fontWeight: 800 }}>Cobro de práctica: no se guarda nada</div>
+              <div style={{ fontSize: 16, fontWeight: 600 }}>{state.cart.length === 0 ? 'Paso 1 de 3: tocá un producto o buscalo por el nombre.' : 'Paso 2 de 3: tocá el botón Cobrar.'}</div>
+            </div>
+            <Button variant="secondary" onClick={() => setPractica(false)} style={{ minHeight: 48 }}>Salir de la práctica</Button>
+          </div>
+        )}
         {/* Header */}
         <div className="venta-cabecera" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
           <div>
@@ -418,7 +440,15 @@ const VentaPage: React.FC = () => {
         )}
         {/* Cart */}
         {state.cart.length === 0 ? (
-          <EmptyState icon={<ShoppingCartIcon size={44} color="var(--text-3)" />} title="El carrito está vacío" description="Escaneá o buscá productos para comenzar la venta" />
+          <>
+            <EmptyState icon={<ShoppingCartIcon size={44} color="var(--text-3)" />} title="El carrito está vacío" description="Escaneá o buscá productos para comenzar la venta" />
+            {ofrecerPractica && !practica && (
+              <button type="button" onClick={() => setPractica(true)} className="pressable"
+                style={{ display: 'block', margin: '4px auto 0', minHeight: 48, padding: '8px 16px', border: '1.5px dashed var(--border)', borderRadius: 'var(--radius)', background: 'none', color: 'var(--text)', fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                ¿Primera vez? Practicá un cobro (no se guarda)
+              </button>
+            )}
+          </>
         ) : (
           <>
             <div className="lista-animada" style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginBottom: 12, boxShadow: 'var(--shadow-sm)' }}>
@@ -487,6 +517,11 @@ const VentaPage: React.FC = () => {
         <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
           <div style={{ padding: 'var(--space-5)', maxWidth: 520, margin: '0 auto' }}>
             <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 16 }}>Cobrar</h2>
+            {practica && (
+              <p role="status" style={{ margin: '0 0 16px', padding: 14, borderRadius: 'var(--radius-lg)', background: 'var(--marca-suave)', color: 'var(--marca-texto)', fontSize: 16, fontWeight: 700 }}>
+                Paso 3 de 3: elegí cómo paga y tocá «Listo, cobrado». Es de práctica: no se guarda.
+              </p>
+            )}
 
             {/* Receipt */}
             <Card variant="flat" style={{ marginBottom: 16, borderStyle: 'dashed', border: '2px dashed var(--border)' }}>
