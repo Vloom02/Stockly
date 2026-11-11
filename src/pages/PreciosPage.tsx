@@ -84,7 +84,7 @@ const PreciosPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => (enEdicion ? setAbierto(null) : abrir(p.id!, p.precio))}
-                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text)', textAlign: 'left' }}>
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 14px', minHeight: 48, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text)', textAlign: 'left' }}>
                       <span style={{ fontSize: 14, fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre}</span>
                       <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>{formatearMoneda(p.precio)}</span>
                     </button>

@@ -131,7 +131,7 @@ const CajaTurnoPage: React.FC = () => {
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             {(['ingreso', 'egreso'] as const).map(t => (
               <button key={t} type="button" onClick={() => setTipo(t)}
-                style={{ flex: 1, padding: 10, borderRadius: 'var(--radius)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
+                style={{ flex: 1, padding: 10, minHeight: 48, borderRadius: 'var(--radius)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
                   border: tipo === t ? '1.5px solid var(--color-primary)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)',
                   background: tipo === t ? 'var(--color-primary-bg)' : 'var(--surface)',
                   color: tipo === t ? 'var(--color-primary-dark)' : 'var(--text-2)' }}>
