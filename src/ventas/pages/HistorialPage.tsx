@@ -11,7 +11,7 @@ import { openDB, enqueueOutbox, esErrorPermanente, idbGetAll, OfflineVentaPayloa
 import { ventasACSV, guardarCSV } from '../lib/exportar';
 import { avisoArchivo } from '../../lib/archivos';
 import { useAuth } from '../context/AuthContext';
-import { formatMoney } from '../context/VentasContext';
+import { formatMoney, useVentas } from '../context/VentasContext';
 import { useConfirm } from '../../lib/useConfirm';
 import { Card, Badge, EmptyState, Skeleton, Button, Opciones } from '../components/ui';
 import { ClipboardIcon, FunnelIcon, DocumentIcon } from '../components/ui/icons';
@@ -139,6 +139,7 @@ const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avi
 
 const HistorialPage: React.FC = () => {
   const { comercio } = useAuth();
+  const { state: { outboxLen } } = useVentas();
   const [ventas, setVentas] = useState<VentaRow[]>([]);
   const [pendientes, setPendientes] = useState<VentaRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -172,7 +173,8 @@ const HistorialPage: React.FC = () => {
     setLoading(false);
   }, [comercio]);
 
-  useEffect(() => { cargar(); }, [cargar]);
+  // También cuando cambia la cola: una venta entra a "Falta subir" o sube, y la lista lo muestra sin salir y volver.
+  useEffect(() => { cargar(); }, [cargar, outboxLen]);
   // Refrescar al volver a la pestaña (puede haber ventas nuevas).
   useAlVolver(() => { cargar(); });
 
@@ -257,7 +259,8 @@ const HistorialPage: React.FC = () => {
           </Card>
         )}
 
-        {loading ? (
+        {/* Lo que falta subir está en este equipo: se muestra ya, sin esperar al servidor (sin señal tarda en rendirse). */}
+        {loading && filtered.length === 0 ? (
           <><Skeleton height={60} style={{ marginBottom: 7 }} /><Skeleton height={60} style={{ marginBottom: 7 }} /><Skeleton height={60} /></>
         ) : filtered.length === 0 ? (
           <EmptyState icon={<ClipboardIcon size={44} color="var(--text-3)" />} title={activeFilters > 0 ? 'Sin resultados' : 'Sin ventas'} description={activeFilters > 0 ? 'Probá con otros filtros' : 'Todavía no registraste ventas'} />
