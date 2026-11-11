@@ -25,6 +25,18 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
   const [error, setError] = useState<string | null>(null);
   const [manualValue, setManualValue] = useState('');
   const [scannerSupported, setScannerSupported] = useState(true);
+  // Escribir el código y la linterna, siempre a mano: un código roto o un depósito oscuro no tienen por qué
+  // obligar a cancelar. La linterna aparece solo si la cámara la tiene.
+  const [aMano, setAMano] = useState(false);
+  const [linterna, setLinterna] = useState<'no' | 'apagada' | 'prendida'>('no');
+  const pista = useRef<MediaStreamTrack | null>(null);
+  const cambiarLinterna = async () => {
+    const prender = linterna !== 'prendida';
+    try {
+      await pista.current?.applyConstraints({ advanced: [{ torch: prender } as MediaTrackConstraintSet] });
+      setLinterna(prender ? 'prendida' : 'apagada');
+    } catch { setLinterna('no'); } // la cámara dijo que tenía y no pudo: se saca el botón
+  };
   // Por ref: la pantalla de atrás se redibuja (cada sync) y, con la función en las dependencias,
   // la cámara se apagaba y se volvía a prender sola.
   const alDetectar = useRef(onCodigoDetectado);
@@ -80,6 +92,8 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
         });
         // Se cerró mientras se pedía la cámara: apagarla (si no, quedaba prendida).
         if (!active) { stream.getTracks().forEach(t => t.stop()); return; }
+        pista.current = stream.getVideoTracks()[0] ?? null;
+        if ((pista.current?.getCapabilities?.() as { torch?: boolean } | undefined)?.torch) setLinterna('apagada');
 
         if (videoRef.current && active) {
           videoRef.current.srcObject = stream;
@@ -167,7 +181,7 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
 
       {/* Cámara o entrada manual */}
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-        {scannerSupported && !error ? (
+        {scannerSupported && !error && !aMano ? (
           <>
             <video
               ref={videoRef}
@@ -192,6 +206,19 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
               borderRadius: 12,
               boxShadow: '0 0 0 9999px rgba(0,0,0,0.4)',
             }} />
+            <div style={{ position: 'absolute', left: 0, right: 0, bottom: 16, display: 'flex', justifyContent: 'center', gap: 10, padding: '0 16px', flexWrap: 'wrap' }}>
+              {linterna !== 'no' && (
+                <button type="button" onClick={cambiarLinterna} aria-pressed={linterna === 'prendida'}
+                  style={{ minHeight: 52, padding: '8px 18px', border: 'none', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit', fontSize: 17, fontWeight: 700,
+                    background: linterna === 'prendida' ? '#fff' : 'rgba(0,0,0,0.65)', color: linterna === 'prendida' ? '#111' : '#fff' }}>
+                  {linterna === 'prendida' ? 'Apagar linterna' : 'Prender linterna'}
+                </button>
+              )}
+              <button type="button" onClick={() => setAMano(true)}
+                style={{ minHeight: 52, padding: '8px 18px', border: 'none', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit', fontSize: 17, fontWeight: 700, background: 'rgba(0,0,0,0.65)', color: '#fff' }}>
+                Escribir el código
+              </button>
+            </div>
           </>
         ) : (
           <div style={{
@@ -206,13 +233,13 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
           }}>
             <div style={{ marginBottom: 16, color: 'var(--marca-texto)', display: 'flex', justifyContent: 'center' }}><IcoCameraIcon width={56} height={56} /></div>
             <div style={{ fontSize: 16, marginBottom: 8 }}>
-              {error || 'Tu navegador no soporta el escaneo automático'}
+              {aMano ? 'Escribí los números que están debajo de las barras' : (error || 'Tu navegador no soporta el escaneo automático')}
             </div>
-            <div style={{ fontSize: 16, marginBottom: 24, maxWidth: 320 }}>
+            {!aMano && <div style={{ fontSize: 16, marginBottom: 24, maxWidth: 320 }}>
               {error === 'Permiso de cámara denegado'
                 ? 'Activá el permiso de cámara desde Ajustes de Android → Aplicaciones → Stockly → Permisos. Mientras tanto, podés ingresar el código manualmente.'
                 : 'Podés ingresar el código manualmente o instalar la app en tu celular para usar el escáner nativo'}
-            </div>
+            </div>}
             <input className="campo"
               type="text"
               inputMode="numeric"
@@ -254,7 +281,7 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
       </div>
 
       {/* Footer info */}
-      {scannerSupported && !error && (
+      {scannerSupported && !error && !aMano && (
         <div style={{
           padding: '16px 20px calc(16px + var(--sab,env(safe-area-inset-bottom))) 20px',
           background: 'rgba(0,0,0,0.7)',
