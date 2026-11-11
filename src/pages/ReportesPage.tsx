@@ -73,12 +73,12 @@ const ReportesPage: React.FC = () => {
               <SectionHeader icon={<ChartPieIcon width={16} height={16} />} title="Valor por categoría" />
               <Card padding="md" style={{ marginBottom: 16 }}>
                 {distribucion.length === 0 ? (
-                  <p style={{ textAlign: 'center', color: 'var(--text-2)', padding: 20, margin: 0, fontSize: 14 }}>
+                  <p style={{ textAlign: 'center', color: 'var(--text-2)', padding: 20, margin: 0, fontSize: 16 }}>
                     No hay stock cargado en esta sucursal
                   </p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-2)' }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-2)' }}>
                       Total <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', marginLeft: 6 }}>{formatearMoneda(res.valorTotal)}</span>
                     </div>
                     {barrasCategorias.map((d, i) => {
@@ -88,7 +88,7 @@ const ReportesPage: React.FC = () => {
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                             <span style={{ fontSize: 16, fontWeight: 700, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.categoria}</span>
                             <span style={{ fontSize: 16, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{formatearMoneda(d.valor)}</span>
-                            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-2)', minWidth: 40, textAlign: 'right' }}>{pct.toFixed(0)}%</span>
+                            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-2)', minWidth: 40, textAlign: 'right' }}>{pct.toFixed(0)}%</span>
                           </div>
                           <div style={{ height: 12, borderRadius: 999, background: 'var(--surface-3)', boxShadow: 'var(--hundido)', overflow: 'hidden' }}>
                             <div className="anim-crecer" style={{ '--i': i, width: `${Math.max(pct, 1.5)}%`, height: '100%', borderRadius: 999, background: d.categoria === 'Otras' ? 'var(--text-3)' : 'var(--boton-marca)' } as React.CSSProperties} />
@@ -108,20 +108,20 @@ const ReportesPage: React.FC = () => {
                   marginBottom: 16,
                 }}>
                   <div>
-                    <div style={{ fontSize: 14, color: 'var(--text-2)', }}>
+                    <div style={{ fontSize: 16, color: 'var(--text-2)', }}>
                       Total últimos 6 meses
                     </div>
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, color: 'var(--level-vencido-fg)', letterSpacing: '-0.02em' }}>
                       {formatearMoneda(totalPerdido)}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 12, fontSize: 14 }}>
+                  <div style={{ display: 'flex', gap: 12, fontSize: 16 }}>
                     <LegendDot color="var(--level-vencido-fg)" label="Vencido" />
                     <LegendDot color="var(--level-aviso-fg)" label="Roto" />
                   </div>
                 </div>
                 {totalPerdido === 0 ? (
-                  <p style={{ textAlign: 'center', color: 'var(--marca-texto)', padding: 16, margin: 0, fontSize: 14, fontWeight: 500 }}>
+                  <p style={{ textAlign: 'center', color: 'var(--marca-texto)', padding: 16, margin: 0, fontSize: 16, fontWeight: 500 }}>
                     Sin pérdidas registradas. ¡Buen trabajo!
                   </p>
                 ) : (
@@ -142,29 +142,29 @@ const ReportesPage: React.FC = () => {
               <SectionHeader icon={<ShoppingCartIcon width={16} height={16} />} title="Qué reponer" />
               <Card padding="md" style={{ marginBottom: 16 }}>
                 {reposicion.length === 0 ? (
-                  <p style={{ textAlign: 'center', color: 'var(--marca-texto)', padding: 16, margin: 0, fontSize: 14, fontWeight: 500 }}>
+                  <p style={{ textAlign: 'center', color: 'var(--marca-texto)', padding: 16, margin: 0, fontSize: 16, fontWeight: 500 }}>
                     Nada para reponer por ahora.
                   </p>
                 ) : (
                   <>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <span style={{ fontSize: 14, color: 'var(--text-2)' }}>{reposicion.length} producto{reposicion.length !== 1 ? 's' : ''}</span>
+                      <span style={{ fontSize: 16, color: 'var(--text-2)' }}>{reposicion.length} producto{reposicion.length !== 1 ? 's' : ''}</span>
                       <button
                         type="button"
                         onClick={() => compartirTexto(reposicionATexto(reposicion), 'Lista de reposición')}
                         className="pressable"
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--brand-50)', color: 'var(--brand-700)', border: '1px solid var(--brand-200)', borderRadius: 'var(--radius)', padding: '6px 14px', minHeight: 44, fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--brand-50)', color: 'var(--brand-700)', border: '1px solid var(--brand-200)', borderRadius: 'var(--radius)', padding: '6px 14px', minHeight: 44, fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                         <ShareIcon width={15} height={15} /> Compartir
                       </button>
                     </div>
                     {reposicion.slice(0, 30).map((it, i) => (
                       <div key={it.producto.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0', borderBottom: i < Math.min(reposicion.length, 30) - 1 ? '1px solid var(--border)' : 'none' }}>
-                        <span style={{ fontSize: 14, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 8 }}>{it.producto.nombre}</span>
+                        <span style={{ fontSize: 16, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 8 }}>{it.producto.nombre}</span>
                         <MotivoBadge motivo={it.motivo} cantidad={it.cantidadTotal} />
                       </div>
                     ))}
                     {reposicion.length > 30 && (
-                      <div style={{ textAlign: 'center', fontSize: 14, color: 'var(--text-3)', paddingTop: 8 }}>…y {reposicion.length - 30} más</div>
+                      <div style={{ textAlign: 'center', fontSize: 16, color: 'var(--text-3)', paddingTop: 8 }}>…y {reposicion.length - 30} más</div>
                     )}
                   </>
                 )}
@@ -182,7 +182,7 @@ const ReportesPage: React.FC = () => {
               {/* Detalle del día seleccionado */}
               {diaSeleccionado && lotesDelDia.length > 0 && (
                 <div className="animate-slide-up" style={{ marginTop: 12 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: 'var(--text-2)' }}>
+                  <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: 'var(--text-2)' }}>
                     Vencen el {formatearFecha(diaSeleccionado)}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -190,8 +190,8 @@ const ReportesPage: React.FC = () => {
                       <Card key={lote.id} padding="sm" onClick={() => history.push(`/lote/${lote.id}`)}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <div>
-                            <div style={{ fontWeight: 600, fontSize: 14 }}>{nombre}</div>
-                            <div style={{ fontSize: 14, color: 'var(--text-2)' }}>{lote.cantidad} unid.</div>
+                            <div style={{ fontWeight: 600, fontSize: 16 }}>{nombre}</div>
+                            <div style={{ fontSize: 16, color: 'var(--text-2)' }}>{lote.cantidad} unid.</div>
                           </div>
                           <BanknotesIcon width={18} height={18} style={{ color: 'var(--text-3)' }} />
                         </div>
@@ -231,7 +231,7 @@ const MotivoBadge: React.FC<{ motivo: MotivoReposicion; cantidad: number }> = ({
   };
   const c = cfg[motivo];
   return (
-    <span style={{ flexShrink: 0, fontSize: 14, fontWeight: 600, color: c.fg, background: c.bg, padding: '3px 9px', borderRadius: 'var(--radius-full)', whiteSpace: 'nowrap' }}>
+    <span style={{ flexShrink: 0, fontSize: 16, fontWeight: 600, color: c.fg, background: c.bg, padding: '3px 9px', borderRadius: 'var(--radius-full)', whiteSpace: 'nowrap' }}>
       {c.txt}
     </span>
   );

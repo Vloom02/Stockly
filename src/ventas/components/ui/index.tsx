@@ -32,7 +32,7 @@ export const Button: React.FC<ButtonProps> = ({
   };
   const sizes: Record<BtnSize, React.CSSProperties> = {
     // Mínimos táctiles pensados para dedos grandes (público mayor): 44 / 48 / 56 px.
-    sm: { padding: '8px 14px', fontSize: 14, minHeight: 44 },
+    sm: { padding: '8px 14px', fontSize: 16, minHeight: 44 },
     md: { padding: '12px 18px', fontSize: 16, minHeight: 48 },
     lg: { padding: '16px 22px', fontSize: 18, minHeight: 56 },
   };
@@ -122,8 +122,8 @@ export const Input: React.FC<InputProps> = ({
           ...style,
         }}
       />
-      {error && <span style={{ fontSize: 14, color:'var(--color-danger)' }}>{error}</span>}
-      {hint && !error && <span style={{ fontSize: 14, color:'var(--text-3)' }}>{hint}</span>}
+      {error && <span style={{ fontSize: 16, color:'var(--color-danger)' }}>{error}</span>}
+      {hint && !error && <span style={{ fontSize: 16, color:'var(--text-3)' }}>{hint}</span>}
     </div>
   );
 };
@@ -164,7 +164,7 @@ export const Badge: React.FC<{ children: ReactNode; color?: BadgeColor; dot?: bo
     gray:   { background:'var(--surface-2)',         color:'var(--text-2)',             border:'1px solid var(--border)' },
   };
   return (
-    <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:'var(--radius-full)', fontSize: 14, fontWeight:600, ...colors[color], ...style }}>
+    <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:'var(--radius-full)', fontSize: 16, fontWeight:600, ...colors[color], ...style }}>
       {dot && <span style={{ width:6, height:6, borderRadius:'50%', background:'currentColor' }} />}
       {children}
     </span>
@@ -212,7 +212,7 @@ export const SyncBanner: React.FC<{ queueLen: number; isOnline: boolean; bloquea
     return (
       <button type="button" onClick={onReintentar} style={{
         position: 'sticky', top: 0, zIndex: 200, width: '100%', minHeight: 48,
-        padding: '10px 16px', textAlign: 'center', fontSize: 15, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
+        padding: '10px 16px', textAlign: 'center', fontSize: 16, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
         background: 'var(--color-danger-bg)', color: 'var(--color-danger-dark)', border: 'none',
         borderBottom: '1px solid var(--color-danger-border)',
       }}>
@@ -224,7 +224,7 @@ export const SyncBanner: React.FC<{ queueLen: number; isOnline: boolean; bloquea
     // Pegado arriba pero ocupando su lugar: fijo tapaba el nombre del negocio y la mitad del botón "Caja".
     <div role="status" style={{
       position: 'sticky', top: 0, zIndex: 200,
-      padding: '10px 16px', textAlign: 'center', fontSize: 15, fontWeight: 600,
+      padding: '10px 16px', textAlign: 'center', fontSize: 16, fontWeight: 600,
       background: isOffline ? 'var(--color-warning-bg)' : 'var(--color-info-bg)',
       color:      isOffline ? 'var(--color-warning-dark)' : 'var(--color-info-dark)',
       borderBottom: `1px solid ${isOffline ? 'var(--color-warning-border)' : 'var(--color-info-border)'}`,
@@ -252,7 +252,7 @@ export const SectionTitle: React.FC<{ children: ReactNode }> = ({ children }) =>
 // ─── Stat card ────────────────────────────────────────────────────────────────
 export const StatCard: React.FC<{ label: string; value: ReactNode; color?: string }> = ({ label, value, color }) => (
   <div style={{ background:'var(--surface)', boxShadow:'var(--shadow-md)', borderRadius:'var(--radius-lg)', padding:'12px 14px' }}>
-    <div style={{ fontSize: 14, color:'var(--text-2)', marginBottom:3 }}>{label}</div>
+    <div style={{ fontSize: 16, color:'var(--text-2)', marginBottom:3 }}>{label}</div>
     <div style={{ fontSize:20, fontWeight:700, color: color || 'var(--text)' }}>{value}</div>
   </div>
 );

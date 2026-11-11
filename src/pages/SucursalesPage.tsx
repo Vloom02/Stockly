@@ -82,7 +82,7 @@ const SucursalesPage: React.FC = () => {
         }}>
           <Header title="Locales" onBack={() => history.goBack()} />
 
-          <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 16 }}>
+          <p style={{ fontSize: 16, color: 'var(--text-2)', marginBottom: 16 }}>
             El stock se gestiona por sucursal. Cambiá la activa para ver o cargar productos en otra.
           </p>
 
@@ -118,10 +118,10 @@ const SucursalesPage: React.FC = () => {
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontWeight: 600, fontSize: 15 }}>{s.nombre}</span>
+                          <span style={{ fontWeight: 600, fontSize: 16 }}>{s.nombre}</span>
                           {activa && <Badge variant="success" size="sm">Activa</Badge>}
                         </div>
-                        {s.direccion && <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 2 }}>{s.direccion}</div>}
+                        {s.direccion && <div style={{ fontSize: 16, color: 'var(--text-2)', marginTop: 2 }}>{s.direccion}</div>}
                       </div>
                       {!activa && (
                         <Button variant="secondary" size="sm" onClick={() => seleccionar(s.id!)}>Usar</Button>
@@ -151,7 +151,7 @@ const SucursalesPage: React.FC = () => {
             })}
           </div>
 
-          <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Nueva sucursal</h2>
+          <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Nueva sucursal</h2>
           <Card padding="md">
             <Field label="Nombre">
               <Input value={nuevoNombre} onChange={e => setNuevoNombre(e.target.value)}

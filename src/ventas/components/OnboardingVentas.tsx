@@ -67,7 +67,7 @@ const OnboardingVentas: React.FC = () => {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
           <div className="boton-marca" style={{ width: 88, height: 88, borderRadius: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}><paso.Icono width={48} height={48} /></div>
           <h2 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>{paso.titulo}</h2>
-          <p style={{ fontSize: 15, color: 'var(--text-2)', lineHeight: 1.6, maxWidth: 320 }}>{paso.texto}</p>
+          <p style={{ fontSize: 16, color: 'var(--text-2)', lineHeight: 1.6, maxWidth: 320 }}>{paso.texto}</p>
         </div>
 
         {/* dots */}
@@ -79,11 +79,11 @@ const OnboardingVentas: React.FC = () => {
 
         <div style={{ display: 'flex', gap: 10 }}>
           {!ultimo && (
-            <button onClick={cerrar} className="pressable" style={{ flex: 1, padding: 14, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text-2)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button onClick={cerrar} className="pressable" style={{ flex: 1, padding: 14, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text-2)', fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
               Saltar
             </button>
           )}
-          <button onClick={() => (ultimo ? cerrar() : setI(i + 1))} className="pressable boton-marca" style={{ flex: ultimo ? 1 : 1.6, padding: 14, border: 'none', borderRadius: 'var(--radius)', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <button onClick={() => (ultimo ? cerrar() : setI(i + 1))} className="pressable boton-marca" style={{ flex: ultimo ? 1 : 1.6, padding: 14, border: 'none', borderRadius: 'var(--radius)', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
             {ultimo ? '¡Empezar!' : 'Siguiente'}
           </button>
         </div>

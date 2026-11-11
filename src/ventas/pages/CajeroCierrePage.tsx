@@ -136,12 +136,12 @@ const CajeroCierrePage: React.FC = () => {
     <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
       <div style={{ padding: 'var(--space-4)', maxWidth: 520, margin: '0 auto', paddingBottom: 'calc(40px + var(--sab,env(safe-area-inset-bottom)))', paddingTop: 'calc(var(--space-4) + var(--ion-safe-area-top, 0px))' }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>Cerrar caja</h1>
-        <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 16 }}>
+        <p style={{ fontSize: 16, color: 'var(--text-2)', marginBottom: 16 }}>
           Turno de <b>{cajero?.nombre ?? '—'}</b> · desde {desde.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
         </p>
 
         {sinInternet && !loading && (
-          <p role="status" style={{ fontSize: 15, fontWeight: 600, margin: '0 0 12px' }}>
+          <p role="status" style={{ fontSize: 16, fontWeight: 600, margin: '0 0 12px' }}>
             Sin internet: se cuenta lo guardado en este celular. Si vendiste en otro equipo, puede faltar.
           </p>
         )}
@@ -152,11 +152,11 @@ const CajeroCierrePage: React.FC = () => {
             {/* Resumen del turno */}
             <Card style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                <span style={{ fontSize: 14, color: 'var(--text-2)' }}>Ventas del turno</span>
+                <span style={{ fontSize: 16, color: 'var(--text-2)' }}>Ventas del turno</span>
                 <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{validas.length}</span>
               </div>
               {Object.entries(porMetodo).sort((a, b) => b[1] - a[1]).map(([k, v]) => (
-                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14 }}>
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 16 }}>
                   <span>{metodoLabel(k)}</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{formatMoney(v)}</span>
                 </div>
@@ -167,7 +167,7 @@ const CajeroCierrePage: React.FC = () => {
               </div>
               {/* A la vista del que cierra: un descuento a mano baja el efectivo esperado sin que el arqueo lo note. */}
               {descuentos > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, fontSize: 15, color: 'var(--text-2)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, fontSize: 16, color: 'var(--text-2)' }}>
                   <span>Descuentos que se hicieron</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{formatMoney(descuentos)}</span>
                 </div>
@@ -176,42 +176,42 @@ const CajeroCierrePage: React.FC = () => {
 
             {/* Arqueo */}
             <Card>
-              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>Contar el efectivo</div>
+              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 10 }}>Contar el efectivo</div>
 
               {aperturaMov ? (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, marginBottom: 8 }}>
                   <span style={{ color: 'var(--text-2)' }}>Apertura (fondo)</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{formatMoney(fondoNum)}</span>
                 </div>
               ) : (
                 <>
-                  <label style={{ fontSize: 14, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Fondo inicial (lo que había al empezar)</label>
+                  <label style={{ fontSize: 16, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Fondo inicial (lo que había al empezar)</label>
                   <input className="campo" type="text" inputMode="decimal" value={fondo} onChange={e => setFondo(e.target.value)} placeholder="0" style={{ ...inputStyle, marginBottom: 12 }} />
                 </>
               )}
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, marginBottom: 4 }}>
                 <span style={{ color: 'var(--text-2)' }}>Efectivo de ventas</span>
                 <span style={{ fontFamily: 'var(--font-mono)' }}>{formatMoney(efectivoVentas)}</span>
               </div>
               {ingresos > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, marginBottom: 4 }}>
                   <span style={{ color: 'var(--text-2)' }}>Ingresos de caja</span>
                   <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-primary-dark)' }}>+{formatMoney(ingresos)}</span>
                 </div>
               )}
               {egresos > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, marginBottom: 4 }}>
                   <span style={{ color: 'var(--text-2)' }}>Egresos de caja</span>
                   <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-danger)' }}>−{formatMoney(egresos)}</span>
                 </div>
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '8px 0 10px', paddingTop: 8, borderTop: '1px solid var(--border)', fontSize: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '8px 0 10px', paddingTop: 8, borderTop: '1px solid var(--border)', fontSize: 16 }}>
                 <span style={{ color: 'var(--text-2)', fontWeight: 600 }}>Efectivo esperado</span>
                 <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{formatMoney(esperado)}</span>
               </div>
 
-              <label htmlFor="efectivo-contado" style={{ fontSize: 15, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Efectivo contado</label>
+              <label htmlFor="efectivo-contado" style={{ fontSize: 16, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Efectivo contado</label>
               <input id="efectivo-contado" className="campo" type="text" inputMode="decimal" value={contado}
                 onChange={e => { setContado(e.target.value); setErrorContado(''); }} placeholder="Lo que hay en la caja"
                 aria-invalid={!!errorContado} aria-describedby={errorContado ? 'error-contado' : undefined} style={inputStyle} />
@@ -222,7 +222,7 @@ const CajeroCierrePage: React.FC = () => {
                   marginTop: 12, padding: '12px 14px', borderRadius: 'var(--radius)', textAlign: 'center',
                   background: Math.abs(diferencia) < 0.01 ? 'var(--color-primary-bg)' : diferencia > 0 ? 'var(--color-info-bg)' : 'var(--color-danger-bg)',
                   border: `1px solid ${Math.abs(diferencia) < 0.01 ? 'var(--color-primary-border)' : diferencia > 0 ? 'var(--color-info-border)' : 'var(--color-danger-border)'}`,
-                  fontWeight: 600, fontSize: 14,
+                  fontWeight: 600, fontSize: 16,
                   color: Math.abs(diferencia) < 0.01 ? 'var(--color-primary-dark)' : diferencia > 0 ? 'var(--color-info-dark)' : 'var(--color-danger-dark)',
                 }}>
                   {Math.abs(diferencia) < 0.01 ? 'La caja cuadra' : diferencia > 0 ? `Sobran ${formatMoney(diferencia)}` : `Faltan ${formatMoney(Math.abs(diferencia))}`}

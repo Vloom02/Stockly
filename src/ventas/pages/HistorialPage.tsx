@@ -104,11 +104,11 @@ const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avi
     <Card variant="bordered" style={{ padding: 0, overflow: 'hidden', marginBottom: 7 }}>
       <button type="button" onClick={toggle} aria-expanded={open} className="pressable" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', minHeight: 56, cursor: 'pointer', border: 'none', background: 'none', textAlign: 'left', fontFamily: 'inherit', color: 'var(--text)' }}>
         <div>
-          <div style={{ fontSize: 14, color: 'var(--text-2)' }}>{time} {venta.usuario && <Badge color="purple" style={{ marginLeft: 4, fontSize: 14 }}>{venta.usuario}</Badge>}
-            {anulada && <span style={{ marginLeft: 6, fontSize: 14, fontWeight: 700, color: 'var(--color-danger)', background: 'var(--color-danger-bg)', border: '1px solid var(--color-danger-border)', borderRadius: 'var(--radius-full)', padding: '1px 7px' }}>ANULADA</span>}
-            {venta.sinSubir && <span style={{ marginLeft: 6, fontSize: 14, fontWeight: 700, color: 'var(--level-urgente-fg)', background: 'var(--level-urgente-bg)', borderRadius: 'var(--radius-full)', padding: '1px 7px' }}>Falta subir</span>}
+          <div style={{ fontSize: 16, color: 'var(--text-2)' }}>{time} {venta.usuario && <Badge color="purple" style={{ marginLeft: 4, fontSize: 16 }}>{venta.usuario}</Badge>}
+            {anulada && <span style={{ marginLeft: 6, fontSize: 16, fontWeight: 700, color: 'var(--color-danger)', background: 'var(--color-danger-bg)', border: '1px solid var(--color-danger-border)', borderRadius: 'var(--radius-full)', padding: '1px 7px' }}>ANULADA</span>}
+            {venta.sinSubir && <span style={{ marginLeft: 6, fontSize: 16, fontWeight: 700, color: 'var(--level-urgente-fg)', background: 'var(--level-urgente-bg)', borderRadius: 'var(--radius-full)', padding: '1px 7px' }}>Falta subir</span>}
           </div>
-          <div style={{ fontSize: 14, color: 'var(--text-3)', marginTop: 1 }}>{venta.fiado ? 'Fiado' : metodoLabel}{venta.cliente ? ` · ${venta.cliente}` : ''}</div>
+          <div style={{ fontSize: 16, color: 'var(--text-3)', marginTop: 1 }}>{venta.fiado ? 'Fiado' : metodoLabel}{venta.cliente ? ` · ${venta.cliente}` : ''}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--color-primary-dark)', fontFamily: 'var(--font-mono)', textDecoration: anulada ? 'line-through' : 'none' }}>{formatMoney(venta.total)}</span>
@@ -118,16 +118,16 @@ const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avi
       {open && (
         <div style={{ borderTop: '1px solid var(--border)', padding: '10px 14px', background: 'var(--surface-2)' }}>
           {items.length === 0 ? <Skeleton height={14} /> : items.map((it, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '2px 0' }}>
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, padding: '2px 0' }}>
               <span>{it.nombre_producto || (it.producto_id && prods[it.producto_id]) || 'Venta rápida'} <span style={{ color: 'var(--text-3)' }}>x{it.cantidad}</span></span>
               <span style={{ fontFamily: 'var(--font-mono)' }}>{formatMoney(it.subtotal)}</span>
             </div>
           ))}
-          {venta.descuento > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '2px 0', color: 'var(--color-primary-dark)' }}><span>Descuento</span><span style={{ fontFamily: 'var(--font-mono)' }}>-{formatMoney(venta.descuento)}</span></div>}
+          {venta.descuento > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, padding: '2px 0', color: 'var(--color-primary-dark)' }}><span>Descuento</span><span style={{ fontFamily: 'var(--font-mono)' }}>-{formatMoney(venta.descuento)}</span></div>}
           {venta.sinSubir && <p style={{ fontSize: 16, fontWeight: 600, margin: '10px 0 0' }}>Está guardada en este equipo y sube sola cuando vuelva la señal. Después se va a poder anular.</p>}
           {!anulada && !venta.sinSubir && (
             <button type="button" onClick={anular} disabled={anulando} className="pressable"
-              style={{ marginTop: 10, width: '100%', padding: '9px', minHeight: 48, background: 'var(--color-danger-bg)', color: 'var(--color-danger)', border: '1px solid var(--color-danger-border)', borderRadius: 'var(--radius)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: anulando ? 0.6 : 1 }}>
+              style={{ marginTop: 10, width: '100%', padding: '9px', minHeight: 48, background: 'var(--color-danger-bg)', color: 'var(--color-danger)', border: '1px solid var(--color-danger-border)', borderRadius: 'var(--radius)', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: anulando ? 0.6 : 1 }}>
               {anulando ? 'Anulando…' : 'Anular venta / devolución'}
             </button>
           )}
@@ -219,20 +219,20 @@ const HistorialPage: React.FC = () => {
   };
 
   const activeFilters = Object.values(filters).filter(Boolean).length;
-  const inputStyle: React.CSSProperties = { width: '100%', padding: 9, fontSize: 14, color: 'var(--text)', borderRadius: 'var(--radius-sm)', outline: 'none' };
+  const inputStyle: React.CSSProperties = { width: '100%', padding: 9, fontSize: 16, color: 'var(--text)', borderRadius: 'var(--radius-sm)', outline: 'none' };
 
   return (
     <IonContent style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
       <div style={{ padding: 'var(--space-4)', maxWidth: 520, margin: '0 auto', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))' }}>
         <BotonVolver />
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Ventas anteriores</h1>
-        <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 14 }}>Últimos 30 días</p>
-        {sinInternet && <p role="status" style={{ fontSize: 15, fontWeight: 600, margin: '0 0 12px' }}>Sin internet: las ventas se ven cuando vuelva la señal. No se borró nada.</p>}
+        <p style={{ fontSize: 16, color: 'var(--text-2)', marginBottom: 14 }}>Últimos 30 días</p>
+        {sinInternet && <p role="status" style={{ fontSize: 16, fontWeight: 600, margin: '0 0 12px' }}>Sin internet: las ventas se ven cuando vuelva la señal. No se borró nada.</p>}
         <IonToast isOpen={!!aviso} message={aviso} duration={6500} onDidDismiss={() => setAviso('')} position="top" />
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 12 }}>
-          <Card variant="bordered" style={{ padding: 10 }}><div style={{ fontSize: 14, color: 'var(--text-2)' }}>Ventas</div><div style={{ fontSize: 20, fontWeight: 700 }}>{filtered.length}</div></Card>
-          <Card variant="bordered" style={{ padding: 10 }}><div style={{ fontSize: 14, color: 'var(--text-2)' }}>Total</div><div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-mono)', paddingTop: 2 }}>{formatMoney(total)}</div></Card>
+          <Card variant="bordered" style={{ padding: 10 }}><div style={{ fontSize: 16, color: 'var(--text-2)' }}>Ventas</div><div style={{ fontSize: 20, fontWeight: 700 }}>{filtered.length}</div></Card>
+          <Card variant="bordered" style={{ padding: 10 }}><div style={{ fontSize: 16, color: 'var(--text-2)' }}>Total</div><div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-mono)', paddingTop: 2 }}>{formatMoney(total)}</div></Card>
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
@@ -243,14 +243,14 @@ const HistorialPage: React.FC = () => {
         {showFilters && (
           <Card style={{ marginBottom: 14 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 8 }}>
-              <div style={{ gridColumn: '1 / -1' }}><label style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: 6 }}>Cómo pagó</label>
+              <div style={{ gridColumn: '1 / -1' }}><label style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: 6 }}>Cómo pagó</label>
                 <Opciones etiqueta="Cómo pagó" columnas={3} valor={filters.metodoPago} onChange={v => setFilters(f => ({ ...f, metodoPago: v }))}
                   opciones={[{ valor: '', etiqueta: 'Todos' }, { valor: 'efectivo', etiqueta: 'Efectivo' }, { valor: 'transferencia', etiqueta: 'Transferencia' }, { valor: 'tarjeta', etiqueta: 'Tarjeta' }, { valor: 'qr', etiqueta: 'QR' }]} /></div>
-              <div><label style={{ fontSize: 14, color: 'var(--text-2)' }}>Cliente</label>
+              <div><label style={{ fontSize: 16, color: 'var(--text-2)' }}>Cliente</label>
                 <input className="campo" value={filters.cliente} onChange={e => setFilters(f => ({ ...f, cliente: e.target.value }))} style={inputStyle} placeholder="Buscar..." /></div>
-              <div><label style={{ fontSize: 14, color: 'var(--text-2)' }}>Desde</label>
+              <div><label style={{ fontSize: 16, color: 'var(--text-2)' }}>Desde</label>
                 <input className="campo" type="date" value={filters.dateFrom} onChange={e => setFilters(f => ({ ...f, dateFrom: e.target.value }))} style={inputStyle} /></div>
-              <div><label style={{ fontSize: 14, color: 'var(--text-2)' }}>Hasta</label>
+              <div><label style={{ fontSize: 16, color: 'var(--text-2)' }}>Hasta</label>
                 <input className="campo" type="date" value={filters.dateTo} onChange={e => setFilters(f => ({ ...f, dateTo: e.target.value }))} style={inputStyle} /></div>
             </div>
             <Button variant="ghost" size="sm" fullWidth onClick={() => setFilters({ metodoPago: '', cliente: '', dateFrom: '', dateTo: '' })}>Limpiar filtros</Button>
@@ -267,9 +267,9 @@ const HistorialPage: React.FC = () => {
             return (
               <div key={day} style={{ marginBottom: 18 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-2)', letterSpacing: '.6px' }}>{day}</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-2)', letterSpacing: '.6px' }}>{day}</span>
                   <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-primary-dark)' }}>{formatMoney(dayTotal)}</span>
+                  <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-primary-dark)' }}>{formatMoney(dayTotal)}</span>
                 </div>
                 {vs.map(v => <SaleCard key={v.id} venta={v} avisar={setAviso}
                   onAnulada={id => setVentas(xs => xs.map(x => x.id === id ? { ...x, anulada: true } : x))} />)}

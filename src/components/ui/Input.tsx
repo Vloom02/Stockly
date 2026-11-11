@@ -36,7 +36,7 @@ export const Field: React.FC<FieldProps> = ({ label, hint, error, required, chil
     {label && (
       <label htmlFor={id} style={{
         display: 'block',
-        fontSize: 15,
+        fontSize: 16,
         fontWeight: 600,
         color: 'var(--text-2)',
         marginBottom: 6,
@@ -48,10 +48,10 @@ export const Field: React.FC<FieldProps> = ({ label, hint, error, required, chil
     )}
     <CampoId.Provider value={id}>{children}</CampoId.Provider>
     {hint && !error && (
-      <p style={{ fontSize: 14, color: 'var(--text-3)', margin: '4px 0 0' }}>{hint}</p>
+      <p style={{ fontSize: 16, color: 'var(--text-3)', margin: '4px 0 0' }}>{hint}</p>
     )}
     {error && (
-      <p role="alert" className="anim-entrar" style={{ fontSize: 15, color: 'var(--danger)', margin: '6px 0 0', fontWeight: 600 }}>{error}</p>
+      <p role="alert" className="anim-entrar" style={{ fontSize: 16, color: 'var(--danger)', margin: '6px 0 0', fontWeight: 600 }}>{error}</p>
     )}
   </div>
   );

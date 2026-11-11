@@ -133,7 +133,7 @@ const StockPage: React.FC = () => {
                 display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
                 borderRadius: 'var(--radius-full)', border: '1px solid var(--brand-200)',
                 background: 'var(--brand-50)', color: 'var(--brand-700)',
-                fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', minHeight: 44,
+                fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', minHeight: 44,
               }}>
               Subir precios
             </button>}
@@ -288,7 +288,7 @@ const SegBtn: React.FC<{ activa: boolean; onClick: () => void; icon: React.React
         flex: 1, padding: '9px 12px', minHeight: 48, border: 'none',
         background: activa ? 'var(--surface)' : 'transparent',
         color: activa ? 'var(--text)' : 'var(--text-2)',
-        borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 15,
+        borderRadius: 'var(--radius-sm)', fontWeight: 700, fontSize: 16,
         cursor: 'pointer', fontFamily: 'inherit',
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         boxShadow: activa ? 'var(--shadow-xs)' : 'none',
@@ -302,7 +302,7 @@ const FilterChip: React.FC<{ activo: boolean; nivel?: NivelAlerta; onClick: () =
   ({ activo, nivel, onClick, children }) => (
     <button type="button" onClick={onClick}
       style={{
-        padding: '6px 16px', minHeight: 44, fontSize: 15, borderRadius: 'var(--radius-full)',
+        padding: '6px 16px', minHeight: 44, fontSize: 16, borderRadius: 'var(--radius-full)',
         border: '1px solid ' + (activo ? 'var(--brand-500)' : 'var(--border)'),
         background: activo ? 'var(--brand-500)' : 'var(--surface)',
         color: activo ? '#fff' : 'var(--text-2)',
@@ -333,26 +333,26 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
         }} />
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15, marginBottom: 3, letterSpacing: '-0.01em' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 16, marginBottom: 3, letterSpacing: '-0.01em' }}>
           {p.producto.nombre}
         </div>
-        <div style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 6 }}>
+        <div style={{ fontSize: 16, color: 'var(--text-2)', marginBottom: 6 }}>
           {p.producto.categoria} · {formatearMoneda(p.producto.precio)} c/u
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {p.cantidadTotal > 0 && <NivelBadge nivel={p.nivelPeor} />}
           {p.cantidadTotal < 0 ? (
-            <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--danger)' }}>
+            <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--danger)' }}>
               {p.cantidadTotal} unid · se vendió sin stock
             </span>
           ) : (
-            <span style={{ fontSize: 14, color: 'var(--text-2)', fontWeight: 500 }}>
+            <span style={{ fontSize: 16, color: 'var(--text-2)', fontWeight: 500 }}>
               {p.cantidadTotal} unid · {p.lotes.length} compra{p.lotes.length !== 1 ? 's' : ''}
             </span>
           )}
           {reponer && (
             <span style={{
-              fontSize: 14, fontWeight: 700, color: 'var(--warning)',
+              fontSize: 16, fontWeight: 700, color: 'var(--warning)',
               border: '1px solid var(--warning)', borderRadius: 'var(--radius-full)',
               padding: '1px 8px', whiteSpace: 'nowrap',
             }}>
@@ -362,11 +362,11 @@ const ProductoCard: React.FC<{ p: ProductoConLotes; onClick: () => void }> = ({ 
         </div>
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 800, letterSpacing: '-0.02em' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em' }}>
           {p.valorTotal > 0 ? formatearMoneda(p.valorTotal) : ''}
         </div>
         {p.proximoVencimiento && (
-          <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 2 }}>
+          <div style={{ fontSize: 16, color: 'var(--text-2)', marginTop: 2 }}>
             {formatearFecha(p.proximoVencimiento)}
           </div>
         )}
@@ -384,21 +384,21 @@ const LoteRow: React.FC<{ lote: LoteConProducto; onClick: () => void }> = ({ lot
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{ width: 4, height: 48, background: colorNivel(lote.nivelAlerta), borderRadius: 2, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15, marginBottom: 2, letterSpacing: '-0.01em' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 16, marginBottom: 2, letterSpacing: '-0.01em' }}>
           {lote.productoNombre}
         </div>
-        <div style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 6 }}>
+        <div style={{ fontSize: 16, color: 'var(--text-2)', marginBottom: 6 }}>
           <span style={lote.cantidad < 0 ? { color: 'var(--danger)', fontWeight: 800 } : undefined}>{lote.cantidad} unid.</span>{lote.numeroLote ? ` · Lote ${lote.numeroLote}` : ''}{lote.productoProveedor ? ` · ${lote.productoProveedor}` : ''}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <NivelBadge nivel={lote.nivelAlerta} />
-          <span style={{ fontSize: 14, color: 'var(--text-2)', fontWeight: 500 }}>
+          <span style={{ fontSize: 16, color: 'var(--text-2)', fontWeight: 500 }}>
             {lote.cantidad < 0 ? 'Se vendió sin stock: el próximo ingreso lo descuenta' : textoEstado(lote.fechaVencimiento)}
           </span>
           {liq.aplicar && (
             <span title={`Sugerencia: liquidá a ${formatearMoneda(liq.precioFinal)} (precio normal ${formatearMoneda(liq.precioOriginal)}) para venderlo antes de que venza`}
               style={{
-                fontSize: 14, fontWeight: 700, color: 'var(--marca-texto)',
+                fontSize: 16, fontWeight: 700, color: 'var(--marca-texto)',
                 background: 'var(--brand-50, var(--surface-2))',
                 border: '1px solid var(--brand-300)',
                 borderRadius: 'var(--radius-full)', padding: '2px 8px',
@@ -411,8 +411,8 @@ const LoteRow: React.FC<{ lote: LoteConProducto; onClick: () => void }> = ({ lot
         </div>
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 600 }}>{formatearFecha(lote.fechaVencimiento)}</div>
-        <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>
+        <div style={{ fontSize: 16, fontWeight: 600 }}>{formatearFecha(lote.fechaVencimiento)}</div>
+        <div style={{ fontSize: 16, color: 'var(--text-2)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>
           {formatearMoneda(lote.valorLote)}
         </div>
       </div>

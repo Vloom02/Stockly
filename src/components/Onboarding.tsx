@@ -109,7 +109,7 @@ const Onboarding: React.FC<Props> = ({ onComplete }) => {
           maxWidth: 320, lineHeight: 1.2,
         }}>{slide.titulo}</h1>
         <p style={{
-          fontSize: 15, color: 'var(--text-2)', maxWidth: 320,
+          fontSize: 16, color: 'var(--text-2)', maxWidth: 320,
           lineHeight: 1.6, marginTop: 8,
         }}>{slide.descripcion}</p>
       </div>

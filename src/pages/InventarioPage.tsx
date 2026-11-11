@@ -81,7 +81,7 @@ const InventarioPage: React.FC = () => {
       <IonContent ref={lectorRef} style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
         <div style={{ padding: '20px 16px calc(190px + var(--sab,env(safe-area-inset-bottom))) 16px', maxWidth: 760, margin: '0 auto' }}>
           <Header title="Contar la mercadería" onBack={() => history.goBack()} />
-          <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '0 0 14px', lineHeight: 1.5 }}>
+          <p style={{ fontSize: 16, color: 'var(--text-2)', margin: '0 0 14px', lineHeight: 1.5 }}>
             Contá lo que hay en góndola y anotá la cantidad real. Te marcamos las diferencias y las ajustás de una.
           </p>
 
@@ -89,7 +89,7 @@ const InventarioPage: React.FC = () => {
             <MagnifyingGlassIcon width={16} height={16} style={{ position: 'absolute', left: 10, top: 11, color: 'var(--text-3)' }} />
             <input className="campo"
               value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar producto…" aria-label="Buscar producto"
-              style={{ width: '100%', padding: '9px 12px 9px 32px', borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'inherit', fontSize: 14 }}
+              style={{ width: '100%', padding: '9px 12px 9px 32px', borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'inherit', fontSize: 16 }}
             />
           </div>
 
@@ -103,11 +103,11 @@ const InventarioPage: React.FC = () => {
                 return (
                   <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid ' + (diff !== 0 ? 'var(--brand-300)' : 'var(--border)'), borderRadius: 'var(--radius)', padding: '10px 12px' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.productoNombre}</div>
-                      <div style={{ fontSize: 14, color: 'var(--text-3)' }}>Vence {formatearFecha(l.fechaVencimiento)} · sistema: {l.cantidad}</div>
+                      <div style={{ fontSize: 16, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.productoNombre}</div>
+                      <div style={{ fontSize: 16, color: 'var(--text-3)' }}>Vence {formatearFecha(l.fechaVencimiento)} · sistema: {l.cantidad}</div>
                     </div>
                     {diff !== 0 && (
-                      <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: diff > 0 ? 'var(--marca-texto)' : 'var(--level-vencido-fg)' }}>
+                      <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-mono)', color: diff > 0 ? 'var(--marca-texto)' : 'var(--level-vencido-fg)' }}>
                         {diff > 0 ? '+' : ''}{diff}
                       </span>
                     )}
@@ -138,9 +138,9 @@ const InventarioPage: React.FC = () => {
         {diferencias.length > 0 && (
           // Arriba de la barra de pestañas: antes quedaba tapada por ella y el botón no se veía.
           <div style={{ position: 'fixed', left: 0, right: 0, bottom: 'calc(92px + var(--sab,env(safe-area-inset-bottom)))', zIndex: 101, padding: '12px 16px', background: 'var(--surface)', borderTop: '1px solid var(--border)', boxShadow: 'var(--shadow-md)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, maxWidth: 760, margin: '0 auto' }}>
-            <span style={{ fontSize: 14, color: 'var(--text-2)' }}>{diferencias.length} con diferencia</span>
+            <span style={{ fontSize: 16, color: 'var(--text-2)' }}>{diferencias.length} con diferencia</span>
             <button type="button" onClick={aplicar} disabled={guardando} className="pressable boton-marca"
-              style={{ border: 'none', borderRadius: 'var(--radius)', padding: '11px 20px', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: guardando ? 0.6 : 1 }}>
+              style={{ border: 'none', borderRadius: 'var(--radius)', padding: '11px 20px', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: guardando ? 0.6 : 1 }}>
               {guardando ? 'Ajustando…' : 'Aplicar ajustes'}
             </button>
           </div>

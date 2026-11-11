@@ -67,7 +67,7 @@ const SyncBanner: React.FC = () => {
     display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
     background: bg, color, border: 'none', fontFamily: 'inherit',
     borderRadius: 'var(--radius)', padding: '12px 14px', minHeight: 48,
-    fontSize: 15, fontWeight: 600, marginBottom: 12,
+    fontSize: 16, fontWeight: 600, marginBottom: 12,
     cursor: clickable ? 'pointer' : 'default',
   };
   // Botón de verdad cuando se puede tocar (se llega con el teclado y lo anuncia el lector de pantalla).

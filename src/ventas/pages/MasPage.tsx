@@ -46,7 +46,7 @@ const MasPage: React.FC = () => {
       <div style={{ padding: 'var(--space-4)', maxWidth: 520, margin: '0 auto', paddingBottom: 'calc(96px + var(--sab,env(safe-area-inset-bottom)))', paddingTop: 'calc(var(--space-4) + var(--ion-safe-area-top, 0px))' }}>
         <BotonVolver a="/ventas" />
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>Caja y ventas</h1>
-        <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 16 }}>
+        <p style={{ fontSize: 16, color: 'var(--text-2)', marginBottom: 16 }}>
           {cajero && !cajero.admin ? `Estás en tu turno, ${cajero.nombre}` : 'Opciones del dueño (piden la clave)'}
         </p>
 
@@ -61,13 +61,13 @@ const MasPage: React.FC = () => {
                   </span>
                   <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
                     <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>{t.label}</span>
-                    <span style={{ fontSize: 15, color: 'var(--text-2)', lineHeight: 1.35 }}>{t.desc}</span>
+                    <span style={{ fontSize: 16, color: 'var(--text-2)', lineHeight: 1.35 }}>{t.desc}</span>
                   </span>
                 </button>
               ))}
             </div>
 
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-2)', margin: '22px 0 8px' }}>Otras opciones</h2>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-2)', margin: '22px 0 8px' }}>Otras opciones</h2>
             <div className="lista-animada" style={{ borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', overflow: 'hidden' }}>
               {OTRAS.map((t, i) => (
                 <button key={t.path} type="button" onClick={() => history.push(t.path)} className="pressable"
@@ -75,7 +75,7 @@ const MasPage: React.FC = () => {
                   <t.Icon size={24} color="var(--text-2)" />
                   <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
                     <span style={{ fontSize: 16, fontWeight: 600 }}>{t.label}</span>
-                    <span style={{ fontSize: 14, color: 'var(--text-2)' }}>{t.desc}</span>
+                    <span style={{ fontSize: 16, color: 'var(--text-2)' }}>{t.desc}</span>
                   </span>
                 </button>
               ))}
@@ -85,8 +85,8 @@ const MasPage: React.FC = () => {
               <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <LockClosedIcon size={22} color="var(--text-2)" />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 600 }}>Volver a pedir la clave</div>
-                  <div style={{ fontSize: 14, color: 'var(--text-2)' }}>Después de estos minutos sin usar</div>
+                  <div style={{ fontSize: 16, fontWeight: 600 }}>Volver a pedir la clave</div>
+                  <div style={{ fontSize: 16, color: 'var(--text-2)' }}>Después de estos minutos sin usar</div>
                 </div>
               </div>
               <div style={{ marginTop: 10 }}>
@@ -97,7 +97,7 @@ const MasPage: React.FC = () => {
             </>)}
 
             <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)' }}>
-              <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Sonido al cobrar</div>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Sonido al cobrar</div>
               <Opciones etiqueta="Sonido al cobrar" columnas={2} valor={sonido ? 'si' : 'no'}
                 onChange={v => { setSonidoActivo(v === 'si'); setSonido(v === 'si'); }}
                 opciones={[{ valor: 'si', etiqueta: 'Sí' }, { valor: 'no', etiqueta: 'No' }]} />
@@ -108,15 +108,15 @@ const MasPage: React.FC = () => {
           // Empleado: maneja su caja y cierra al salir.
           <div style={{ textAlign: 'center', padding: '24px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{ marginBottom: 8, color: 'var(--color-primary-dark)' }}><BanknotesIcon size={48} /></div>
-            <p style={{ fontSize: 14, color: 'var(--text-2)', maxWidth: 290, margin: '0 auto 18px', lineHeight: 1.5 }}>
+            <p style={{ fontSize: 16, color: 'var(--text-2)', maxWidth: 290, margin: '0 auto 18px', lineHeight: 1.5 }}>
               Manejá el efectivo de tu turno (apertura, ingresos y egresos) y cerrá la caja al terminar.
             </p>
             <button type="button" onClick={() => history.push('/ventas/caja-turno')} className="pressable"
-              style={{ width: '100%', maxWidth: 320, padding: '13px', borderRadius: 'var(--radius)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10 }}>
+              style={{ width: '100%', maxWidth: 320, padding: '13px', borderRadius: 'var(--radius)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', color: 'var(--text)', fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10 }}>
               Plata de mi turno (abrir, entradas y salidas)
             </button>
             <button type="button" onClick={() => history.push('/ventas/cerrar-caja')} className="pressable boton-marca"
-              style={{ width: '100%', maxWidth: 320, padding: '13px', borderRadius: 'var(--radius)', border: 'none', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              style={{ width: '100%', maxWidth: 320, padding: '13px', borderRadius: 'var(--radius)', border: 'none', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
               Cerrar caja y salir
             </button>
           </div>
@@ -125,7 +125,7 @@ const MasPage: React.FC = () => {
         {esDueno && (<>
         {cajero?.admin && (
           <button type="button" onClick={async () => { if (await confirmar('¿Cerrar turno de administrador?', { okText: 'Cerrar turno' })) cerrarTurno(); }}
-            style={{ width: '100%', marginTop: 14, padding: 13, borderRadius: 'var(--radius)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', color: 'var(--text-2)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            style={{ width: '100%', marginTop: 14, padding: 13, borderRadius: 'var(--radius)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', color: 'var(--text-2)', fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
             Cerrar turno (administrador)
           </button>
         )}

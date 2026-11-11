@@ -93,7 +93,7 @@ const DashboardPage: React.FC = () => {
                 style={{
                   border: 'none', borderRadius: 'var(--radius-full)', padding: '8px 12px 8px 10px', minHeight: 44,
                   display: 'flex', alignItems: 'center', gap: 6,
-                  fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                 }}>
                 <BuildingStorefrontIcon width={17} height={17} />
                 {sucursalActiva?.nombre || '...'}
@@ -114,7 +114,7 @@ const DashboardPage: React.FC = () => {
                 return (
                   <span key={estado.txt} className="anim-pop" style={{
                     background: `var(--level-${estado.nivel}-bg)`, color: `var(--level-${estado.nivel}-fg)`,
-                    borderRadius: 'var(--radius-full)', padding: '7px 14px', fontWeight: 800, fontSize: 15,
+                    borderRadius: 'var(--radius-full)', padding: '7px 14px', fontWeight: 800, fontSize: 16,
                   }}>{estado.txt}</span>
                 );
               })()}
@@ -175,7 +175,7 @@ const DashboardPage: React.FC = () => {
             }}>
               <div style={{ position: 'relative' }}>
                 {/* La plata es del dueño: un cajero en turno ve solo cuánta mercadería hay. */}
-                <span style={{ fontSize: 15, color: 'var(--text-2)', fontWeight: 700 }}>{esDueno ? 'Valor del inventario' : 'Mercadería'}</span>
+                <span style={{ fontSize: 16, color: 'var(--text-2)', fontWeight: 700 }}>{esDueno ? 'Valor del inventario' : 'Mercadería'}</span>
                 {esDueno && (
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(20px, 6.5vw, 30px)', fontWeight: 800, margin: '6px 0 14px', letterSpacing: '-0.02em', lineHeight: 1.05, color: 'var(--text)', whiteSpace: 'nowrap' }}>
                     <Contador valor={res.valorTotal} formato={formatearMoneda} />
@@ -194,18 +194,18 @@ const DashboardPage: React.FC = () => {
               background: 'var(--surface)', borderRadius: 'var(--radius-lg)',
               padding: 16, boxShadow: 'var(--shadow-md)',
             }}>
-              <div style={{ fontSize: 15, color: 'var(--level-vencido-fg)', fontWeight: 800, marginBottom: 10 }}>
+              <div style={{ fontSize: 16, color: 'var(--level-vencido-fg)', fontWeight: 800, marginBottom: 10 }}>
                 Valor en riesgo
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div>
-                  <div style={{ fontSize: 14, color: 'var(--text-3)' }}>Vencido</div>
+                  <div style={{ fontSize: 16, color: 'var(--text-3)' }}>Vencido</div>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800, color: 'var(--level-vencido-fg)' }}>
                     {formatearMoneda(res.valorVencido)}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 14, color: 'var(--text-3)' }}>En peligro</div>
+                  <div style={{ fontSize: 16, color: 'var(--text-3)' }}>En peligro</div>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800, color: 'var(--level-urgente-fg)' }}>
                     {formatearMoneda(res.valorEnRiesgo)}
                   </div>
@@ -271,7 +271,7 @@ const DashboardPage: React.FC = () => {
                         <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 16, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                           {p.producto.nombre}
                         </div>
-                        <div style={{ fontSize: 14, color: 'var(--text-2)' }}>
+                        <div style={{ fontSize: 16, color: 'var(--text-2)' }}>
                           Quedan <b style={{ color: 'var(--warning)' }}>{p.cantidadTotal}</b> · mínimo {p.producto.stockMinimo}
                           {p.producto.proveedor ? ` · ${p.producto.proveedor}` : ''}
                         </div>
@@ -296,7 +296,7 @@ const DashboardPage: React.FC = () => {
 
 const LedgerStat: React.FC<{ n: number; l: string }> = ({ n, l }) => (
   <div>
-    <div style={{ fontSize: 14, color: 'var(--text-3)', fontWeight: 600 }}>{l}</div>
+    <div style={{ fontSize: 16, color: 'var(--text-3)', fontWeight: 600 }}>{l}</div>
     <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{n}</div>
   </div>
 );
@@ -305,9 +305,9 @@ const SecHeader: React.FC<{ title: string; tag?: string; onAction?: () => void }
   <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, rowGap: 6, marginBottom: 12 }}>
     <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, margin: 0, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>{title}</h2>
     <span style={{ flex: 1 }} />
-    {tag && <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-2)', background: 'var(--surface-3)', borderRadius: 20, padding: '3px 10px' }}>{tag}</span>}
+    {tag && <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-2)', background: 'var(--surface-3)', borderRadius: 20, padding: '3px 10px' }}>{tag}</span>}
     {onAction && (
-      <button type="button" onClick={onAction} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: 'var(--marca-texto)', fontWeight: 800, minHeight: 44, display: 'flex', alignItems: 'center', gap: 2, fontFamily: 'inherit', padding: 0 }}>
+      <button type="button" onClick={onAction} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--marca-texto)', fontWeight: 800, minHeight: 44, display: 'flex', alignItems: 'center', gap: 2, fontFamily: 'inherit', padding: 0 }}>
         Ver todo <ChevronRightIcon width={14} height={14} />
       </button>
     )}
@@ -331,9 +331,9 @@ const NivelChip: React.FC<{ nivel: NivelAlerta; cantidad: number }> = ({ nivel, 
     <div style={{ fontFamily: 'var(--font-display)', fontSize: 21, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
       {/* Acá se cuentan compras (un producto puede tener varias): dicho al lado del número, para que no parezca
           el mismo dato que "productos vencidos" del aviso de arriba. */}
-      {cantidad} <span style={{ fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 700, color: 'var(--text-2)', letterSpacing: 0 }}>{cantidad === 1 ? 'compra' : 'compras'}</span>
+      {cantidad} <span style={{ fontFamily: 'var(--font-sans)', fontSize: 16, fontWeight: 700, color: 'var(--text-2)', letterSpacing: 0 }}>{cantidad === 1 ? 'compra' : 'compras'}</span>
     </div>
-    <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 2, fontWeight: 700 }}>{etiquetaNivel(nivel)}</div>
+    <div style={{ fontSize: 16, color: 'var(--text-2)', marginTop: 2, fontWeight: 700 }}>{etiquetaNivel(nivel)}</div>
   </button>
   );
 };
@@ -389,7 +389,7 @@ const AccionCard: React.FC<{ icon: React.ReactNode; label: string; onClick: () =
       style={{
         border: 'none', borderRadius: 'var(--radius-lg)', padding: '14px 8px',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-        cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 15,
+        cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 16,
       }}
     >
       <span style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--marca-suave)', color: 'var(--marca-texto)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</span>
@@ -407,28 +407,28 @@ export const LoteListItem: React.FC<{ lote: LoteConProducto; onClick: () => void
         <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 16, marginBottom: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', letterSpacing: '-0.01em' }}>
           {lote.productoNombre}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-2)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, color: 'var(--text-2)' }}>
           <span>{lote.cantidad} unid.</span>
           <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--text-3)' }} />
           <span>{lote.productoCategoria}</span>
         </div>
         <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <NivelBadge nivel={lote.nivelAlerta} />
-          <span style={{ fontSize: 14, color: 'var(--text-2)', fontWeight: 500 }}>
+          <span style={{ fontSize: 16, color: 'var(--text-2)', fontWeight: 500 }}>
             {textoEstado(lote.fechaVencimiento)}
           </span>
           {liq.aplicar && (
-            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--level-ok-fg)', border: '1px solid var(--level-ok-border)', borderRadius: 'var(--radius-full)', padding: '1px 8px', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--level-ok-fg)', border: '1px solid var(--level-ok-border)', borderRadius: 'var(--radius-full)', padding: '1px 8px', whiteSpace: 'nowrap' }}>
               Liquidar {formatearMoneda(liq.precioFinal)} −{liq.pct}%
             </span>
           )}
         </div>
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.011em' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.011em' }}>
           {formatearFecha(lote.fechaVencimiento)}
         </div>
-        <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>
+        <div style={{ fontSize: 16, color: 'var(--text-2)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>
           {formatearMoneda(lote.valorLote)}
         </div>
       </div>

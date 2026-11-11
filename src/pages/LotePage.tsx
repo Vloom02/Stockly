@@ -212,7 +212,7 @@ const LoteForm: React.FC = () => {
                   <span key={n} className="barra-paso" style={{ height: 8, borderRadius: 4, background: n <= paso ? 'var(--brand-500)' : 'var(--surface-2)' }} />
                 ))}
               </div>
-              <span style={{ fontSize: 15, color: 'var(--text-2)', fontWeight: 600 }}>Paso {paso} de 3</span>
+              <span style={{ fontSize: 16, color: 'var(--text-2)', fontWeight: 600 }}>Paso {paso} de 3</span>
             </div>
 
             <div key={paso} className="anim-paso">
@@ -228,7 +228,7 @@ const LoteForm: React.FC = () => {
                       <Input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Escribí el nombre" aria-label="Buscar producto" />
                     </div>
                     <button type="button" onClick={() => setShowScanner(true)} className="pressable boton-marca" aria-label="Escanear el código"
-                      style={{ minWidth: 56, minHeight: 48, borderRadius: 'var(--radius)', border: 'none', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: '0 12px' }}>
+                      style={{ minWidth: 56, minHeight: 48, borderRadius: 'var(--radius)', border: 'none', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: '0 12px' }}>
                       Escanear
                     </button>
                   </div>
@@ -238,7 +238,7 @@ const LoteForm: React.FC = () => {
                         onClick={() => { setProductoId(p.id ?? ''); setPaso(2); }}
                         style={{ '--i': Math.min(i, 10), display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minHeight: 62, padding: '10px 16px', borderRadius: 'var(--radius-lg)', border: 'none', boxShadow: 'var(--shadow-sm)', background: 'var(--surface)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', color: 'var(--text)' } as React.CSSProperties}>
                         <span style={{ fontSize: 18, fontWeight: 700 }}>{p.nombre}</span>
-                        <span style={{ fontSize: 14, color: 'var(--text-2)' }}>{p.categoria}</span>
+                        <span style={{ fontSize: 16, color: 'var(--text-2)' }}>{p.categoria}</span>
                       </button>
                     ))}
                     {lista.length === 0 && (
@@ -425,7 +425,7 @@ const LoteForm: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <NivelBadge nivel={nivel} size="md" />
-                  <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 6 }}>
+                  <div style={{ fontSize: 16, color: 'var(--text-2)', marginTop: 6 }}>
                     {textoEstado(fechaVencimiento)}
                   </div>
                 </div>
@@ -440,13 +440,13 @@ const LoteForm: React.FC = () => {
                   display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
                 }}>
                   <IcoTagIcon width={22} height={22} />
-                  <div style={{ fontSize: 14, lineHeight: 1.4 }}>
+                  <div style={{ fontSize: 16, lineHeight: 1.4 }}>
                     <strong>Para que no se venza:</strong> vendé a{' '}
                     <strong style={{ color: 'var(--marca-texto)' }}>{formatearMoneda(liq.precioFinal)}</strong>{' '}
                     <span style={{ color: 'var(--text-2)' }}>
                       (−{liq.pct}%, en vez de {formatearMoneda(liq.precioOriginal)})
                     </span>
-                    <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 2 }}>
+                    <div style={{ fontSize: 16, color: 'var(--text-2)', marginTop: 2 }}>
                       Rematalo antes de que venza para no perder el stock.
                     </div>
                   </div>
@@ -467,14 +467,14 @@ const LoteForm: React.FC = () => {
               <div style={{ fontSize: 18, fontWeight: 700, padding: '6px 0' }}>{producto?.nombre ?? '—'}</div>
             </Field>
             {!loteExistente && !esDueno && (
-              <p style={{ fontSize: 15, color: 'var(--text-2)', margin: '-6px 0 12px' }}>
+              <p style={{ fontSize: 16, color: 'var(--text-2)', margin: '-6px 0 12px' }}>
                 ¿No está? Pedile al dueño que cree el producto.
               </p>
             )}
             {!loteExistente && esDueno && (
-              <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '-6px 0 12px' }}>
+              <p style={{ fontSize: 16, color: 'var(--text-2)', margin: '-6px 0 12px' }}>
                 ¿No está? <button type="button" onClick={() => history.push('/producto/nuevo')}
-                  style={{ background: 'none', border: 'none', color: 'var(--marca-texto)', fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontSize: 14 }}>
+                  style={{ background: 'none', border: 'none', color: 'var(--marca-texto)', fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontSize: 16 }}>
                   Crear producto nuevo</button>
               </p>
             )}
@@ -491,7 +491,7 @@ const LoteForm: React.FC = () => {
                   const activo = valor === fechaVencimiento;
                   return (
                     <button key={a.label} type="button" onClick={() => setFechaVencimiento(valor)} aria-pressed={activo}
-                      style={{ minHeight: 48, borderRadius: 'var(--radius)', border: activo ? '2px solid var(--brand-500)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: activo ? 'var(--marca-suave)' : 'var(--surface)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      style={{ minHeight: 48, borderRadius: 'var(--radius)', border: activo ? '2px solid var(--brand-500)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)', background: activo ? 'var(--marca-suave)' : 'var(--surface)', color: 'var(--text)', fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                       {a.label}
                     </button>
                   );
@@ -504,7 +504,7 @@ const LoteForm: React.FC = () => {
                 default por producto y un umbral global; mostrarlo siempre confundía). */}
             {!mostrarAvanzado ? (
               <button type="button" onClick={() => setMostrarAvanzado(true)}
-                style={{ background: 'none', border: 'none', color: 'var(--marca-texto)', fontWeight: 600, cursor: 'pointer', padding: '2px 0 6px', fontFamily: 'inherit', fontSize: 14 }}>
+                style={{ background: 'none', border: 'none', color: 'var(--marca-texto)', fontWeight: 600, cursor: 'pointer', padding: '2px 0 6px', fontFamily: 'inherit', fontSize: 16 }}>
                 + Avisar con otros días para esta compra
               </button>
             ) : (
@@ -518,7 +518,7 @@ const LoteForm: React.FC = () => {
               <Input value={numeroLote} onChange={e => setNumeroLote(e.target.value)} placeholder="Opcional" />
             </Field>
             {producto?.proveedor && (
-              <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '-4px 0 4px' }}>
+              <p style={{ fontSize: 16, color: 'var(--text-2)', margin: '-4px 0 4px' }}>
                 Proveedor: <strong>{producto.proveedor}</strong> <span style={{ color: 'var(--text-3)' }}>(se edita en el producto)</span>
               </p>
             )}

@@ -79,7 +79,7 @@ function getButtonStyles(variant: Variant, size: Size, fullWidth?: boolean, disa
   // Sizes
   const sizes: Record<Size, React.CSSProperties> = {
     // Mínimos táctiles pensados para dedos grandes (público mayor): 44 / 48 / 56 px.
-    sm: { padding: '8px 14px', fontSize: 14, borderRadius: 'var(--radius-sm)', minHeight: 44 },
+    sm: { padding: '8px 14px', fontSize: 16, borderRadius: 'var(--radius-sm)', minHeight: 44 },
     md: { padding: '12px 18px', fontSize: 16, borderRadius: 'var(--radius)', minHeight: 48 },
     lg: { padding: '16px 22px', fontSize: 18, borderRadius: 'var(--radius-md)', minHeight: 56 },
   };

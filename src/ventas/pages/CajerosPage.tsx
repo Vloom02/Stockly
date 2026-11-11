@@ -112,14 +112,14 @@ const CajerosPage: React.FC = () => {
                 {/* El nombre necesita lugar: si no entra con los dos botones, estos bajan a otra línea. */}
                 <div style={{ flex: '1 1 140px', minWidth: 0 }}>
                   <div style={{ fontSize: 17, fontWeight: 600 }}>{e.nombre}</div>
-                  <div style={{ fontSize: 14, color: 'var(--text-2)' }}>N° {e.legajo}{activo ? '' : ' · dado de baja'}</div>
+                  <div style={{ fontSize: 16, color: 'var(--text-2)' }}>N° {e.legajo}{activo ? '' : ' · dado de baja'}</div>
                 </div>
                 <button type="button" onClick={() => setCambiandoClave(e)} className="pressable" aria-label={`Cambiar la clave de ${e.nombre}`}
-                  style={{ minHeight: 44, padding: '0 12px', display: 'flex', alignItems: 'center', gap: 6, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  style={{ minHeight: 44, padding: '0 12px', display: 'flex', alignItems: 'center', gap: 6, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text)', fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                   <KeyIcon size={18} /> Clave
                 </button>
                 <button type="button" onClick={() => toggleActivo(e)} className="pressable"
-                  style={{ minHeight: 44, padding: '0 12px', border: '1px solid ' + (activo ? 'var(--color-danger-border)' : 'var(--color-primary-border)'), borderRadius: 'var(--radius)', background: activo ? 'var(--color-danger-bg)' : 'var(--color-primary-bg)', color: activo ? 'var(--color-danger)' : 'var(--color-primary-dark)', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  style={{ minHeight: 44, padding: '0 12px', border: '1px solid ' + (activo ? 'var(--color-danger-border)' : 'var(--color-primary-border)'), borderRadius: 'var(--radius)', background: activo ? 'var(--color-danger-bg)' : 'var(--color-primary-bg)', color: activo ? 'var(--color-danger)' : 'var(--color-primary-dark)', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                   {activo ? 'Dar de baja' : 'Volver a activar'}
                 </button>
               </div>

@@ -287,7 +287,7 @@ const ScannerModal: React.FC<Props> = ({ onCodigoDetectado, onCancel }) => {
           background: 'rgba(0,0,0,0.7)',
           color: '#fff',
           textAlign: 'center',
-          fontSize: 14,
+          fontSize: 16,
         }}>
           Apuntá la cámara al código de barras
         </div>

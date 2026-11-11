@@ -202,7 +202,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
                 <t.Icon width={26} height={26} style={{ color: 'var(--marca-texto)', flexShrink: 0 }} />
                 <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
                   <span style={{ fontSize: 16, fontWeight: 600 }}>{t.label}</span>
-                  <span style={{ fontSize: 14, color: 'var(--text-2)' }}>{t.desc}</span>
+                  <span style={{ fontSize: 16, color: 'var(--text-2)' }}>{t.desc}</span>
                 </span>
               </button>
             ))}
@@ -220,14 +220,14 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
                 <UserCircleIcon width={28} height={28} />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 15 }}>{comercio?.nombre || 'Mi comercio'}</div>
-                <div style={{ fontSize: 14, color: 'var(--text-2)' }}>
+                <div style={{ fontWeight: 700, fontSize: 16 }}>{comercio?.nombre || 'Mi comercio'}</div>
+                <div style={{ fontSize: 16, color: 'var(--text-2)' }}>
                   {cajero && !cajero.admin
                     ? `${cajero.nombre} · Empleado en turno`
                     : `${miembro?.nombre ?? ''} · ${miembro?.rol === 'dueno' ? 'Dueño' : 'Empleado'}`}
                 </div>
                 {comercio?.plan === 'trial' && (
-                  <div style={{ fontSize: 14, color: 'var(--level-urgente-fg)', fontWeight: 700, marginTop: 2 }}>
+                  <div style={{ fontSize: 16, color: 'var(--level-urgente-fg)', fontWeight: 700, marginTop: 2 }}>
                     Período de prueba
                   </div>
                 )}
@@ -255,14 +255,14 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             </SectionTitle>
             <button type="button" onClick={onThemeToggle} style={rowBtn}>
               <span>{isDark ? 'Tema oscuro' : 'Tema claro'}</span>
-              <span style={{ color: 'var(--text-3)', fontSize: 14 }}>Cambiar</span>
+              <span style={{ color: 'var(--text-3)', fontSize: 16 }}>Cambiar</span>
             </button>
 
             {/* Selector de color de marca */}
             <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                 <SwatchIcon width={16} height={16} style={{ color: 'var(--text-2)' }} />
-                <span style={{ fontSize: 14, fontWeight: 600 }}>Color de la app</span>
+                <span style={{ fontSize: 16, fontWeight: 600 }}>Color de la app</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
                 {COLORES_MARCA.map(c => {
@@ -284,7 +284,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
                         boxShadow: seleccionado ? `0 0 0 3px var(--surface), 0 0 0 5px ${c.tonos[1]}` : 'none',
                         transition: 'all 150ms',
                       }} />
-                      <span style={{ fontSize: 14, color: seleccionado ? 'var(--text)' : 'var(--text-3)', fontWeight: seleccionado ? 600 : 400 }}>
+                      <span style={{ fontSize: 16, color: seleccionado ? 'var(--text)' : 'var(--text-3)', fontWeight: seleccionado ? 600 : 400 }}>
                         {c.nombre}
                       </span>
                     </button>
@@ -318,7 +318,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             <SectionTitle icon={<CloudIcon width={16} height={16} />}>
               Sincronización
             </SectionTitle>
-            <div style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.7 }}>
+            <div style={{ fontSize: 16, color: 'var(--text-2)', lineHeight: 1.7 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Conexión a la nube</span>
                 <span style={{ fontWeight: 600, color: estadoNube.configurado ? 'var(--level-ok-fg)' : 'var(--level-vencido-fg)' }}>
@@ -342,18 +342,18 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
                 </div>
               )}
               {estadoNube.ultimoError && (
-                <div style={{ marginTop: 8, padding: 10, borderRadius: 8, background: 'var(--level-vencido-bg)', color: 'var(--level-vencido-fg)', fontSize: 14 }}>
+                <div style={{ marginTop: 8, padding: 10, borderRadius: 8, background: 'var(--level-vencido-bg)', color: 'var(--level-vencido-fg)', fontSize: 16 }}>
                   Hubo un problema al guardar en la nube. Lo que cargaste quedó guardado en este equipo y se manda solo.
                 </div>
               )}
             </div>
             <button type="button" onClick={sincronizarAhora} disabled={sincronizando} style={{ ...rowBtn, marginTop: 12, opacity: sincronizando ? 0.5 : 1 }}>
               <span>{sincronizando ? 'Sincronizando...' : 'Sincronizar ahora'}</span>
-              <span style={{ color: 'var(--marca-texto)', fontSize: 14 }}>↻</span>
+              <span style={{ color: 'var(--marca-texto)', fontSize: 16 }}>↻</span>
             </button>
             {state.bloqueadosSync > 0 && (
               <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: 'var(--level-vencido-bg)' }}>
-                <div style={{ fontSize: 14, color: 'var(--level-vencido-fg)', marginBottom: 8 }}>
+                <div style={{ fontSize: 16, color: 'var(--level-vencido-fg)', marginBottom: 8 }}>
                   Hay {state.bloqueadosSync} cambio{state.bloqueadosSync > 1 ? 's' : ''} que no se pudo sincronizar. No se perdieron: tocá para reintentar.
                 </div>
                 <Button variant="secondary" size="md" fullWidth onClick={reintentarFallidos} disabled={sincronizando}>
@@ -367,12 +367,12 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           {Capacitor.isNativePlatform() && (
           <Card padding="md" style={{ marginBottom: 12 }}>
             <SectionTitle icon={<ArrowPathIcon width={16} height={16} />}>Actualización</SectionTitle>
-            <p style={{ fontSize: 15, color: 'var(--text-2)', margin: '0 0 12px' }}>Versión instalada: {__APP_VERSION__}</p>
+            <p style={{ fontSize: 16, color: 'var(--text-2)', margin: '0 0 12px' }}>Versión instalada: {__APP_VERSION__}</p>
             {act?.tipo === 'web' ? (<>
               <Button variant="primary" size="lg" fullWidth onClick={actualizarYa} disabled={buscandoAct}>
                 Actualizar ahora a la {act.version}
               </Button>
-              <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '8px 0 0' }}>La app se vuelve a abrir sola. No se pierde nada.</p>
+              <p style={{ fontSize: 16, color: 'var(--text-2)', margin: '8px 0 0' }}>La app se vuelve a abrir sola. No se pierde nada.</p>
             </>) : act?.tipo === 'apk' ? (<>
               <Button variant="primary" size="lg" fullWidth onClick={() => { window.location.href = act.url; }}>
                 Bajar la versión {act.version}
@@ -416,7 +416,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
                 
               </div>
             )}
-            <p style={{ marginTop: 12, fontSize: 14, color: 'var(--text-3)', lineHeight: 1.5 }}>
+            <p style={{ marginTop: 12, fontSize: 16, color: 'var(--text-3)', lineHeight: 1.5 }}>
               Aviso diario en tu celular con los productos vencidos o por vencer. Funciona sin internet.
             </p>
           </Card>
@@ -424,7 +424,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           {/* Umbrales */}
           <Card padding="md" style={{ marginBottom: 12 }}>
             <SectionTitle icon={<BellAlertIcon width={16} height={16} />}>Niveles de alerta</SectionTitle>
-            <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '0 0 12px' }}>
+            <p style={{ fontSize: 16, color: 'var(--text-2)', margin: '0 0 12px' }}>
               ¿Con cuántos días de anticipación te aviso en cada color?
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
@@ -440,7 +440,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           {/* Descuentos por vencimiento */}
           <Card padding="md" style={{ marginBottom: 12 }}>
             <SectionTitle icon={<BanknotesIcon width={16} height={16} />}>Descuentos para lo que está por vencer</SectionTitle>
-            <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '0 0 12px' }}>
+            <p style={{ fontSize: 16, color: 'var(--text-2)', margin: '0 0 12px' }}>
               Descuento (%) sugerido para rematar lo que está por vencer, según cuánto le falte. Poné 0 para no sugerir ninguno.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
@@ -458,7 +458,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
             </Field>
           </Card>
 
-          <p style={{ fontSize: 15, color: 'var(--text-2)', margin: '0 0 12px', textAlign: 'center' }}>Los cambios se guardan solos.</p>
+          <p style={{ fontSize: 16, color: 'var(--text-2)', margin: '0 0 12px', textAlign: 'center' }}>Los cambios se guardan solos.</p>
           </>)}
 
           {/* Backup (solo dueño: tiene precios, y la importación crea productos) */}
@@ -517,7 +517,7 @@ const ConfigPage: React.FC<Props> = ({ onThemeToggle, isDark }) => {
           </Button>
           )}
 
-          <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--text-3)', marginTop: 20 }}>
+          <p style={{ textAlign: 'center', fontSize: 16, color: 'var(--text-3)', marginTop: 20 }}>
             Stockly v{__APP_VERSION__} · Datos en la nube
           </p>
         </div>
@@ -538,7 +538,7 @@ const SectionTitle: React.FC<{ icon: React.ReactNode; children: React.ReactNode 
 const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
   <div style={{ textAlign: 'center' }}>
     <div style={{ fontFamily: 'var(--font-display)', fontSize: 21, fontWeight: 800, letterSpacing: '-0.02em' }}>{value}</div>
-    <div style={{ fontSize: 14, color: 'var(--text-2)', }}>{label}</div>
+    <div style={{ fontSize: 16, color: 'var(--text-2)', }}>{label}</div>
   </div>
 );
 const UmbralField: React.FC<{ nivel: string; label: string; value: string; onChange: (v: string) => void }> =
@@ -546,10 +546,10 @@ const UmbralField: React.FC<{ nivel: string; label: string; value: string; onCha
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: `var(--level-${nivel}-fg)` }} />
-        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-2)' }}>{label}</span>
+        <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-2)' }}>{label}</span>
       </div>
       <Input value={value} onChange={e => onChange(e.target.value)} inputMode="numeric" />
-      <p style={{ fontSize: 14, color: 'var(--text-3)', margin: '4px 0 0', textAlign: 'center' }}>días</p>
+      <p style={{ fontSize: 16, color: 'var(--text-3)', margin: '4px 0 0', textAlign: 'center' }}>días</p>
     </div>
   );
 const DescField: React.FC<{ nivel: string; label: string; value: string; onChange: (v: string) => void }> =
@@ -557,10 +557,10 @@ const DescField: React.FC<{ nivel: string; label: string; value: string; onChang
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: `var(--level-${nivel}-fg)` }} />
-        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-2)' }}>{label}</span>
+        <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-2)' }}>{label}</span>
       </div>
       <Input value={value} onChange={e => onChange(e.target.value)} inputMode="numeric" />
-      <p style={{ fontSize: 14, color: 'var(--text-3)', margin: '4px 0 0', textAlign: 'center' }}>% desc.</p>
+      <p style={{ fontSize: 16, color: 'var(--text-3)', margin: '4px 0 0', textAlign: 'center' }}>% desc.</p>
     </div>
   );
 const rowBtn: React.CSSProperties = {

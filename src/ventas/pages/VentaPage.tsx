@@ -333,13 +333,13 @@ const VentaPage: React.FC = () => {
                   opciones={sucursales.map(s => ({ valor: s.id, etiqueta: s.nombre }))} />
               </div>
             ) : (
-              <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 2 }}>{sucursalActiva?.nombre}</div>
+              <div style={{ fontSize: 16, color: 'var(--text-2)', marginTop: 2 }}>{sucursalActiva?.nombre}</div>
             )}
             {cajero && (
               <button type="button"
                 onClick={async () => { if (await confirmar(`¿Cerrar el turno de ${cajero.nombre}?`, { okText: 'Cerrar turno' })) cerrarTurno(); }}
                 className="pressable"
-                style={{ marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', minHeight: 44, borderRadius: 'var(--radius-full)', border: '1px solid var(--color-primary-border)', background: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', minHeight: 44, borderRadius: 'var(--radius-full)', border: '1px solid var(--color-primary-border)', background: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)', fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                 <IcoUserIcon width={16} height={16} /> {cajero.nombre} · salir
               </button>
             )}
@@ -348,7 +348,7 @@ const VentaPage: React.FC = () => {
             {totalItems > 0 && (
               <div style={{ position: 'relative' }}>
                 <ShoppingCartIcon size={26} color="var(--color-primary)" />
-                <span key={totalItems} className="anim-rebote" style={{ position: 'absolute', top: -6, right: -8, background: 'var(--color-danger)', color: '#fff', fontSize: 14, fontWeight: 700, borderRadius: 'var(--radius-full)', padding: '1px 6px', minWidth: 16, textAlign: 'center' }}>{totalItems}</span>
+                <span key={totalItems} className="anim-rebote" style={{ position: 'absolute', top: -6, right: -8, background: 'var(--color-danger)', color: '#fff', fontSize: 16, fontWeight: 700, borderRadius: 'var(--radius-full)', padding: '1px 6px', minWidth: 16, textAlign: 'center' }}>{totalItems}</span>
               </div>
             )}
             {isUnlocked && (
@@ -403,7 +403,7 @@ const VentaPage: React.FC = () => {
                   style={{ width: '100%', padding: '14px', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', textAlign: 'left', fontFamily: 'inherit' }}>
                   <div>
                     <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{p.nombre}</div>
-                    <div style={{ fontSize: 14, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{p.codigo_barras}</div>
+                    <div style={{ fontSize: 16, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{p.codigo_barras}</div>
                   </div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-primary-dark)', whiteSpace: 'nowrap', marginLeft: 10 }}>{formatMoney(p.precio)}</div>
                 </button>
@@ -422,7 +422,7 @@ const VentaPage: React.FC = () => {
                   style={{ padding: '10px 12px', border: 'none', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', gap: 3, boxShadow: 'var(--shadow-sm)' }}>
                   {/* Dos renglones: cortado, "Leche La Serenísima Entera" y "Descremada" se veían iguales y se vendía la equivocada. */}
                   <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.nombre}</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-primary-dark)', fontFamily: 'var(--font-mono)' }}>{formatMoney(p.precio)}</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-primary-dark)', fontFamily: 'var(--font-mono)' }}>{formatMoney(p.precio)}</span>
                 </button>
               ))}
             </div>
@@ -454,7 +454,7 @@ const VentaPage: React.FC = () => {
             <div className="lista-animada" style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginBottom: 12, boxShadow: 'var(--shadow-sm)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 14px', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}>
                 <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>Carrito</span>
-                <span style={{ fontSize: 15, color: 'var(--text-2)' }}>{totalItems} {totalItems !== 1 ? 'productos' : 'producto'}</span>
+                <span style={{ fontSize: 16, color: 'var(--text-2)' }}>{totalItems} {totalItems !== 1 ? 'productos' : 'producto'}</span>
               </div>
               {state.cart.map((item, i) => (
                 // Dos renglones: con letra grande y botones de 44 px no entra todo en una fila.
@@ -467,7 +467,7 @@ const VentaPage: React.FC = () => {
                     <div style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 17, lineHeight: 1.3 }}>{item.nombre}</div>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap' }}>{formatMoney(item.precio * item.qty)}</span>
                   </div>
-                  <div style={{ fontSize: 15, color: 'var(--text-2)' }}>
+                  <div style={{ fontSize: 16, color: 'var(--text-2)' }}>
                     {formatMoney(item.precio)} c/u
                     {!item.productoId.startsWith('libre-') && (<>{' · '}
                     <span style={{ color: item.stockDisponible <= 0 ? 'var(--color-danger)' : item.stockDisponible <= 5 ? 'var(--color-warning-dark)' : 'var(--text-2)', fontWeight: item.stockDisponible <= 5 ? 600 : 400 }}>
@@ -495,11 +495,11 @@ const VentaPage: React.FC = () => {
             <div style={{ background: 'linear-gradient(135deg, var(--brand-500), var(--brand-700))', color: 'var(--text-on-brand)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: 'var(--shadow-md)' }}>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 800 }}>Total</div>
-                <div style={{ fontSize: 15, opacity: .75 }}>{totalItems} {totalItems !== 1 ? 'productos' : 'producto'}</div>
+                <div style={{ fontSize: 16, opacity: .75 }}>{totalItems} {totalItems !== 1 ? 'productos' : 'producto'}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 28, fontWeight: 800, fontFamily: 'var(--font-mono)', letterSpacing: '-0.02em' }}><Contador valor={total} formato={formatMoney} /></div>
-                {desc > 0 && <div style={{ fontSize: 15, opacity: .85 }}>con {formatMoney(desc)} de descuento</div>}
+                {desc > 0 && <div style={{ fontSize: 16, opacity: .85 }}>con {formatMoney(desc)} de descuento</div>}
               </div>
             </div>
 
@@ -526,18 +526,18 @@ const VentaPage: React.FC = () => {
             {/* Receipt */}
             <Card variant="flat" style={{ marginBottom: 16, borderStyle: 'dashed', border: '2px dashed var(--border)' }}>
               {state.cart.map(c => (
-                <div key={c.productoId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '3px 0' }}>
+                <div key={c.productoId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, padding: '3px 0' }}>
                   <span>{c.nombre} <span style={{ color: 'var(--text-3)' }}>x{c.qty}</span></span>
                   <span style={{ fontFamily: 'var(--font-mono)' }}>{formatMoney(c.precio * c.qty)}</span>
                 </div>
               ))}
               {promosCalc.lineas.map(l => (
-                <div key={l.nombre} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '2px 0', color: 'var(--color-primary-dark)' }}>
+                <div key={l.nombre} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, padding: '2px 0', color: 'var(--color-primary-dark)' }}>
                   <span>{l.nombre} <span style={{ opacity: 0.7 }}>({l.etiqueta})</span></span>
                   <span style={{ fontFamily: 'var(--font-mono)' }}>-{formatMoney(l.monto)}</span>
                 </div>
               ))}
-              {desc > promosCalc.monto && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '3px 0', color: 'var(--color-primary-dark)' }}><span>Descuento manual</span><span style={{ fontFamily: 'var(--font-mono)' }}>-{formatMoney(desc - promosCalc.monto)}</span></div>}
+              {desc > promosCalc.monto && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, padding: '3px 0', color: 'var(--color-primary-dark)' }}><span>Descuento manual</span><span style={{ fontFamily: 'var(--font-mono)' }}>-{formatMoney(desc - promosCalc.monto)}</span></div>}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 17, paddingTop: 8, marginTop: 6, borderTop: '1px dashed var(--border)' }}>
                 <span>Total</span><span style={{ fontFamily: 'var(--font-mono)' }}>{formatMoney(total)}</span>
               </div>
@@ -587,12 +587,12 @@ const VentaPage: React.FC = () => {
               </button>
             ) : (
               <div style={{ marginBottom: 16 }}>
-                <label style={{ fontSize: 15, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Nombre del cliente (opcional)</label>
+                <label style={{ fontSize: 16, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Nombre del cliente (opcional)</label>
                 <input className="campo" value={cliente} onChange={e => setCliente(e.target.value)} placeholder="Ej: Marta"
                   aria-label="Nombre del cliente"
                   style={{ width: '100%', padding: 12, fontSize: 17, color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none', marginBottom: 12 }} />
 
-                <label style={{ fontSize: 15, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Descuento ($)</label>
+                <label style={{ fontSize: 16, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Descuento ($)</label>
                 <input className="campo" type="text" inputMode="decimal" value={descuento} onChange={e => setDescuento(e.target.value)} placeholder="0"
                   aria-label="Descuento en pesos"
                   style={{ width: '100%', padding: 12, fontSize: 17, color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none', textAlign: 'center' }} />

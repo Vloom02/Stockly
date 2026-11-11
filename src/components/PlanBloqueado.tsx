@@ -46,7 +46,7 @@ const PlanBloqueado: React.FC<Props> = ({ estado, onReintentar, onCerrarSesion }
             {esSuspendido ? 'Cuenta suspendida' : 'Tu prueba terminó'}
           </h1>
 
-          <p style={{ fontSize: 15, color: 'var(--text-2)', maxWidth: 340, lineHeight: 1.6, margin: '4px 0 16px' }}>
+          <p style={{ fontSize: 16, color: 'var(--text-2)', maxWidth: 340, lineHeight: 1.6, margin: '4px 0 16px' }}>
             {esSuspendido
               ? 'Tu cuenta está suspendida temporalmente. Tus datos están a salvo. Para reactivarla, ponete en contacto con nosotros.'
               : 'Terminó el período de prueba gratuito de Stockly. Tus datos siguen guardados. Para seguir usando la app, activá tu suscripción.'}
@@ -57,10 +57,10 @@ const PlanBloqueado: React.FC<Props> = ({ estado, onReintentar, onCerrarSesion }
             borderRadius: 'var(--radius-lg)', padding: 16, maxWidth: 340, width: '100%',
             marginBottom: 8,
           }}>
-            <div style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 4 }}>
+            <div style={{ fontSize: 16, color: 'var(--text-2)', marginBottom: 4 }}>
               Para activar tu cuenta, escribinos:
             </div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--marca-texto)' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--marca-texto)' }}>
               WhatsApp: +54 9 11 2538-9308
             </div>
           </div>

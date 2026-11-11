@@ -102,7 +102,7 @@ const AuthPage: React.FC = () => {
   return (
     <IonPage>
       <style>{`.link-auth { background: none; border: none; color: var(--marca-texto); font-weight: 600;
-        cursor: pointer; font-family: inherit; font-size: 14px; padding: 12px 8px; min-height: 44px; }`}</style>
+        cursor: pointer; font-family: inherit; font-size: 16px; padding: 12px 8px; min-height: 44px; }`}</style>
       <IonContent style={{ '--background': 'var(--bg)' } as any}>
         <div style={{
           minHeight: '100%',
@@ -118,7 +118,7 @@ const AuthPage: React.FC = () => {
             <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', marginBottom: 4 }}>
               {modo === 'login' ? 'Bienvenido de nuevo' : modo === 'registro' ? 'Creá tu cuenta' : 'Recuperar contraseña'}
             </h1>
-            <p style={{ fontSize: 14, color: 'var(--text-2)' }}>
+            <p style={{ fontSize: 16, color: 'var(--text-2)' }}>
               {modo === 'login' ? 'Ingresá para gestionar tu stock'
                 : modo === 'registro' ? 'Empezá a controlar tus vencimientos hoy'
                 : modo === 'olvido' ? 'Te mandamos un código a tu email'
@@ -219,14 +219,14 @@ const AuthPage: React.FC = () => {
           </>)}
 
           {/* Cambiar modo */}
-          <div style={{ textAlign: 'center', marginTop: 24, fontSize: 14, color: 'var(--text-2)' }}>
+          <div style={{ textAlign: 'center', marginTop: 24, fontSize: 16, color: 'var(--text-2)' }}>
             {modo === 'login' ? '¿No tenés cuenta?' : modo === 'registro' ? '¿Ya tenés cuenta?' : '¿Te acordaste?'}{' '}
             <button type="button" className="link-auth" onClick={() => irA(modo === 'login' ? 'registro' : 'login')}>
               {modo === 'login' ? 'Registrate gratis' : 'Iniciá sesión'}
             </button>
           </div>
 
-          <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--text-3)', marginTop: 32 }}>
+          <p style={{ textAlign: 'center', fontSize: 16, color: 'var(--text-3)', marginTop: 32 }}>
             Stockly · 14 días de prueba gratis
           </p>
         </div>

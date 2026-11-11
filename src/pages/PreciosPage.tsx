@@ -56,7 +56,7 @@ const PreciosPage: React.FC = () => {
       <IonContent ref={lectorRef} style={{ '--background': 'var(--bg)' } as React.CSSProperties}>
         <div style={{ padding: '20px 16px calc(96px + var(--sab,env(safe-area-inset-bottom))) 16px', maxWidth: 760, margin: '0 auto' }}>
           <Header title="Cambiar precios" onBack={() => history.goBack()} />
-          <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '0 0 14px', lineHeight: 1.5 }}>
+          <p style={{ fontSize: 16, color: 'var(--text-2)', margin: '0 0 14px', lineHeight: 1.5 }}>
             Buscá el producto, tocalo y poné el precio nuevo. Los botones de porcentaje te calculan el aumento.
           </p>
 
@@ -85,7 +85,7 @@ const PreciosPage: React.FC = () => {
                       type="button"
                       onClick={() => (enEdicion ? setAbierto(null) : abrir(p.id!, p.precio))}
                       style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 14px', minHeight: 48, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text)', textAlign: 'left' }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre}</span>
+                      <span style={{ fontSize: 16, fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre}</span>
                       <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>{formatearMoneda(p.precio)}</span>
                     </button>
 
@@ -96,7 +96,7 @@ const PreciosPage: React.FC = () => {
                           {AUMENTOS.map(a => (
                             <button key={a} type="button"
                               onClick={() => setNuevo(String(Math.round(p.precio * (1 + a / 100) * 100) / 100))}
-                              style={{ flex: 1, padding: '7px 0', borderRadius: 'var(--radius-full)', border: '1px solid var(--brand-200)', background: 'var(--brand-50)', color: 'var(--brand-700)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                              style={{ flex: 1, padding: '7px 0', borderRadius: 'var(--radius-full)', border: '1px solid var(--brand-200)', background: 'var(--brand-50)', color: 'var(--brand-700)', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                               +{a}%
                             </button>
                           ))}
@@ -110,12 +110,12 @@ const PreciosPage: React.FC = () => {
                             style={{ flex: 1, padding: '11px 12px', borderRadius: 'var(--radius)', color: 'var(--text)', fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}
                           />
                           <button type="button" onClick={() => guardar(p.id!)} disabled={guardando} className="pressable boton-marca"
-                            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '11px 18px', borderRadius: 'var(--radius)', border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: guardando ? 0.6 : 1 }}>
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '11px 18px', borderRadius: 'var(--radius)', border: 'none', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: guardando ? 0.6 : 1 }}>
                             <CheckIcon width={16} height={16} /> Guardar
                           </button>
                         </div>
                         {cambio !== null && cambio !== 0 && (
-                          <p style={{ margin: '8px 0 0', fontSize: 14, color: cambio > 0 ? 'var(--marca-texto)' : 'var(--level-vencido-fg)', fontWeight: 600 }}>
+                          <p style={{ margin: '8px 0 0', fontSize: 16, color: cambio > 0 ? 'var(--marca-texto)' : 'var(--level-vencido-fg)', fontWeight: 600 }}>
                             {cambio > 0 ? '▲' : '▼'} {Math.abs(cambio)}% vs precio actual
                           </p>
                         )}

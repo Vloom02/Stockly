@@ -276,7 +276,7 @@ const ProductoForm: React.FC = () => {
                   onClick={() => history.push(`/lote/nuevo?productoId=${productoExistente.id}`)}
                   icon={<PlusIcon width={16} height={16} />}>Cargar más</Button>
               </div>
-              <p style={{ fontSize: 14, color: 'var(--text-2)', margin: '0 0 12px' }}>
+              <p style={{ fontSize: 16, color: 'var(--text-2)', margin: '0 0 12px' }}>
                 Vendé primero las de arriba: son las que vencen antes
               </p>
               {faltan > 0 && (
@@ -299,20 +299,20 @@ const ProductoForm: React.FC = () => {
                             width: 28, height: 28, borderRadius: 'var(--radius-sm)',
                             background: `var(--level-${nivel}-bg)`, color: colorNivel(nivel), // en oscuro el color del nivel es claro: no va de fondo
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontWeight: 700, fontSize: 14, flexShrink: 0,
+                            fontWeight: 700, fontSize: 16, flexShrink: 0,
                           }}>{i + 1}</div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 600 }}>
+                            <div style={{ fontSize: 16, fontWeight: 600 }}>
                               {l.cantidad} unid.{l.numeroLote ? ` · Lote ${l.numeroLote}` : ''}
                             </div>
                             <div style={{ marginTop: 4 }}>
                               <NivelBadge nivel={nivel} />
-                              <span style={{ fontSize: 14, color: 'var(--text-2)', marginLeft: 8 }}>
+                              <span style={{ fontSize: 16, color: 'var(--text-2)', marginLeft: 8 }}>
                                 {textoEstado(l.fechaVencimiento)}
                               </span>
                             </div>
                           </div>
-                          <div style={{ fontSize: 14, fontWeight: 600 }}>{formatearFecha(l.fechaVencimiento)}</div>
+                          <div style={{ fontSize: 16, fontWeight: 600 }}>{formatearFecha(l.fechaVencimiento)}</div>
                         </div>
                       </Card>
                     );
@@ -333,7 +333,7 @@ const ProductoForm: React.FC = () => {
                       return (
                         <div key={i} style={{
                           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                          gap: 8, fontSize: 14, padding: '6px 4px',
+                          gap: 8, fontSize: 16, padding: '6px 4px',
                           borderBottom: i < historialPrecios.length - 1 ? '1px dashed var(--border)' : 'none',
                         }}>
                           <span style={{ color: 'var(--text-2)' }}>
@@ -343,7 +343,7 @@ const ProductoForm: React.FC = () => {
                             {formatearMoneda(Number(h.precio_anterior))} → <b>{formatearMoneda(Number(h.precio_nuevo))}</b>
                           </span>
                           <span style={{
-                            fontWeight: 700, fontSize: 14,
+                            fontWeight: 700, fontSize: 16,
                             color: subio ? 'var(--danger)' : 'var(--level-ok-fg)',
                           }}>
                             {subio ? '+' : ''}{pct}%

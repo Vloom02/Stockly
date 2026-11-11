@@ -103,8 +103,8 @@ const PedidoPage: React.FC = () => {
               <Card key={proveedor} padding="md" style={{ marginBottom: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                   <TruckIcon width={18} height={18} style={{ color: 'var(--marca-texto)', flexShrink: 0 }} />
-                  <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, flex: 1 }}>{proveedor}</h2>
-                  <span style={{ fontSize: 14, color: 'var(--text-2)' }}>
+                  <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, flex: 1 }}>{proveedor}</h2>
+                  <span style={{ fontSize: 16, color: 'var(--text-2)' }}>
                     {items.length} producto{items.length !== 1 ? 's' : ''}
                   </span>
                 </div>
@@ -116,7 +116,7 @@ const PedidoPage: React.FC = () => {
                     }}>
                       <span style={{ minWidth: 0 }}>
                         <span style={{ display: 'block', fontWeight: 700 }}>{i.nombre}</span>
-                        <span style={{ fontSize: 15, color: i.tenes < 0 ? 'var(--danger)' : 'var(--text-2)' }}>
+                        <span style={{ fontSize: 16, color: i.tenes < 0 ? 'var(--danger)' : 'var(--text-2)' }}>
                           Tenés {i.tenes}{i.porSemana > 0 ? ` · se venden ~${i.porSemana.toLocaleString('es-AR')} por semana` : ' · bajo el mínimo'}
                         </span>
                       </span>

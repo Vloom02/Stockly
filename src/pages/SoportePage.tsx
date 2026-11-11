@@ -86,9 +86,9 @@ const SoportePage: React.FC = () => {
                   <Card key={c.id} padding="md" style={{ marginBottom: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                       <div style={{ fontSize: 19, fontWeight: 700 }}>{c.nombre}</div>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: est.color }}>{est.texto}</span>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: est.color }}>{est.texto}</span>
                     </div>
-                    <div style={{ fontSize: 15, color: 'var(--text-2)', margin: '4px 0 10px', lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 16, color: 'var(--text-2)', margin: '4px 0 10px', lineHeight: 1.5 }}>
                       {c.email_dueno ?? 'sin dueño'} · {c.miembros} persona{c.miembros === 1 ? '' : 's'}<br />
                       {c.productos} productos · {c.lotes} compras activas · {c.ventas_30d} ventas (30 días)<br />
                       Último movimiento: {c.ultima_actividad ? new Date(c.ultima_actividad).toLocaleDateString('es-AR') : 'nunca'}

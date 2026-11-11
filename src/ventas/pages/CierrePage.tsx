@@ -176,7 +176,7 @@ const CierrePage: React.FC = () => {
             <ArrowPathIcon size={22} color="var(--text-2)" />
           </button>
         </div>
-        <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 12 }}>
+        <p style={{ fontSize: 16, color: 'var(--text-2)', marginBottom: 12 }}>
           {sucursalActiva ? `${sucursalActiva.nombre} · ` : ''}Turno {turno.nombre.toLowerCase()} ({fmtHora(inicio)}–{fmtHora(fin)})
           {esTurnoActual && <span style={{ color: 'var(--color-primary-dark)', fontWeight: 600 }}> · en curso</span>}
         </p>
@@ -192,7 +192,7 @@ const CierrePage: React.FC = () => {
                   border: activo ? '1.5px solid var(--color-primary)' : '2px solid transparent', boxShadow: 'var(--shadow-sm)',
                   background: activo ? 'var(--color-primary-bg)' : 'var(--surface)',
                   color: activo ? 'var(--color-primary-dark)' : 'var(--text-2)',
-                  fontWeight: 600, fontSize: 14, position: 'relative',
+                  fontWeight: 600, fontSize: 16, position: 'relative',
                 }}>
                 <div style={{ display: 'flex', justifyContent: 'center' }}><t.Icono width={22} height={22} /></div>
                 <div>{t.nombre}</div>
@@ -205,7 +205,7 @@ const CierrePage: React.FC = () => {
         {/* Horarios configurables */}
         <div style={{ marginBottom: 14 }}>
           <button type="button" onClick={() => setEditHoras(!editHoras)}
-            style={{ background: 'none', border: 'none', fontSize: 15, color: 'var(--marca-texto)', cursor: 'pointer', fontFamily: 'inherit', padding: 0, fontWeight: 700, minHeight: 44, display: 'flex', alignItems: 'center', gap: 6 }}>
+            style={{ background: 'none', border: 'none', fontSize: 16, color: 'var(--marca-texto)', cursor: 'pointer', fontFamily: 'inherit', padding: 0, fontWeight: 700, minHeight: 44, display: 'flex', alignItems: 'center', gap: 6 }}>
             <IcoClockIcon width={20} height={20} /> {editHoras ? 'Cerrar editor de horarios' : 'Editar horarios de turno'}
           </button>
           {editHoras && (
@@ -213,7 +213,7 @@ const CierrePage: React.FC = () => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
                 {([['manana', 'Mañana'], ['tarde', 'Tarde'], ['noche', 'Noche']] as [keyof HorasTurnos, string][]).map(([k, lbl]) => (
                   <div key={k}>
-                    <label style={{ fontSize: 14, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>{lbl} desde</label>
+                    <label style={{ fontSize: 16, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>{lbl} desde</label>
                     <select
                       value={horas[k]}
                       aria-label={`Hora de inicio de ${lbl}`}
@@ -222,7 +222,7 @@ const CierrePage: React.FC = () => {
                         const next = { ...horas, [k]: v };
                         if (next.manana < next.tarde && next.tarde < next.noche) guardarHoras(next);
                       }}
-                      style={{ width: '100%', padding: 8, fontSize: 14, fontFamily: 'var(--font-mono)', background: 'var(--surface)', color: 'var(--text)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-sm)' }}>
+                      style={{ width: '100%', padding: 8, fontSize: 16, fontFamily: 'var(--font-mono)', background: 'var(--surface)', color: 'var(--text)', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius-sm)' }}>
                       {Array.from({ length: 24 }, (_, h) => (
                         <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
                       ))}
@@ -230,7 +230,7 @@ const CierrePage: React.FC = () => {
                   </div>
                 ))}
               </div>
-              <p style={{ fontSize: 14, color: 'var(--text-3)', margin: '10px 0 0', lineHeight: 1.5 }}>
+              <p style={{ fontSize: 16, color: 'var(--text-3)', margin: '10px 0 0', lineHeight: 1.5 }}>
                 La noche termina donde arranca la mañana del día siguiente. Los horarios deben ir en orden (mañana &lt; tarde &lt; noche); si una opción no se guarda, ajustá primero los otros turnos.
               </p>
             </Card>
@@ -255,15 +255,15 @@ const CierrePage: React.FC = () => {
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 14 }}>
               <StatCard label="Ventas" value={cantidad} />
-              <StatCard label="Total" value={<span style={{ fontFamily: 'var(--font-mono)', fontSize: 15 }}>{formatMoney(total)}</span>} color="var(--color-primary-dark)" />
-              <StatCard label="Ticket prom." value={<span style={{ fontFamily: 'var(--font-mono)', fontSize: 15 }}>{formatMoney(ticketProm)}</span>} />
+              <StatCard label="Total" value={<span style={{ fontFamily: 'var(--font-mono)', fontSize: 16 }}>{formatMoney(total)}</span>} color="var(--color-primary-dark)" />
+              <StatCard label="Ticket prom." value={<span style={{ fontFamily: 'var(--font-mono)', fontSize: 16 }}>{formatMoney(ticketProm)}</span>} />
             </div>
 
             <Card style={{ marginBottom: 14 }}>
               <SectionTitle>Ingresos por método</SectionTitle>
               {Object.entries(porMetodo).sort((a, b) => b[1] - a[1]).map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: 14 }}>{k === 'fiado' ? 'Fiado (no cobrado)' : metodoLabel(k)}</span>
+                  <span style={{ fontSize: 16 }}>{k === 'fiado' ? 'Fiado (no cobrado)' : metodoLabel(k)}</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{formatMoney(v)}</span>
                 </div>
               ))}
@@ -275,23 +275,23 @@ const CierrePage: React.FC = () => {
 
             <Card>
               <SectionTitle>Contar el efectivo · turno {turno.nombre.toLowerCase()}</SectionTitle>
-              <p style={{ fontSize: 14, color: 'var(--text-2)', marginBottom: 10 }}>
+              <p style={{ fontSize: 16, color: 'var(--text-2)', marginBottom: 10 }}>
                 Contá el efectivo en la caja al cerrar este turno y anotalo para verificar que cuadre.
               </p>
               {([
                 ['Fondo de apertura', caja.fondo], ['Entró por ventas en efectivo', caja.ventasEfectivo],
                 ['Entradas de plata', caja.ingresos], ['Salidas de plata', -caja.egresos],
               ] as [string, number][]).filter(([, n]) => n !== 0).map(([k, n]) => (
-                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, marginBottom: 4 }}>
                   <span style={{ color: 'var(--text-2)' }}>{k}</span>
                   <span style={{ fontFamily: 'var(--font-mono)' }}>{n < 0 ? '−' : ''}{formatMoney(Math.abs(n))}</span>
                 </div>
               ))}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '6px 0 10px', paddingTop: 6, borderTop: '1px solid var(--border)' }}>
-                <span style={{ fontSize: 14, color: 'var(--text-2)', fontWeight: 600 }}>Efectivo esperado</span>
+                <span style={{ fontSize: 16, color: 'var(--text-2)', fontWeight: 600 }}>Efectivo esperado</span>
                 <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{formatMoney(totalEfectivo)}</span>
               </div>
-              <label style={{ fontSize: 14, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Efectivo contado en caja</label>
+              <label style={{ fontSize: 16, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>Efectivo contado en caja</label>
               <input className="campo" type="text" inputMode="decimal" value={efectivoContado} onChange={e => setEfectivoContado(e.target.value)}
                 placeholder="0.00"
                 style={{ width: '100%', padding: 12, fontSize: 18, textAlign: 'center', fontFamily: 'var(--font-mono)', color: 'var(--text)', borderRadius: 'var(--radius)', outline: 'none' }} />
@@ -304,11 +304,11 @@ const CierrePage: React.FC = () => {
                   textAlign: 'center',
                 }}>
                   {Math.abs(diferencia) < 0.01 ? (
-                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-primary-dark)' }}>La caja cuadra perfecto</span>
+                    <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-primary-dark)' }}>La caja cuadra perfecto</span>
                   ) : diferencia > 0 ? (
-                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-info-dark)' }}>Sobran {formatMoney(diferencia)} en caja</span>
+                    <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-info-dark)' }}>Sobran {formatMoney(diferencia)} en caja</span>
                   ) : (
-                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-danger-dark)' }}>Faltan {formatMoney(Math.abs(diferencia))} en caja</span>
+                    <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-danger-dark)' }}>Faltan {formatMoney(Math.abs(diferencia))} en caja</span>
                   )}
                 </div>
               )}
@@ -323,10 +323,10 @@ const CierrePage: React.FC = () => {
             {cierres.map((c, i) => (
               <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0', borderBottom: i < cierres.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{c.cajero_nombre || '—'}</div>
-                  <div style={{ fontSize: 14, color: 'var(--text-3)' }}>{new Date(c.hasta).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })} · {formatMoney(c.total)}</div>
+                  <div style={{ fontSize: 16, fontWeight: 600 }}>{c.cajero_nombre || '—'}</div>
+                  <div style={{ fontSize: 16, color: 'var(--text-3)' }}>{new Date(c.hasta).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })} · {formatMoney(c.total)}</div>
                 </div>
-                <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)',
+                <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-mono)',
                   color: Math.abs(c.diferencia) < 0.01 ? 'var(--color-primary-dark)' : c.diferencia < 0 ? 'var(--color-danger)' : 'var(--color-info-dark)' }}>
                   {Math.abs(c.diferencia) < 0.01 ? 'cuadra' : (c.diferencia > 0 ? '+' : '') + formatMoney(c.diferencia)}
                 </span>
@@ -342,17 +342,17 @@ const CierrePage: React.FC = () => {
             type="button"
             onClick={() => setShowPinPad(true)}
             className="pressable"
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', minHeight: 48, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', minHeight: 48, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
             <LockClosedIcon size={16} color="var(--color-primary)" /> Cambiar clave de dueño
           </button>
           <button
             type="button"
             onClick={() => history.push('/ventas/cajeros')}
             className="pressable"
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', minHeight: 48, marginTop: 8, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', minHeight: 48, marginTop: 8, border: 'none', boxShadow: 'var(--shadow-sm)', borderRadius: 'var(--radius)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
             Gestionar cajeros
           </button>
-          <p style={{ fontSize: 14, color: 'var(--text-3)', marginTop: 8, textAlign: 'center' }}>
+          <p style={{ fontSize: 16, color: 'var(--text-3)', marginTop: 8, textAlign: 'center' }}>
             La clave de dueño cuida la caja y las ventas anteriores. Cada empleado entra tocando su nombre y poniendo su clave.
           </p>
         </Card>

@@ -57,7 +57,7 @@ const MovimientosPage: React.FC = () => {
             {chips.map(c => (
               <button key={c.val} type="button" onClick={() => { setFiltro(c.val); setMostrar(60); }}
                 style={{
-                  padding: '6px 16px', minHeight: 44, fontSize: 15, borderRadius: 'var(--radius-full)',
+                  padding: '6px 16px', minHeight: 44, fontSize: 16, borderRadius: 'var(--radius-full)',
                   border: '1px solid ' + (filtro === c.val ? 'var(--brand-500)' : 'var(--border)'),
                   background: filtro === c.val ? 'var(--brand-500)' : 'var(--surface)',
                   color: filtro === c.val ? '#fff' : 'var(--text-2)',
@@ -74,7 +74,7 @@ const MovimientosPage: React.FC = () => {
             porDia.map(grupo => (
               <div key={grupo.fecha} style={{ marginBottom: 20 }}>
                 <div style={{
-                  fontSize: 14, fontWeight: 700, color: 'var(--text-3)', marginBottom: 8, paddingLeft: 4,
+                  fontSize: 16, fontWeight: 700, color: 'var(--text-3)', marginBottom: 8, paddingLeft: 4,
                 }}>{tituloFecha(grupo.fecha)}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {grupo.items.map(m => <MovItem key={m.id} m={m} nombre={nombreDe.get(m.productoId) || '(eliminado)'} />)}
@@ -111,12 +111,12 @@ const MovItem: React.FC<{ m: Movimiento; nombre: string }> = ({ m, nombre }) => 
         }}>{info.icon}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: info.color }}>{info.label}</span>
-            <span style={{ fontSize: 14, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{hora}</span>
+            <span style={{ fontSize: 16, fontWeight: 600, color: info.color }}>{info.label}</span>
+            <span style={{ fontSize: 16, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{hora}</span>
           </div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 14.5, fontWeight: 600, marginBottom: 2 }}>{nombre}</div>
           {m.cantidad !== 0 && (
-            <div style={{ fontSize: 14, color: 'var(--text-2)' }}>
+            <div style={{ fontSize: 16, color: 'var(--text-2)' }}>
               {m.cantidadAnterior} → {m.cantidadNueva}{' '}
               <span style={{ color: m.cantidad > 0 ? 'var(--marca-texto)' : 'var(--level-vencido-fg)', fontWeight: 600 }}>
                 ({m.cantidad > 0 ? '+' : ''}{m.cantidad})
@@ -124,9 +124,9 @@ const MovItem: React.FC<{ m: Movimiento; nombre: string }> = ({ m, nombre }) => 
             </div>
           )}
           {m.notas && (
-            <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 2 }}>{m.notas}</div>
+            <div style={{ fontSize: 16, color: 'var(--text-2)', marginTop: 2 }}>{m.notas}</div>
           )}
-          <div style={{ fontSize: 14, color: 'var(--text-3)', marginTop: 4 }}>{m.usuario}</div>
+          <div style={{ fontSize: 16, color: 'var(--text-3)', marginTop: 4 }}>{m.usuario}</div>
         </div>
       </div>
     </Card>

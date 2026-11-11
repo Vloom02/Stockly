@@ -137,7 +137,7 @@ const AppAutenticada: React.FC<{ isDark: boolean; onThemeToggle: () => void; est
         <div className="anim-bajar" style={{
           position: 'fixed', top: 'env(safe-area-inset-top)', left: 0, right: 0,
           zIndex: 500, background: 'var(--level-urgente-bg)', color: 'var(--level-urgente-fg)',
-          padding: '8px 16px', fontSize: 14, fontWeight: 600, textAlign: 'center',
+          padding: '8px 16px', fontSize: 16, fontWeight: 600, textAlign: 'center',
         }}>
           {estadoPlan.diasRestantes <= 0
             ? 'Tu prueba vence hoy'
@@ -246,7 +246,7 @@ const SinConfig: React.FC = () => (
   <div style={{ padding: 32, maxWidth: 480, margin: '40px auto', textAlign: 'center' }}>
     <Logo size={48} />
     <h1 style={{ fontSize: 20, fontWeight: 700, marginTop: 16 }}>Falta configurar Supabase</h1>
-    <p style={{ color: 'var(--text-2)', fontSize: 14, marginTop: 8, lineHeight: 1.6 }}>
+    <p style={{ color: 'var(--text-2)', fontSize: 16, marginTop: 8, lineHeight: 1.6 }}>
       Creá un archivo <code>.env</code> en la raíz del proyecto con tus claves de Supabase.
       Mirá las instrucciones en <code>supabase/SETUP.md</code>.
     </p>

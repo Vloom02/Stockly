@@ -277,9 +277,9 @@ const Barras: React.FC<{ filas: Fila[]; total: number; vacio: string; sinPorcent
           <div key={f.nombre}>
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
               <span style={{ flex: 1, fontSize: 17, fontWeight: 600 }}>{f.nombre}</span>
-              <span style={{ fontSize: 15, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{f.cantidad} {f.cantidad === 1 ? 'venta' : 'ventas'}</span>
+              <span style={{ fontSize: 16, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{f.cantidad} {f.cantidad === 1 ? 'venta' : 'ventas'}</span>
               <span style={{ fontSize: 18, fontWeight: 800, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatMoney(Math.round(f.total))}</span>
-              {!sinPorcentaje && <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-2)', minWidth: 42, textAlign: 'right' }}>{Math.round(pct)}%</span>}
+              {!sinPorcentaje && <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-2)', minWidth: 42, textAlign: 'right' }}>{Math.round(pct)}%</span>}
             </div>
             <div style={{ height: 12, borderRadius: 999, background: 'var(--surface-3)', boxShadow: 'var(--hundido)', overflow: 'hidden' }}>
               <div style={{ width: `${f.total > 0 ? Math.max(pct, 2) : 0}%`, height: '100%', borderRadius: 999, background: 'var(--boton-marca)', transition: 'width .4s' }} />
