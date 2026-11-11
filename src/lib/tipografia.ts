@@ -15,16 +15,25 @@ export const ESCALA_DEFAULT = 1.1;
 
 let escalaSugerida = ESCALA_DEFAULT; // la que se usa mientras el usuario no elija otra
 
+const KEY_PASADA = 'stockly:font-scale-v2'; // la escala guardada ya se pasó al modo nuevo
+
 /**
- * Escala inicial si el usuario nunca eligió una. Android ya agranda el texto de la
- * WebView con el "Tamaño de fuente" del sistema: si la persona lo subió, arrancamos
- * en 100% para no sumarle nuestro 110% encima (se saldría de la pantalla).
+ * Escala inicial si el usuario nunca eligió una. El "Tamaño de fuente" de Android agrandaba SOLO la
+ * letra de la WebView (no los botones ni las cajas): con la letra del sistema al máximo el texto se
+ * duplicaba y no entraba. Ahora la letra de la WebView queda fija y lo que la persona pidió en Android
+ * es el punto de partida de la escala propia, que agranda todo parejo (hasta el tope de la app).
  */
 export async function calcularEscalaSugerida(): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
   try {
     const { value } = await TextZoom.getPreferred();
-    escalaSugerida = value > 1.05 ? 1 : ESCALA_DEFAULT;
+    await TextZoom.set({ value: 1 });
+    escalaSugerida = Math.min(ESCALA_MAX, Math.max(ESCALA_DEFAULT, value));
+    // Quien ya había elegido una escala la veía multiplicada por la letra de Android: se le guarda ese
+    // producto una sola vez, para que al actualizar no se le achique la letra.
+    const elegida = parseFloat(almacenGet(KEY, ''));
+    if (value > 1.05 && elegida > 0 && !almacenGet(KEY_PASADA, '')) guardarEscalaFont(Math.min(ESCALA_MAX, elegida * value));
+    almacenSet(KEY_PASADA, '1');
   } catch { /* sin plugin: queda el default */ }
 }
 
