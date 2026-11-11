@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -42,9 +42,23 @@ const TabBar: React.FC = () => {
   const total = tabs.reduce((a, t) => a + t.ancho, 0);
   const desde = (i: number) => tabs.slice(0, i).reduce((a, t) => a + t.ancho, 0) / total;
   const activa = tabs.findIndex(t => estaActiva(t, location.pathname));
+  // Tablet acostada (o pantalla ancha): la barra va al costado. Abajo tapaba parte de lo que se lee y a lo
+  // ancho sobra lugar; es lo que pide Android para pantallas anchas. Mismo corte que las dos columnas de Vender.
+  const [lateral, setLateral] = useState(() => matchMedia('(min-width: 900px)').matches);
+  useEffect(() => {
+    const mq = matchMedia('(min-width: 900px)');
+    const f = () => setLateral(mq.matches);
+    mq.addEventListener('change', f);
+    return () => mq.removeEventListener('change', f);
+  }, []);
 
   return (
-    <nav aria-label="Secciones" style={{
+    <nav aria-label="Secciones" style={lateral ? {
+      position: 'fixed', left: 'calc(10px + env(safe-area-inset-left))', top: '50%', transform: 'translateY(-50%)',
+      width: 96, padding: 4, zIndex: 100,
+      display: 'grid', gridTemplateRows: `repeat(${tabs.length}, 72px)`,
+      background: 'var(--surface)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-lg)',
+    } : {
       // En tablet no se estira de punta a punta: ancho máximo y centrada.
       position: 'fixed', left: 0, right: 0, margin: '0 auto', width: 'calc(100% - 12px)', maxWidth: 640,
       bottom: 'calc(10px + var(--sab,env(safe-area-inset-bottom)))',
@@ -52,15 +66,20 @@ const TabBar: React.FC = () => {
       display: 'grid', gridTemplateColumns: tabs.map(t => `minmax(0, ${t.ancho}fr)`).join(' '),
       background: 'var(--surface)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-lg)',
     }}>
+      {/* Con la barra al costado, las pantallas empiezan a su derecha. */}
+      {lateral && <style>{'ion-router-outlet#main { left: calc(116px + env(safe-area-inset-left)); }'}</style>}
       <span aria-hidden="true" style={{
-        position: 'absolute', top: 4, bottom: 4,
-        left: `calc(4px + (100% - 8px) * ${desde(Math.max(activa, 0))})`,
-        width: `calc((100% - 8px) * ${tabs[Math.max(activa, 0)].ancho / total})`,
+        position: 'absolute',
+        ...(lateral
+          ? { left: 4, right: 4, top: `calc(4px + 72px * ${Math.max(activa, 0)})`, height: 72 }
+          : { top: 4, bottom: 4,
+              left: `calc(4px + (100% - 8px) * ${desde(Math.max(activa, 0))})`,
+              width: `calc((100% - 8px) * ${tabs[Math.max(activa, 0)].ancho / total})` }),
         // Lo elegido se marca por luminosidad (azul lleno, texto blanco), no por un tinte
         // pálido: a los mayores los tonos claros parecidos se les confunden.
         borderRadius: 20, background: 'var(--boton-marca)', boxShadow: 'var(--relieve), 0 2px 0 var(--boton-base)',
         opacity: activa < 0 || tabs[activa]?.fab ? 0 : 1,
-        transition: 'left var(--mov-base) var(--ease-salida), width var(--mov-base) var(--ease-salida), opacity var(--mov-rapido) ease',
+        transition: 'left var(--mov-base) var(--ease-salida), top var(--mov-base) var(--ease-salida), width var(--mov-base) var(--ease-salida), opacity var(--mov-rapido) ease',
       }} />
       {tabs.map(t => {
         const active = estaActiva(t, location.pathname);
