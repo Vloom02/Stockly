@@ -7,7 +7,7 @@ import { IonContent, IonToast } from '@ionic/react';
 import { useAlVolver } from '../../lib/useAlVolver';
 import { supabase } from '../lib/supabase';
 import { todas } from '../../lib/todas';
-import { openDB, enqueueOutbox, esErrorPermanente } from '../lib/outbox';
+import { openDB, enqueueOutbox, esErrorPermanente, idbGetAll, OfflineVentaPayload } from '../lib/outbox';
 import { ventasACSV, guardarCSV } from '../lib/exportar';
 import { avisoArchivo } from '../../lib/archivos';
 import { useAuth } from '../context/AuthContext';
@@ -15,7 +15,7 @@ import { formatMoney } from '../context/VentasContext';
 import { useConfirm } from '../../lib/useConfirm';
 import { Card, Badge, EmptyState, Skeleton, Button, Opciones } from '../components/ui';
 import { ClipboardIcon, FunnelIcon, DocumentIcon } from '../components/ui/icons';
-import { HistoryFilters } from '../types';
+import { HistoryFilters, OutboxItem } from '../types';
 
 import BotonVolver from '../components/BotonVolver';
 
@@ -23,7 +23,9 @@ import BotonVolver from '../components/BotonVolver';
 const FMT_DIA = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
 const FMT_HORA = new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit' });
 
-interface VentaRow { id: string; total: number; descuento: number; metodo_pago: string; cliente: string; fiado: boolean; usuario: string; fecha: string; anulada?: boolean; }
+interface VentaRow { id: string; total: number; descuento: number; metodo_pago: string; cliente: string; fiado: boolean; usuario: string; fecha: string; anulada?: boolean;
+  /** Cobrada sin señal: está guardada en este equipo y todavía no llegó al servidor (trae sus renglones). */
+  sinSubir?: boolean; lineas?: { nombre: string; qty: number; precio: number }[]; }
 
 const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avisar: (msg: string) => void }> = ({ venta, onAnulada, avisar }) => {
   const { comercio, miembro, sucursalActiva } = useAuth();
@@ -80,6 +82,8 @@ const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avi
     const next = !open;
     setOpen(next);
     if (next && items.length === 0) {
+      // Sin subir: los renglones están en este equipo, el servidor todavía no los tiene.
+      if (venta.lineas) { setItems(venta.lineas.map(l => ({ cantidad: l.qty, precio_unit: l.precio, subtotal: l.precio * l.qty, producto_id: null, nombre_producto: l.nombre }))); return; }
       const { data } = await supabase.from('ventas_items').select('*').eq('venta_id', venta.id);
       setItems(data ?? []);
       // El nombre guardado en la venta manda (si después se renombró o borró el producto, se ve el de ese día).
@@ -102,6 +106,7 @@ const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avi
         <div>
           <div style={{ fontSize: 14, color: 'var(--text-2)' }}>{time} {venta.usuario && <Badge color="purple" style={{ marginLeft: 4, fontSize: 14 }}>{venta.usuario}</Badge>}
             {anulada && <span style={{ marginLeft: 6, fontSize: 14, fontWeight: 700, color: 'var(--color-danger)', background: 'var(--color-danger-bg)', border: '1px solid var(--color-danger-border)', borderRadius: 'var(--radius-full)', padding: '1px 7px' }}>ANULADA</span>}
+            {venta.sinSubir && <span style={{ marginLeft: 6, fontSize: 14, fontWeight: 700, color: 'var(--level-urgente-fg)', background: 'var(--level-urgente-bg)', borderRadius: 'var(--radius-full)', padding: '1px 7px' }}>Falta subir</span>}
           </div>
           <div style={{ fontSize: 14, color: 'var(--text-3)', marginTop: 1 }}>{venta.fiado ? 'Fiado' : metodoLabel}{venta.cliente ? ` · ${venta.cliente}` : ''}</div>
         </div>
@@ -119,7 +124,8 @@ const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avi
             </div>
           ))}
           {venta.descuento > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '2px 0', color: 'var(--color-primary-dark)' }}><span>Descuento</span><span style={{ fontFamily: 'var(--font-mono)' }}>-{formatMoney(venta.descuento)}</span></div>}
-          {!anulada && (
+          {venta.sinSubir && <p style={{ fontSize: 16, fontWeight: 600, margin: '10px 0 0' }}>Está guardada en este equipo y sube sola cuando vuelva la señal. Después se va a poder anular.</p>}
+          {!anulada && !venta.sinSubir && (
             <button type="button" onClick={anular} disabled={anulando} className="pressable"
               style={{ marginTop: 10, width: '100%', padding: '9px', minHeight: 48, background: 'var(--color-danger-bg)', color: 'var(--color-danger)', border: '1px solid var(--color-danger-border)', borderRadius: 'var(--radius)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: anulando ? 0.6 : 1 }}>
               {anulando ? 'Anulando…' : 'Anular venta / devolución'}
@@ -134,6 +140,7 @@ const SaleCard: React.FC<{ venta: VentaRow; onAnulada: (id: string) => void; avi
 const HistorialPage: React.FC = () => {
   const { comercio } = useAuth();
   const [ventas, setVentas] = useState<VentaRow[]>([]);
+  const [pendientes, setPendientes] = useState<VentaRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<HistoryFilters>({ metodoPago: '', cliente: '', dateFrom: '', dateTo: '' });
@@ -144,6 +151,16 @@ const HistorialPage: React.FC = () => {
     if (!comercio) { setLoading(false); return; }
     setLoading(true);
     const desde = new Date(); desde.setDate(desde.getDate() - 30);
+    // Lo cobrado sin señal todavía no está en el servidor: se muestra igual, marcado "Falta subir"
+    // (antes esas ventas no aparecían en ningún lado hasta que subían).
+    try {
+      await openDB();
+      setPendientes((await idbGetAll<OutboxItem>('outbox')).filter(i => i.kind === 'venta')
+        .map(i => i.payload as OfflineVentaPayload).filter(v => v.comercioId === comercio.id)
+        .map(v => ({ id: v.ventaId, total: v.total, descuento: v.descuento, metodo_pago: v.metodoPago, cliente: v.cliente, fiado: v.fiado,
+          usuario: v.usuario ?? '', fecha: new Date(v.fecha).toISOString(), sinSubir: true,
+          lineas: v.cart.map(c => ({ nombre: c.nombre, qty: c.qty, precio: c.precio })) })));
+    } catch { setPendientes([]); }
     // De a 1.000 (con unas 40 ventas por día se pasaba y el total quedaba corto sin avisar).
     // Sin internet se deja lo que ya se veía.
     try {
@@ -159,14 +176,21 @@ const HistorialPage: React.FC = () => {
   // Refrescar al volver a la pestaña (puede haber ventas nuevas).
   useAlVolver(() => { cargar(); });
 
-  const filtered = useMemo(() => ventas
+  // Una venta que ya llegó al servidor pero sigue en la cola (se cortó la respuesta) no se muestra dos veces.
+  const conPendientes = useMemo(() => {
+    if (pendientes.length === 0) return ventas;
+    const yaSubidas = new Set(ventas.map(v => v.id));
+    return [...pendientes.filter(p => !yaSubidas.has(p.id)), ...ventas].sort((a, b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0));
+  }, [ventas, pendientes]);
+
+  const filtered = useMemo(() => conPendientes
     // Lo fiado no entró como plata, aunque quede guardado con "efectivo".
     .filter(v => !filters.metodoPago || (v.fiado ? 'fiado' : v.metodo_pago) === filters.metodoPago)
     .filter(v => !filters.cliente || (v.cliente ?? '').toLowerCase().includes(filters.cliente.toLowerCase()))
     // Por el día en hora local (la fecha guardada es UTC: una venta de las 22 h caía al día siguiente).
     .filter(v => !filters.dateFrom || fechaLocalISO(new Date(v.fecha)) >= filters.dateFrom)
     .filter(v => !filters.dateTo || fechaLocalISO(new Date(v.fecha)) <= filters.dateTo),
-    [ventas, filters]);
+    [conPendientes, filters]);
 
   const total = useMemo(() => filtered.filter(v => !v.anulada).reduce((s, v) => s + Number(v.total), 0), [filtered]); // las anuladas no suman
 
