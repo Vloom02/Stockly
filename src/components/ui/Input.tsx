@@ -24,10 +24,17 @@ interface FieldProps {
   children: React.ReactNode;
 }
 
-export const Field: React.FC<FieldProps> = ({ label, hint, error, required, children }) => (
+// El nombre queda unido a su campo: tocar el nombre lo enfoca (más lugar para acertar) y el lector de
+// pantalla lo lee. Antes el <label> iba suelto y el campo quedaba sin nombre.
+const CampoId = React.createContext<string | undefined>(undefined);
+const useCampoId = (propio?: string) => { const delCampo = React.useContext(CampoId); return propio ?? delCampo; };
+
+export const Field: React.FC<FieldProps> = ({ label, hint, error, required, children }) => {
+  const id = React.useId();
+  return (
   <div style={{ marginBottom: 12 }}>
     {label && (
-      <label style={{
+      <label htmlFor={id} style={{
         display: 'block',
         fontSize: 15,
         fontWeight: 600,
@@ -39,7 +46,7 @@ export const Field: React.FC<FieldProps> = ({ label, hint, error, required, chil
         {required && <span style={{ color: 'var(--danger)', marginLeft: 2 }}>*</span>}
       </label>
     )}
-    {children}
+    <CampoId.Provider value={id}>{children}</CampoId.Provider>
     {hint && !error && (
       <p style={{ fontSize: 14, color: 'var(--text-3)', margin: '4px 0 0' }}>{hint}</p>
     )}
@@ -47,7 +54,8 @@ export const Field: React.FC<FieldProps> = ({ label, hint, error, required, chil
       <p role="alert" className="anim-entrar" style={{ fontSize: 15, color: 'var(--danger)', margin: '6px 0 0', fontWeight: 600 }}>{error}</p>
     )}
   </div>
-);
+  );
+};
 
 // ─── Input ───────────────────────────────────────────────────────────
 interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
@@ -56,10 +64,12 @@ interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, '
 }
 
 export const Input: React.FC<InputProps> = ({ leftIcon, rightAddon, style, ...props }) => {
+  const id = useCampoId(props.id);
   if (!leftIcon && !rightAddon) {
     return (
       <input
         {...props}
+        id={id}
         className={conCampo(props.className)}
         style={{ ...baseFieldStyle, ...style }}
       />
@@ -78,6 +88,7 @@ export const Input: React.FC<InputProps> = ({ leftIcon, rightAddon, style, ...pr
         )}
         <input
           {...props}
+          id={id}
           className={conCampo(props.className)}
           style={{ ...baseFieldStyle, paddingLeft: leftIcon ? 38 : 12, ...style }}
         />
@@ -95,6 +106,7 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
 export const Select: React.FC<SelectProps> = ({ children, style, ...props }) => (
   <select
     {...props}
+    id={useCampoId(props.id)}
     className={conCampo(props.className)}
     style={{
       ...baseFieldStyle,
@@ -115,6 +127,7 @@ export const Select: React.FC<SelectProps> = ({ children, style, ...props }) => 
 export const Textarea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement>> = ({ style, ...props }) => (
   <textarea
     {...props}
+    id={useCampoId(props.id)}
     className={conCampo(props.className)}
     style={{
       ...baseFieldStyle,
