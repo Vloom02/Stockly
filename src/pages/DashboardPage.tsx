@@ -105,8 +105,9 @@ const DashboardPage: React.FC = () => {
               <Logo size={38} showText />
               {(() => {
                 // Estado real del stock en un chip (antes un sello torcido estilo libro).
-                const estado = res.lotesVencidos > 0
-                  ? { txt: `${res.lotesVencidos} vencido${res.lotesVencidos > 1 ? 's' : ''}`, nivel: 'vencido' }
+                // Productos, igual que el aviso de abajo: con compras, decía "107 vencidos" al lado de "103 productos vencidos".
+                const estado = productosPorNivel.vencidos > 0
+                  ? { txt: `${productosPorNivel.vencidos} vencido${productosPorNivel.vencidos > 1 ? 's' : ''}`, nivel: 'vencido' }
                   : (res.lotesCriticos + res.lotesUrgentes) > 0
                     ? { txt: 'Revisar', nivel: 'urgente' }
                     : { txt: 'Al día', nivel: 'ok' };
@@ -327,7 +328,11 @@ const NivelChip: React.FC<{ nivel: NivelAlerta; cantidad: number }> = ({ nivel, 
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
   }}>
     <div style={{ width: 9, height: 9, borderRadius: '50%', background: `var(--level-${nivel}-fg)`, marginBottom: 5, boxShadow: `0 0 0 3px var(--level-${nivel}-bg)` }} />
-    <div style={{ fontFamily: 'var(--font-display)', fontSize: 21, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1, letterSpacing: '-0.02em' }}>{cantidad}</div>
+    <div style={{ fontFamily: 'var(--font-display)', fontSize: 21, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+      {/* Acá se cuentan compras (un producto puede tener varias): dicho al lado del número, para que no parezca
+          el mismo dato que "productos vencidos" del aviso de arriba. */}
+      {cantidad} <span style={{ fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 700, color: 'var(--text-2)', letterSpacing: 0 }}>{cantidad === 1 ? 'compra' : 'compras'}</span>
+    </div>
     <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 2, fontWeight: 700 }}>{etiquetaNivel(nivel)}</div>
   </button>
   );
