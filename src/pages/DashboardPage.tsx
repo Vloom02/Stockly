@@ -225,7 +225,8 @@ const DashboardPage: React.FC = () => {
           </div>
 
           {/* ─── Acciones rápidas ─────────────────────────────────────── */}
-          <div className="lista-animada" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 24 }}>
+          {/* Tres iguales en una fila; si no entran (letra Muy grande en un celular chico) el último baja, no se corta. */}
+          <div className="lista-animada" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
             <AccionCard icon={<PlusCircleIcon width={22} height={22} />} label="Cargar" onClick={() => history.push('/lote/nuevo')} />
             <AccionCard icon={<ArchiveBoxIcon width={22} height={22} />} label="Mercadería" onClick={() => history.push('/stock')} />
             <AccionCard icon={<ChartBarSquareIcon width={22} height={22} />} label="Reportes" onClick={() => history.push('/reportes')} />
@@ -387,7 +388,7 @@ const AccionCard: React.FC<{ icon: React.ReactNode; label: string; onClick: () =
   ({ icon, label, onClick }) => (
     <button type="button" onClick={onClick} className="boton-blanco"
       style={{
-        border: 'none', borderRadius: 'var(--radius-lg)', padding: '14px 8px',
+        border: 'none', borderRadius: 'var(--radius-lg)', padding: '14px 8px', flex: '1 1 0',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
         cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 16,
       }}
