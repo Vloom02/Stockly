@@ -4,7 +4,7 @@
 #   stockly-web-X.Y.Z.zip.cifrado → la misma, cifrada y firmada (la bajan los APK desde 1.2.12)
 #   Stockly-X.Y.Z.apk      → para instalar de cero, o si el APK instalado es más viejo que "apkMinimo"
 # Antes: subir "version" en package.json. Si cambió algo NATIVO (plugin nuevo, permisos, Capacitor),
-# poner también "apkMinimo" = esa versión. Necesita la llave de firma (D:\Claude\firmas) y gh logueado.
+# poner también "apkMinimo" = esa versión. Necesita la llave de firma (carpeta firmas al lado del repo) y gh logueado.
 # Sale en BORRADOR (las tablets no lo ven): probalo en un equipo y después
 #   gh release edit vX.Y.Z --draft=false --latest
 # Guía completa: docs/PUBLICAR.md
@@ -47,7 +47,7 @@ with zipfile.ZipFile(sys.argv[2], 'w', zipfile.ZIP_DEFLATED) as z:
 " dist "$SAL/stockly-web-$V.zip"
 SHA=$(python -I -c "import hashlib,sys;print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$SAL/stockly-web-$V.zip")
 # Firmada para los APK desde 1.2.12 (traen la llave pública): sin la llave privada no se publica.
-LLAVE=${LLAVE_ACTUALIZACIONES:-/d/Claude/firmas/capgo-actualizaciones.pem}
+LLAVE=${LLAVE_ACTUALIZACIONES:-../firmas/capgo-actualizaciones.pem}
 [ -f "$LLAVE" ] || falla "falta la llave para firmar las actualizaciones ($LLAVE)"
 FIRMA=$(node scripts/cifrar-version.mjs "$SAL/stockly-web-$V.zip" "$SAL/stockly-web-$V.zip.cifrado" "$LLAVE")
 

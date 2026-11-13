@@ -30,14 +30,14 @@ Capgo vuelve sola a la anterior en ese equipo.
 
 ## La llave de firma
 
-`android/app/build.gradle` firma con la llave de `D:/Claude/firmas` (keystore + `keystore.properties`).
+`android/app/build.gradle` firma con la llave de la carpeta `firmas`, al lado de la del repo (keystore + `keystore.properties`).
 **Guardá una copia fuera de la compu** (pendrive o nube privada). Si se pierde, las tablets no pueden
 actualizar el APK: hay que desinstalar la app y se pierde lo que no se subió.
 
 ## La llave de las actualizaciones (desde 1.2.12)
 
 Los APK desde 1.2.12 traen una llave pública (`capacitor.config.ts`) y solo instalan la parte web firmada con
-su privada, `D:/Claude/firmas/capgo-actualizaciones.pem` (otra ruta: variable `LLAVE_ACTUALIZACIONES`).
+su privada, `../firmas/capgo-actualizaciones.pem` desde la raíz del repo (otra ruta: variable `LLAVE_ACTUALIZACIONES`).
 `publicar-version.sh` la usa con `scripts/cifrar-version.mjs`: sube el zip común (para los APK viejos) y el
 `.zip.cifrado` con `session-key` y `checksum-cifrado` en las notas. **Copia fuera de la compu, igual que la otra.**
 Si se pierde, los APK desde 1.2.12 dejan de actualizarse solos hasta instalar uno con una llave nueva.
